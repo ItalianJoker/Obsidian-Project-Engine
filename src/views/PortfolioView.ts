@@ -26,6 +26,8 @@ import {
 import { PersistStatusCommand } from "../services/taskCommands";
 import { loadAllTasks } from "../services/taskIo";
 import { openEntityModal } from "./EntityModal";
+import { activateGanttView } from "./GanttView";
+import { wireKanbanCardDnD, wireKanbanColumnDrop } from "./kanbanDnD";
 import { TaskEditorModal } from "./TaskEditorModal";
 
 /** View type id registered in main.ts. */
@@ -135,6 +137,9 @@ export class PortfolioView extends ItemView {
 		});
 		this.addToolbarButton(toolbar, "New task", () => {
 			void this.openTaskForSelection();
+		});
+		this.addToolbarButton(toolbar, "Gantt", () => {
+			void activateGanttView(this.plugin);
 		});
 		this.addToolbarButton(toolbar, "Customer", () => openEntityModal(this.plugin, "customer"));
 		this.addToolbarButton(toolbar, "Team member", () =>
@@ -273,7 +278,8 @@ export class PortfolioView extends ItemView {
 	}
 
 	/**
-	 * Lean Kanban for Semplificato projects (and operational tasks).
+	 * Lean Kanban for Semplificato projects with HTML5 + pointer DnD.
+	 * Status buttons remain as a mobile-accessible fallback (&lt;720px).
 	 */
 	private renderKanban(root: HTMLElement): void {
 		const section = root.createDiv({ cls: "pe-section pe-kanban-section" });
@@ -281,13 +287,14 @@ export class PortfolioView extends ItemView {
 		section.createEl("p", {
 			cls: "pe-help",
 			text: this.selectedProjectId
-				? `Tasks for ${this.selectedProjectId}. Tap a status to move (undoable).`
+				? `Tasks for ${this.selectedProjectId}. Drag cards between columns (or use status buttons). Undoable.`
 				: "Select a Semplificato project to manage its status board.",
 		});
 
 		const selected = this.projects.find((row) => row.id === this.selectedProjectId);
 		if (!selected || selected.governance !== "Semplificato") {
-			section.createEl("p", {
+			const empty = section.createDiv({ cls: "pe-empty-state" });
+			empty.createEl("p", {
 				cls: "pe-help",
 				text: "Board available when a Semplificato project is selected.",
 			});
@@ -298,19 +305,54 @@ export class PortfolioView extends ItemView {
 		const projectTasks = this.tasks.filter(
 			(task) => task.projectId === selected.id && task.parentId == null,
 		);
+		const enableHtml5 = typeof window !== "undefined" && window.innerWidth >= 720;
+		const byId = new Map(projectTasks.map((task) => [task.id, task] as const));
+
+		const onDrop = (taskId: string, toStatus: SemplificatoStatus): void => {
+			const task = byId.get(taskId);
+			if (!task) {
+				new Notice("Task not found on this board");
+				return;
+			}
+			if (normaliseStatus(task.status) === toStatus) {
+				return;
+			}
+			void this.moveTaskStatus(task, toStatus);
+		};
 
 		for (const status of SEMPLIFICATO_STATUSES) {
 			const column = board.createDiv({ cls: "pe-kanban-column" });
+			wireKanbanColumnDrop(column, status, onDrop);
 			column.createEl("h4", { text: SEMPLIFICATO_LABELS[status], cls: "pe-kanban-title" });
 			const cards = column.createDiv({ cls: "pe-kanban-cards" });
 			const inColumn = projectTasks.filter((task) => normaliseStatus(task.status) === status);
 			for (const task of inColumn) {
 				const card = cards.createDiv({ cls: "pe-kanban-card pe-touch-target" });
-				card.createEl("div", { text: task.title || task.id, cls: "pe-kanban-card-title" });
+				const head = card.createDiv({ cls: "pe-kanban-card-head" });
+				const handle = head.createEl("button", {
+					text: "⠿",
+					cls: "pe-kanban-handle pe-touch-target",
+					attr: {
+						type: "button",
+						"aria-label": "Drag to change status",
+						title: "Drag to another column",
+					},
+				});
+				head.createEl("div", {
+					text: task.title || task.id,
+					cls: "pe-kanban-card-title",
+				});
 				card.createEl("div", {
 					text: `${task.remainingMandays.toFixed(1)} md left`,
 					cls: "pe-help",
 				});
+				wireKanbanCardDnD(card, column, handle, {
+					taskId: task.id,
+					fromStatus: status,
+					onDrop,
+					enableHtml5,
+				});
+
 				const row = card.createDiv({ cls: "pe-inline-row" });
 				const edit = row.createEl("button", {
 					text: "Edit",
@@ -327,6 +369,7 @@ export class PortfolioView extends ItemView {
 						task.parentId,
 					).open();
 				});
+				// Button fallback — always present for accessibility / small screens.
 				for (const target of SEMPLIFICATO_STATUSES) {
 					if (target === status) continue;
 					const move = row.createEl("button", {
@@ -340,7 +383,7 @@ export class PortfolioView extends ItemView {
 				}
 			}
 			if (inColumn.length === 0) {
-				cards.createEl("p", { text: "Empty", cls: "pe-help" });
+				cards.createEl("p", { text: "Drop tasks here", cls: "pe-help pe-kanban-empty" });
 			}
 		}
 

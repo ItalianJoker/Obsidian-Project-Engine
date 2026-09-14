@@ -13,7 +13,9 @@
 - **Undo/Redo** (Command Pattern) collegato a date di schedule, dipendenze e spostamenti di status sulla board; scritture via `vault.process`.
 - **Governance Semplificato:** flusso lineare Backlog → In Progress → Review → Done con board lean e tracking giorni.
 - **Governance PRINCE2:** note registro (Business Case, Risk Register, Issue & Change Log, Quality Register, Work Packages), Management Stage / Stage Boundary con task milestone `is_stage_boundary`.
-- **Vista portafoglio:** tabella progetti con fallback card/accordion (<720px), Kanban Semplificato, azioni PRINCE2 e shortcut CRUD.
+- **Vista portafoglio:** tabella progetti con fallback card/accordion (<720px), Kanban Semplificato con drag-and-drop, azioni PRINCE2 e shortcut CRUD.
+- **Gantt interattivo:** timeline a barre con zoom Day/Week/Month, curve SVG per dipendenze, filtro progetto; leaf dedicata (ribbon + comando).
+- **Kanban DnD:** HTML5 (desktop) e pointer-capture (touch) tra colonne Semplificato; pulsanti status come fallback; persistenza `vault.process` + Undo.
 
 ### Architettura e prestazioni (mobile-first)
 
@@ -30,7 +32,8 @@
 - I campi personalizzati del catalogo valgono sulle cinque entità Settings; la nota progetto non espone ancora uno schema custom dedicato oltre i campi nativi.
 - `vault.process` richiede un file esistente: la creazione passa da `vault.create` vuoto e poi `process` per il contenuto.
 - Spostamenti Kanban e cascade date usano comandi che avviano scritture asincrone: attendere il refresh della vista dopo Undo/Redo rapidi.
-- Non include Gantt interattivo né drag-and-drop nativo Obsidian (i limiti API della vista ItemView non espongono DnD cross-column; lo spostamento status avviene tramite pulsanti ≥44×44 px).
+- Il Gantt non supporta ridimensionamento barre tramite drag né editing inline delle date (si apre l’editor task); lo zoom è a preset (Day/Week/Month).
+- Il DnD Kanban su alcuni WebView iOS può richiedere il handle dedicato; i pulsanti status restano sempre disponibili come fallback.
 - Compatibilità dichiarata da Obsidian 1.5.0.
 
 ---
@@ -48,7 +51,9 @@
 - **Undo/Redo** (Command Pattern) wired to schedule dates, dependencies, and board status moves; writes go through `vault.process`.
 - **Semplificato governance:** linear Backlog → In Progress → Review → Done with a lean board and day tracking.
 - **PRINCE2 governance:** register notes (Business Case, Risk Register, Issue & Change Log, Quality Register, Work Packages), Management Stages / Stage Boundaries with `is_stage_boundary` milestone tasks.
-- **Portfolio view:** project table with card/accordion fallback (<720px), Semplificato Kanban, PRINCE2 actions, and entity CRUD shortcuts.
+- **Portfolio view:** project table with card/accordion fallback (<720px), Semplificato Kanban with drag-and-drop, PRINCE2 actions, and entity CRUD shortcuts.
+- **Interactive Gantt:** bar timeline with Day/Week/Month zoom, SVG dependency curves, project filter; dedicated leaf (ribbon + command).
+- **Kanban DnD:** HTML5 (desktop) and pointer-capture (touch) across Semplificato columns; status buttons as fallback; `vault.process` persistence + Undo.
 
 ### Architecture & Performance (Mobile-first)
 
@@ -65,5 +70,6 @@
 - Catalogue custom fields apply to the five Settings entity kinds; the project note does not yet expose a dedicated custom schema beyond native fields.
 - `vault.process` requires an existing file: create uses an empty `vault.create` followed by `process` for content.
 - Kanban moves and date cascades start asynchronous writes: wait for the view refresh after rapid Undo/Redo.
-- No interactive Gantt and no native Obsidian cross-column drag-and-drop (ItemView API limits); status moves use ≥44×44 px buttons.
+- The Gantt does not support drag-resize of bars or inline date editing (opens the task editor); zoom is preset-based (Day/Week/Month).
+- Kanban DnD on some iOS WebViews may require the dedicated handle; status buttons remain available as fallback.
 - Declared compatibility is Obsidian 1.5.0+.

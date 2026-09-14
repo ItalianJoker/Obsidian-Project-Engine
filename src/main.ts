@@ -18,6 +18,11 @@ import { ProjectsEngineSettingTab } from "./settings";
 import { openEntityModal } from "./views/EntityModal";
 import { ProjectCreationModal } from "./views/ProjectCreationModal";
 import {
+	GANTT_VIEW_TYPE,
+	GanttView,
+	activateGanttView,
+} from "./views/GanttView";
+import {
 	PORTFOLIO_VIEW_TYPE,
 	PortfolioView,
 	activatePortfolioView,
@@ -62,6 +67,7 @@ export default class ProjectsEnginePlugin extends Plugin {
 		);
 
 		this.registerView(PORTFOLIO_VIEW_TYPE, (leaf) => new PortfolioView(leaf, this));
+		this.registerView(GANTT_VIEW_TYPE, (leaf) => new GanttView(leaf, this));
 
 		this.app.workspace.onLayoutReady(() => {
 			this.indexer.rebuild();
@@ -70,12 +76,23 @@ export default class ProjectsEnginePlugin extends Plugin {
 		this.addRibbonIcon("briefcase", "Projects Engine: Portfolio", () => {
 			void activatePortfolioView(this);
 		});
+		this.addRibbonIcon("calendar-range", "Projects Engine: Gantt", () => {
+			void activateGanttView(this);
+		});
 
 		this.addCommand({
 			id: "open-portfolio",
 			name: "Open portfolio view",
 			callback: () => {
 				void activatePortfolioView(this);
+			},
+		});
+
+		this.addCommand({
+			id: "open-gantt",
+			name: "Open Gantt timeline",
+			callback: () => {
+				void activateGanttView(this);
 			},
 		});
 

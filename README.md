@@ -136,10 +136,13 @@ Dopo la sincronizzazione del vault (Obsidian Sync, iCloud, o altro), apri l’ap
 - **Task:** sotto-task annidati a profondità arbitraria, dipendenze `blocked_by` / `blocking` (intra e cross-project) con rilevamento cicli, time log, estimate vs actual / remaining mandays, Undo/Redo collegato allo stack Command Pattern (persistenza via `vault.process`).
 - **Governance:** board Semplificato (Backlog → In Progress → Review → Done); per PRINCE2 note registro (Business Case, Risk Register, Issue & Change Log, Quality Register, Work Packages) e Management Stage con milestone di Stage Boundary.
 - **Portafoglio:** vista workspace tabellare con fallback card/accordion su schermi stretti; Kanban lean per Semplificato; CRUD entità (Customer, Team Member, Project Type, Technology, Stakeholder) con wikilink bidirezionali.
+- **Gantt interattivo:** timeline a barre con zoom Day/Week/Month, hint di dipendenza SVG, filtri per progetto; apribile da ribbon, comando e toolbar Portafoglio.
+- **Kanban DnD:** trascinamento HTML5 (desktop) e pointer-capture (touch) tra colonne Semplificato; pulsanti status come fallback mobile; persistenza via `vault.process` + Undo.
 
 ### Comandi
 
 - **Open portfolio view** — vista portafoglio / board (icona valigetta nella ribbon).
+- **Open Gantt timeline** — timeline Gantt (icona calendario nella ribbon).
 - **Create project** — apre il wizard.
 - **Create task for active project** — editor task sulla nota progetto/task attiva.
 - **Create customer / team member / project type / technology / stakeholder** — CRUD Entity-as-a-Note.
@@ -281,10 +284,13 @@ After the vault syncs (Obsidian Sync, iCloud, or other), open the Obsidian app o
 - **Tasks:** recursively nested subtasks, intra- and cross-project `blocked_by` / `blocking` with cycle detection, time logs, estimate vs actual / remaining mandays, Undo/Redo wired to the Command Pattern stack (persisted via `vault.process`).
 - **Governance:** Semplificato status board (Backlog → In Progress → Review → Done); PRINCE2 register notes (Business Case, Risk Register, Issue & Change Log, Quality Register, Work Packages) plus Management Stages with Stage Boundary milestones.
 - **Portfolio:** workspace tabular listing with card/accordion fallback on small screens; lean Kanban for Semplificato; entity CRUD (Customer, Team Member, Project Type, Technology, Stakeholder) with bidirectional wikilinks.
+- **Interactive Gantt:** bar timeline with Day/Week/Month zoom, SVG dependency hints, per-project filter; open from ribbon, command, or Portfolio toolbar.
+- **Kanban DnD:** HTML5 drag (desktop) and pointer-capture drag (touch) across Semplificato columns; status buttons as mobile fallback; persistence via `vault.process` + Undo.
 
 ### Commands
 
 - **Open portfolio view** — portfolio / board leaf (briefcase ribbon icon).
+- **Open Gantt timeline** — Gantt leaf (calendar ribbon icon).
 - **Create project** — opens the wizard.
 - **Create task for active project** — task editor for the active project/task note.
 - **Create customer / team member / project type / technology / stakeholder** — Entity-as-a-Note CRUD.
