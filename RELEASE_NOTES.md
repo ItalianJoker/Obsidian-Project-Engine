@@ -1,8 +1,56 @@
-# Release notes — Projects Engine 1.0.0
+# Release notes — Projects Engine
 
-## Italiano
+## 1.1.0 — UX rebase on obsidian-pm IA
 
-### Funzionalità
+### Italiano
+
+#### Funzionalità / usabilità
+
+- **Rebase UX** sullo schema di navigazione di [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT): **Projects (Dashboard) → Overview → Workspace**, con `ViewRouter`, switcher Table/Gantt/Board in una sola leaf, EmptyState, toolbar coerente.
+- **Overview** di progetto: metriche, entità collegate, Teams/URL, governance Semplificato o PRINCE2 (stage/registri).
+- **Workspace** unificato: Table (gerarchia), Board Kanban (DnD), Gantt (zoom + dipendenze SVG) come SubView.
+- Settings: **Open projects in** (Overview | Workspace), **Default workspace view**.
+- Dopo la creazione progetto, apertura automatica secondo la surface impostata.
+- Identità invariata: id `projects-engine`, nome Projects Engine. Attribuzione in `NOTICE` / `LICENSE`.
+
+#### Architettura
+
+- Chrome CSS theme-native (`pe-toolbar`, `pe-view-switcher`, `pe-root`); nessun branding dotpm.
+- Dominio PE invariato: Entity-as-a-Note, wizard, custom fields, scheduler DAG, `vault.process`, mobile-first.
+
+#### Vincoli noti (invariati)
+
+- Gantt senza resize barre via drag; Kanban su alcuni WebView iOS può richiedere l’handle; scheduling su giorni UTC.
+
+---
+
+### English
+
+#### Features / usability
+
+- **UX rebase** on the [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT) navigation model: **Projects (Dashboard) → Overview → Workspace**, with `ViewRouter`, Table/Gantt/Board switcher in one leaf, EmptyState, coherent toolbar.
+- **Project Overview**: metrics, linked entities, Teams/URL, Semplificato or PRINCE2 governance (stages/registers).
+- **Unified Workspace**: Table (hierarchy), Kanban board (DnD), Gantt (zoom + SVG deps) as SubViews.
+- Settings: **Open projects in** (Overview | Workspace), **Default workspace view**.
+- After project create, auto-open per the configured surface.
+- Identity unchanged: id `projects-engine`, name Projects Engine. Attribution in `NOTICE` / `LICENSE`.
+
+#### Architecture
+
+- Theme-native chrome CSS (`pe-toolbar`, `pe-view-switcher`, `pe-root`); no dotpm branding.
+- PE domain unchanged: Entity-as-a-Note, wizard, custom fields, DAG scheduler, `vault.process`, mobile-first.
+
+#### Known constraints (unchanged)
+
+- Gantt without bar drag-resize; some iOS WebViews may need the Kanban handle; UTC calendar-day scheduling.
+
+---
+
+## 1.0.0 — Initial foundation
+
+### Italiano
+
+#### Funzionalità
 
 - **Wizard di creazione progetto** (modale touch-friendly): ID da pattern/contatore (`PRJ-YYYY-###`), nome, governance Semplificato o PRINCE2, autocomplete fuzzy su Cliente e Tipo, multi-select Tecnologie / Team (ruolo opzionale) / **Stakeholder** (progetto, cliente, o entrambi), chip per commesse, giorni assegnati, URL di progetto, `teams_channel_url` con avvio rapido.
 - **Entity-as-a-Note** con wikilink `[[Nota]]`, sezione Links nel corpo per Graph View, CRUD per Customer, Team Member, Project Type, Technology, Stakeholder (sync bidirezionale Stakeholder ↔ Customer / Project).
@@ -16,7 +64,7 @@
 - **Kanban DnD:** HTML5 (desktop) e pointer-capture (touch) tra colonne; pulsanti status come fallback mobile.
 - **Gantt interattivo:** barre da date/durata, zoom Day/Week/Month, curve SVG per dipendenze, filtro progetto; leaf dedicata (ribbon + comando).
 
-### Architettura e prestazioni (mobile-first)
+#### Architettura e prestazioni (mobile-first)
 
 - `isDesktopOnly: false` — stesso codice su desktop, iOS e Android.
 - Scritture atomiche solo con `vault.process` (Obsidian Sync / iCloud).
@@ -24,7 +72,7 @@
 - Bundle browser (`platform: "browser"`): vietati i builtin Node (`fs`, `path`, `crypto`, …).
 - UI: target touch ≥ 44×44 px; modale a pieno schermo sotto i 720 px; tabelle → card/accordion.
 
-### Vincoli noti
+#### Vincoli noti
 
 - Scheduling su **giorni calendario UTC**, non calendario lavorativo/festività.
 - Undo/Redo a profondità limitata (stack in memoria, default 50 comandi).
@@ -36,9 +84,9 @@
 
 ---
 
-## English
+### English
 
-### Features
+#### Features
 
 - **Project creation wizard** (touch-friendly modal): auto ID from settings pattern/counter (`PRJ-YYYY-###`), name, Semplificato or PRINCE2 governance, fuzzy autocomplete on Customer and Project Type, multi-select Technologies / Team (optional role) / **Stakeholders** (project, customer, or both), work-order chips, assigned days, project URL, and `teams_channel_url` with quick-launch.
 - **Entity-as-a-Note** with `[[wikilinks]]`, Links section for Graph View, CRUD for Customer, Team Member, Project Type, Technology, Stakeholder (bidirectional Stakeholder ↔ Customer / Project sync).
@@ -52,7 +100,7 @@
 - **Kanban DnD:** HTML5 (desktop) and pointer-capture (touch) across columns; status buttons as mobile fallback.
 - **Interactive Gantt:** bars from dates/duration, Day/Week/Month zoom, SVG dependency curves, project filter; dedicated leaf (ribbon + command).
 
-### Architecture & Performance (Mobile-first)
+#### Architecture & Performance (Mobile-first)
 
 - `isDesktopOnly: false` — one codebase for desktop, iOS, and Android.
 - Atomic writes only through `vault.process` (Obsidian Sync / iCloud).
@@ -60,7 +108,7 @@
 - Browser bundle (`platform: "browser"`): Node builtins (`fs`, `path`, `crypto`, …) banned.
 - UI: ≥ 44×44 px touch targets; full-viewport modal below 720 px; dense tables → cards/accordions.
 
-### Known Constraints
+#### Known Constraints
 
 - Scheduling uses **UTC calendar days**, not a working-day / holiday calendar.
 - Undo/Redo is depth-limited (in-memory stack, default 50 commands).
