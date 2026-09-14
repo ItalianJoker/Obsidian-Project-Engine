@@ -2,7 +2,7 @@
 
 Obsidian.md plugin for Project Portfolio, Governance, and Delivery Management in Markdown.
 
-Version **1.1.0** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
+Version **1.0.0** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
 
 Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT); domain features and branding remain Projects Engine. See `NOTICE`.
 
@@ -14,7 +14,7 @@ Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.co
 
 **Projects Engine** gestisce portafoglio, governance e delivery **dentro il vault**, senza database esterni. Ogni cliente, persona, stakeholder, tipo di progetto, tecnologia e task è una nota Markdown (**Entity-as-a-Note**). I collegamenti sono wikilink nativi `[[Nota]]`: Graph View raggruppa i lavori per cliente, stack tecnologico, team e stakeholder.
 
-Dalla **1.1.0** la navigazione segue un funnel coerente: **Projects (lista) → Overview (home governance) → Workspace (Table / Gantt / Board)** nello stesso spirito di [obsidian-pm](https://github.com/dotpm/obsidian-pm), senza copiarne branding o Local API.
+La navigazione segue un funnel coerente: **Projects (lista) → Overview (home governance) → Workspace (Table / Gantt / Board)** nello stesso spirito di [obsidian-pm](https://github.com/dotpm/obsidian-pm), senza copiarne branding o Local API.
 
 Il plugin include:
 
@@ -142,7 +142,7 @@ Campi task rilevanti: `blocked_by`, `blocking`, `start_date`, `end_date`, `durat
 
 Requisiti: Obsidian **1.5.0+** (desktop e mobile). Node.js 18+ solo per build da sorgente.
 
-Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.1.0`
+Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.0.0`
 
 #### 1. Installazione utente (copia dei file)
 
@@ -203,7 +203,7 @@ Dopo la sync del vault, abilita **Projects Engine anche sull’app mobile** (Imp
 
 **Projects Engine** manages portfolio, governance, and delivery **inside the vault** — no external database. Every customer, person, stakeholder, project type, technology, and task is a Markdown note (**Entity-as-a-Note**). Relationships are native `[[wikilinks]]`, so Graph View clusters work by customer, technology stack, team, and stakeholder.
 
-From **1.1.0**, navigation follows a coherent funnel: **Projects (list) → Overview (governance home) → Workspace (Table / Gantt / Board)**, inspired by [obsidian-pm](https://github.com/dotpm/obsidian-pm), without copying its branding or Local API. See `NOTICE`.
+Navigation follows a coherent funnel: **Projects (list) → Overview (governance home) → Workspace (Table / Gantt / Board)**, inspired by [obsidian-pm](https://github.com/dotpm/obsidian-pm), without copying its branding or Local API. See `NOTICE`.
 
 The plugin ships with:
 
@@ -331,7 +331,7 @@ Scheduler-relevant task fields: `blocked_by`, `blocking`, `start_date`, `end_dat
 
 Requirements: Obsidian **1.5.0+** (desktop and mobile). Node.js 18+ only for from-source builds.
 
-Id: `projects-engine` · Name: **Projects Engine** · Version: `1.1.0`
+Id: `projects-engine` · Name: **Projects Engine** · Version: `1.0.0`
 
 #### 1. End-user install (copy the plugin files)
 
