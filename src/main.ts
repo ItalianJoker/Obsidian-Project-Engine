@@ -1,23 +1,31 @@
 /**
  * Projects Engine — Obsidian plugin entry point.
  *
- * Registers the creation modal, settings tab, scheduler, undo stack, and a
- * debounced entity indexer. The plugin is mobile-first: `isDesktopOnly` is
- * false in manifest.json, writes go through `vault.process`, and no Node.js
- * builtins are imported.
+ * Registers the creation modal, settings tab, portfolio view, entity CRUD,
+ * task editor, scheduler undo stack, and a debounced entity indexer.
+ * Mobile-first: `isDesktopOnly` is false, writes go through `vault.process`,
+ * and no Node.js builtins are imported.
  */
 
 import { Notice, Plugin, TFile } from "obsidian";
 import { CommandStack, Scheduler } from "./engine/Scheduler";
 import { EntityIndexer } from "./engine/Indexer";
-import { DEFAULT_SETTINGS, type ProjectsEngineSettings } from "./models/types";
+import { DEFAULT_SETTINGS, type CustomFieldEntityKind, type ProjectsEngineSettings } from "./models/types";
 import { splitFrontmatter } from "./services/frontmatter";
+import { scaffoldGovernance } from "./services/governance";
 import { isValidTeamsChannelUrl, openExternalUrl } from "./services/urls";
 import { ProjectsEngineSettingTab } from "./settings";
+import { openEntityModal } from "./views/EntityModal";
 import { ProjectCreationModal } from "./views/ProjectCreationModal";
+import {
+	PORTFOLIO_VIEW_TYPE,
+	PortfolioView,
+	activatePortfolioView,
+} from "./views/PortfolioView";
+import { openTaskEditorForActiveProject } from "./views/TaskEditorModal";
 
 /**
- * Plugin façade shared with the modal and settings tab.
+ * Plugin façade shared with modals, views, and the settings tab.
  */
 export default class ProjectsEnginePlugin extends Plugin {
 	public override settings!: ProjectsEngineSettings;
@@ -53,12 +61,22 @@ export default class ProjectsEnginePlugin extends Plugin {
 			this.app.metadataCache.on("resolved", () => this.indexer.scheduleRebuild()),
 		);
 
+		this.registerView(PORTFOLIO_VIEW_TYPE, (leaf) => new PortfolioView(leaf, this));
+
 		this.app.workspace.onLayoutReady(() => {
 			this.indexer.rebuild();
 		});
 
-		this.addRibbonIcon("briefcase", "Projects Engine: New project", () => {
-			this.openCreationModal();
+		this.addRibbonIcon("briefcase", "Projects Engine: Portfolio", () => {
+			void activatePortfolioView(this);
+		});
+
+		this.addCommand({
+			id: "open-portfolio",
+			name: "Open portfolio view",
+			callback: () => {
+				void activatePortfolioView(this);
+			},
 		});
 
 		this.addCommand({
@@ -66,6 +84,16 @@ export default class ProjectsEnginePlugin extends Plugin {
 			name: "Create project",
 			callback: () => this.openCreationModal(),
 		});
+
+		this.addCommand({
+			id: "create-task",
+			name: "Create task for active project",
+			callback: () => {
+				void openTaskEditorForActiveProject(this);
+			},
+		});
+
+		this.registerEntityCommands();
 
 		this.addCommand({
 			id: "open-teams-channel",
@@ -89,6 +117,8 @@ export default class ProjectsEnginePlugin extends Plugin {
 			callback: () => {
 				if (!this.commandStack.undo()) {
 					new Notice("Nothing to undo");
+				} else {
+					new Notice("Undid last change");
 				}
 			},
 		});
@@ -99,6 +129,8 @@ export default class ProjectsEnginePlugin extends Plugin {
 			callback: () => {
 				if (!this.commandStack.redo()) {
 					new Notice("Nothing to redo");
+				} else {
+					new Notice("Redid last change");
 				}
 			},
 		});
@@ -134,6 +166,59 @@ export default class ProjectsEnginePlugin extends Plugin {
 	}
 
 	/**
+	 * Called by the creation modal after a project note is written so PRINCE2
+	 * registers can be scaffolded without coupling the modal to governance I/O.
+	 */
+	public async afterProjectCreated(file: TFile, governance: string, projectId: string, name: string): Promise<void> {
+		if (governance === "PRINCE2") {
+			await scaffoldGovernance({
+				vault: this.app.vault,
+				governance: "PRINCE2",
+				projectFile: file,
+				projectId,
+				projectName: name,
+			});
+		}
+	}
+
+	private registerEntityCommands(): void {
+		const kinds: { id: string; kind: CustomFieldEntityKind; name: string }[] = [
+			{ id: "create-customer", kind: "customer", name: "Create customer" },
+			{ id: "create-team-member", kind: "team-member", name: "Create team member" },
+			{ id: "create-project-type", kind: "project-type", name: "Create project type" },
+			{ id: "create-technology", kind: "project-technology", name: "Create technology" },
+			{ id: "create-stakeholder", kind: "stakeholder", name: "Create stakeholder" },
+		];
+		for (const item of kinds) {
+			this.addCommand({
+				id: item.id,
+				name: item.name,
+				callback: () => openEntityModal(this, item.kind),
+			});
+		}
+
+		this.addCommand({
+			id: "edit-active-entity",
+			name: "Edit active entity note",
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file) {
+					return false;
+				}
+				const peType = this.app.metadataCache.getFileCache(file)?.frontmatter?.pe_type;
+				const kind = peTypeToCustomKind(peType);
+				if (!kind) {
+					return false;
+				}
+				if (!checking) {
+					openEntityModal(this, kind, file);
+				}
+				return true;
+			},
+		});
+	}
+
+	/**
 	 * Quick-launch the Teams channel stored on the active project note.
 	 */
 	private async openTeamsChannel(file: TFile): Promise<void> {
@@ -149,5 +234,22 @@ export default class ProjectsEnginePlugin extends Plugin {
 			return;
 		}
 		openExternalUrl(url);
+	}
+}
+
+function peTypeToCustomKind(peType: unknown): CustomFieldEntityKind | null {
+	switch (peType) {
+		case "customer":
+			return "customer";
+		case "team-member":
+			return "team-member";
+		case "project-type":
+			return "project-type";
+		case "technology":
+			return "project-technology";
+		case "stakeholder":
+			return "stakeholder";
+		default:
+			return null;
 	}
 }

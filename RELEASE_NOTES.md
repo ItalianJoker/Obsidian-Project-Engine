@@ -5,10 +5,15 @@
 ### Funzionalità
 
 - Wizard di creazione progetto (modale touch-friendly): ID automatico da pattern/contatore (`PRJ-YYYY-###`), nome, governance Semplificato o PRINCE2, autocomplete fuzzy su note Cliente e Tipo, multi-select Tecnologie, Team (ruolo opzionale) e **Stakeholder** (progetto, cliente, o entrambi), chip per più commesse, giorni assegnati, URL di progetto, `teams_channel_url` con pulsante di avvio rapido.
-- Persistenza Entity-as-a-Note: YAML con wikilink `[[Nota]]`, sezione Links nel corpo per Graph View, modelli Semplificato / registri PRINCE2 nella nota.
-- Motore di scheduling DAG: topological sort, rilevamento cicli con notifica, auto-schedule e cascade se un task bloccante slitta (durata conservata). I milestone di fine stage PRINCE2 sono blocchi formali.
-- Time log tipizzati `{ date, duration, member, note }` e stack Undo/Redo (Command Pattern).
-- Settings: pattern/contatore ID, cartelle entità, debounce indicizzatore, ore per manday, schemi di campi personalizzati (text, number, date, select, multi-select, person, checkbox, url) su **cinque** entità (Customer, Team Member, Project Type, Project Technology, Stakeholder).
+- Persistenza Entity-as-a-Note: YAML con wikilink `[[Nota]]`, sezione Links nel corpo per Graph View.
+- **CRUD entità** (Customer, Team Member, Project Type, Technology, Stakeholder) con form touch-friendly e sync wikilink bidirezionale (Stakeholder ↔ Customer / Project).
+- **Campi personalizzati:** schema in Settings e rendering dinamico sui form entità; valori persistiti in `custom_fields`.
+- **Gestione task:** sotto-task ricorsivi, dipendenze `blocked_by` / `blocking` (anche cross-project) con cycle detection, time log `{ date, duration, member, note }`, estimate vs actual / remaining mandays.
+- Motore di scheduling DAG: topological sort, auto-schedule e cascade (durata conservata). I milestone di fine stage PRINCE2 sono blocchi formali.
+- **Undo/Redo** (Command Pattern) collegato a date di schedule, dipendenze e spostamenti di status sulla board; scritture via `vault.process`.
+- **Governance Semplificato:** flusso lineare Backlog → In Progress → Review → Done con board lean e tracking giorni.
+- **Governance PRINCE2:** note registro (Business Case, Risk Register, Issue & Change Log, Quality Register, Work Packages), Management Stage / Stage Boundary con task milestone `is_stage_boundary`.
+- **Vista portafoglio:** tabella progetti con fallback card/accordion (<720px), Kanban Semplificato, azioni PRINCE2 e shortcut CRUD.
 
 ### Architettura e prestazioni (mobile-first)
 
@@ -20,11 +25,12 @@
 
 ### Vincoli noti
 
-- Foundation v1.0.0: tipi, scheduler, wizard, settings e scaffolding plugin. Non include ancora Gantt, board Kanban persistente, vista portafoglio completa né editor task ricorsivo in UI.
 - Lo scheduling usa **giorni calendario UTC**, non un calendario lavorativo/festività.
-- Undo/Redo copre le mutazioni di schedule in memoria; non è uno storico illimitato delle note.
-- I campi personalizzati sono configurabili in Settings; il wizard progetto non li renderizza tutti dinamicamente sulla nota progetto (valgono per le cinque entità catalogo).
+- Undo/Redo è limitato in profondità (stack in memoria, default 50 comandi); non è uno storico illimitato delle note.
+- I campi personalizzati del catalogo valgono sulle cinque entità Settings; la nota progetto non espone ancora uno schema custom dedicato oltre i campi nativi.
 - `vault.process` richiede un file esistente: la creazione passa da `vault.create` vuoto e poi `process` per il contenuto.
+- Spostamenti Kanban e cascade date usano comandi che avviano scritture asincrone: attendere il refresh della vista dopo Undo/Redo rapidi.
+- Non include Gantt interattivo né drag-and-drop nativo Obsidian (i limiti API della vista ItemView non espongono DnD cross-column; lo spostamento status avviene tramite pulsanti ≥44×44 px).
 - Compatibilità dichiarata da Obsidian 1.5.0.
 
 ---
@@ -34,10 +40,15 @@
 ### Features
 
 - Project creation wizard (touch-friendly modal): auto ID from a settings pattern/counter (`PRJ-YYYY-###`), name, Semplificato or PRINCE2 governance, fuzzy autocomplete on Customer and Project Type notes, multi-select Technologies, Team (optional per-project role), and **Stakeholders** (project, customer, or both), chip input for multiple work orders, assigned days, project URL, and `teams_channel_url` with a quick-launch button.
-- Entity-as-a-Note persistence: YAML stores `[[wikilinks]]`, a Links section in the body feeds Graph View, and new notes include Semplificato or PRINCE2 register templates.
-- DAG scheduler: topological sort, cycle detection with user notification, auto-schedule and cascade when a blocking task slips (duration preserved). PRINCE2 end-of-stage milestones are formal blocks.
-- Typed time logs `{ date, duration, member, note }` and an Undo/Redo stack (Command Pattern).
-- Settings: ID pattern/counter, entity folders, indexer debounce, hours per manday, and custom-field schemas (text, number, date, select, multi-select, person, checkbox, url) on **five** entity kinds (Customer, Team Member, Project Type, Project Technology, Stakeholder).
+- Entity-as-a-Note persistence: YAML stores `[[wikilinks]]`, a Links section in the body feeds Graph View.
+- **Entity CRUD** (Customer, Team Member, Project Type, Technology, Stakeholder) with touch-friendly forms and bidirectional wikilink sync (Stakeholder ↔ Customer / Project).
+- **Custom fields:** schemas in Settings and dynamic rendering on entity forms; values persisted under `custom_fields`.
+- **Task management:** recursively nested subtasks, intra- and cross-project `blocked_by` / `blocking` with cycle detection, time logs `{ date, duration, member, note }`, estimate vs actual / remaining mandays.
+- DAG scheduler: topological sort, auto-schedule and cascade (duration preserved). PRINCE2 end-of-stage milestones are formal blocks.
+- **Undo/Redo** (Command Pattern) wired to schedule dates, dependencies, and board status moves; writes go through `vault.process`.
+- **Semplificato governance:** linear Backlog → In Progress → Review → Done with a lean board and day tracking.
+- **PRINCE2 governance:** register notes (Business Case, Risk Register, Issue & Change Log, Quality Register, Work Packages), Management Stages / Stage Boundaries with `is_stage_boundary` milestone tasks.
+- **Portfolio view:** project table with card/accordion fallback (<720px), Semplificato Kanban, PRINCE2 actions, and entity CRUD shortcuts.
 
 ### Architecture & Performance (Mobile-first)
 
@@ -49,9 +60,10 @@
 
 ### Known Constraints
 
-- v1.0.0 is a foundation: types, scheduler, wizard, settings, and plugin scaffolding. It does not yet ship a Gantt, a persistent Kanban board, a full portfolio view, or a recursive task editor UI.
 - Scheduling uses **UTC calendar days**, not a working-day / holiday calendar.
-- Undo/Redo covers in-memory schedule mutations; it is not an unbounded note history.
-- Custom fields are configurable in Settings; the project wizard does not yet render every catalogue custom field onto the project note itself (they apply to the five catalogue entities).
+- Undo/Redo is depth-limited (in-memory stack, default 50 commands); it is not an unbounded note history.
+- Catalogue custom fields apply to the five Settings entity kinds; the project note does not yet expose a dedicated custom schema beyond native fields.
 - `vault.process` requires an existing file: create uses an empty `vault.create` followed by `process` for content.
+- Kanban moves and date cascades start asynchronous writes: wait for the view refresh after rapid Undo/Redo.
+- No interactive Gantt and no native Obsidian cross-column drag-and-drop (ItemView API limits); status moves use ≥44×44 px buttons.
 - Declared compatibility is Obsidian 1.5.0+.

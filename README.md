@@ -130,11 +130,22 @@ Poi ricarica Obsidian e abilita il plugin come nella sezione 1. In sviluppo, `np
 
 Dopo la sincronizzazione del vault (Obsidian Sync, iCloud, o altro), apri l’app Obsidian sul telefono o tablet. I tre file del plugin devono essere presenti in `.obsidian/plugins/projects-engine/`. **Abilita Projects Engine anche nell’app mobile** (Impostazioni → Community plugins): su iOS/Android i plugin non si attivano da soli solo perché lo sono sul desktop.
 
+### Funzionalità operative (oltre la foundation)
+
+- **Campi personalizzati:** rendering dinamico (text, number, date, select, multi-select, person, checkbox, url) nei form di creazione/modifica entità; valori in `custom_fields` nel frontmatter.
+- **Task:** sotto-task annidati a profondità arbitraria, dipendenze `blocked_by` / `blocking` (intra e cross-project) con rilevamento cicli, time log, estimate vs actual / remaining mandays, Undo/Redo collegato allo stack Command Pattern (persistenza via `vault.process`).
+- **Governance:** board Semplificato (Backlog → In Progress → Review → Done); per PRINCE2 note registro (Business Case, Risk Register, Issue & Change Log, Quality Register, Work Packages) e Management Stage con milestone di Stage Boundary.
+- **Portafoglio:** vista workspace tabellare con fallback card/accordion su schermi stretti; Kanban lean per Semplificato; CRUD entità (Customer, Team Member, Project Type, Technology, Stakeholder) con wikilink bidirezionali.
+
 ### Comandi
 
-- **Create project** — apre il wizard (icona valigetta nella ribbon).
+- **Open portfolio view** — vista portafoglio / board (icona valigetta nella ribbon).
+- **Create project** — apre il wizard.
+- **Create task for active project** — editor task sulla nota progetto/task attiva.
+- **Create customer / team member / project type / technology / stakeholder** — CRUD Entity-as-a-Note.
+- **Edit active entity note** — modifica l’entità aperta.
 - **Open Teams channel for current project** — avvia `teams_channel_url`.
-- Undo/Redo delle mutazioni di schedule in memoria (Command Pattern).
+- **Undo / Redo last schedule change** — stack Command Pattern (date, dipendenze, status board).
 
 ---
 
@@ -264,8 +275,19 @@ Reload Obsidian and enable the plugin as in section 1. For development, `npm run
 
 After the vault syncs (Obsidian Sync, iCloud, or other), open the Obsidian app on the phone or tablet. The three plugin files must be present under `.obsidian/plugins/projects-engine/`. **Enable Projects Engine on the mobile app as well** (Settings → Community plugins): iOS/Android does not inherit the desktop enabled-plugin list automatically.
 
+### Operational features (beyond the foundation)
+
+- **Custom fields:** dynamic rendering (text, number, date, select, multi-select, person, checkbox, url) on entity create/edit forms; values stored under YAML `custom_fields`.
+- **Tasks:** recursively nested subtasks, intra- and cross-project `blocked_by` / `blocking` with cycle detection, time logs, estimate vs actual / remaining mandays, Undo/Redo wired to the Command Pattern stack (persisted via `vault.process`).
+- **Governance:** Semplificato status board (Backlog → In Progress → Review → Done); PRINCE2 register notes (Business Case, Risk Register, Issue & Change Log, Quality Register, Work Packages) plus Management Stages with Stage Boundary milestones.
+- **Portfolio:** workspace tabular listing with card/accordion fallback on small screens; lean Kanban for Semplificato; entity CRUD (Customer, Team Member, Project Type, Technology, Stakeholder) with bidirectional wikilinks.
+
 ### Commands
 
-- **Create project** — opens the wizard (briefcase ribbon icon).
+- **Open portfolio view** — portfolio / board leaf (briefcase ribbon icon).
+- **Create project** — opens the wizard.
+- **Create task for active project** — task editor for the active project/task note.
+- **Create customer / team member / project type / technology / stakeholder** — Entity-as-a-Note CRUD.
+- **Edit active entity note** — edit the open entity.
 - **Open Teams channel for current project** — launches `teams_channel_url`.
-- Undo/Redo for in-memory schedule mutations (Command Pattern).
+- **Undo / Redo last schedule change** — Command Pattern stack (dates, dependencies, board status).
