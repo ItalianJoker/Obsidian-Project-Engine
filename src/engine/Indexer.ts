@@ -14,6 +14,7 @@ import type {
 	EntityType,
 	ProjectsEngineSettings,
 	ProjectType,
+	Stakeholder,
 	TeamMember,
 	Technology,
 	WikiLink,
@@ -39,6 +40,7 @@ export class EntityIndexer {
 	private teamMembers: TeamMember[] = [];
 	private projectTypes: ProjectType[] = [];
 	private technologies: Technology[] = [];
+	private stakeholders: Stakeholder[] = [];
 	private projectIds = new Set<string>();
 	private readonly rebuildDebounced: Debounced<() => void>;
 
@@ -63,6 +65,7 @@ export class EntityIndexer {
 		this.teamMembers = [];
 		this.projectTypes = [];
 		this.technologies = [];
+		this.stakeholders = [];
 		this.projectIds = new Set();
 
 		const settings = this.getSettings();
@@ -86,6 +89,7 @@ export class EntityIndexer {
 					name: file.basename,
 					filePath: file.path,
 					wikiLink: toWikiLink(file.basename),
+					stakeholders: readWikiLinkList(frontmatter, "stakeholders"),
 					customFields,
 				});
 			} else if (inferred === "team-member") {
@@ -116,6 +120,16 @@ export class EntityIndexer {
 						typeof frontmatter?.description === "string" ? frontmatter.description : undefined,
 					customFields,
 				});
+			} else if (inferred === "stakeholder") {
+				this.stakeholders.push({
+					name: file.basename,
+					filePath: file.path,
+					wikiLink: toWikiLink(file.basename),
+					customer: readOptionalWikiLink(frontmatter, "customer"),
+					projects: readWikiLinkList(frontmatter, "projects"),
+					role: typeof frontmatter?.role === "string" ? frontmatter.role : undefined,
+					customFields,
+				});
 			}
 		}
 	}
@@ -134,6 +148,10 @@ export class EntityIndexer {
 
 	public getTechnologies(): readonly Technology[] {
 		return this.technologies;
+	}
+
+	public getStakeholders(): readonly Stakeholder[] {
+		return this.stakeholders;
 	}
 
 	public hasProjectId(id: string): boolean {
@@ -163,6 +181,7 @@ export class EntityIndexer {
 		if (type === "team-member") pushAll("team-member", this.teamMembers);
 		if (type === "project-type") pushAll("project-type", this.projectTypes);
 		if (type === "technology") pushAll("technology", this.technologies);
+		if (type === "stakeholder") pushAll("stakeholder", this.stakeholders);
 		return rows;
 	}
 
@@ -180,6 +199,7 @@ function inferTypeFromFolder(path: string, settings: ProjectsEngineSettings): En
 	if (folderContains(normalised, settings.teamMembersFolder)) return "team-member";
 	if (folderContains(normalised, settings.projectTypesFolder)) return "project-type";
 	if (folderContains(normalised, settings.technologiesFolder)) return "technology";
+	if (folderContains(normalised, settings.stakeholdersFolder)) return "stakeholder";
 	if (folderContains(normalised, settings.projectsFolder)) return "project";
 	return "";
 }
@@ -190,6 +210,30 @@ function folderContains(filePath: string, folder: string): boolean {
 		return false;
 	}
 	return filePath.startsWith(prefix + "/");
+}
+
+function readWikiLinkList(
+	frontmatter: Record<string, unknown> | undefined,
+	key: string,
+): WikiLink[] {
+	const raw = frontmatter?.[key];
+	if (typeof raw === "string" && raw.trim()) {
+		return [toWikiLink(raw)];
+	}
+	if (!Array.isArray(raw)) {
+		return [];
+	}
+	return raw
+		.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+		.map((item) => toWikiLink(item));
+}
+
+function readOptionalWikiLink(
+	frontmatter: Record<string, unknown> | undefined,
+	key: string,
+): WikiLink | undefined {
+	const raw = frontmatter?.[key];
+	return typeof raw === "string" && raw.trim() ? toWikiLink(raw) : undefined;
 }
 
 function readCustomFields(frontmatter: Record<string, unknown> | undefined): CustomFieldMap {

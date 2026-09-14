@@ -4,11 +4,11 @@
 
 ### Funzionalità
 
-- Wizard di creazione progetto (modale touch-friendly): ID automatico da pattern/contatore (`PRJ-YYYY-###`), nome, governance Semplificato o PRINCE2, autocomplete fuzzy su note Cliente e Tipo, multi-select Tecnologie e Team (ruolo opzionale), chip per più commesse, giorni assegnati, URL di progetto, `teams_channel_url` con pulsante di avvio rapido.
+- Wizard di creazione progetto (modale touch-friendly): ID automatico da pattern/contatore (`PRJ-YYYY-###`), nome, governance Semplificato o PRINCE2, autocomplete fuzzy su note Cliente e Tipo, multi-select Tecnologie, Team (ruolo opzionale) e **Stakeholder** (progetto, cliente, o entrambi), chip per più commesse, giorni assegnati, URL di progetto, `teams_channel_url` con pulsante di avvio rapido.
 - Persistenza Entity-as-a-Note: YAML con wikilink `[[Nota]]`, sezione Links nel corpo per Graph View, modelli Semplificato / registri PRINCE2 nella nota.
 - Motore di scheduling DAG: topological sort, rilevamento cicli con notifica, auto-schedule e cascade se un task bloccante slitta (durata conservata). I milestone di fine stage PRINCE2 sono blocchi formali.
 - Time log tipizzati `{ date, duration, member, note }` e stack Undo/Redo (Command Pattern).
-- Settings: pattern/contatore ID, cartelle entità, debounce indicizzatore, ore per manday, schemi di campi personalizzati (text, number, date, select, multi-select, person, checkbox, url) su quattro entità.
+- Settings: pattern/contatore ID, cartelle entità, debounce indicizzatore, ore per manday, schemi di campi personalizzati (text, number, date, select, multi-select, person, checkbox, url) su **cinque** entità (Customer, Team Member, Project Type, Project Technology, Stakeholder).
 
 ### Architettura e prestazioni (mobile-first)
 
@@ -23,7 +23,7 @@
 - Foundation v1.0.0: tipi, scheduler, wizard, settings e scaffolding plugin. Non include ancora Gantt, board Kanban persistente, vista portafoglio completa né editor task ricorsivo in UI.
 - Lo scheduling usa **giorni calendario UTC**, non un calendario lavorativo/festività.
 - Undo/Redo copre le mutazioni di schedule in memoria; non è uno storico illimitato delle note.
-- I campi personalizzati sono configurabili in Settings; il wizard progetto non li renderizza tutti dinamicamente sulla nota progetto (valgono per le quattro entità catalogo).
+- I campi personalizzati sono configurabili in Settings; il wizard progetto non li renderizza tutti dinamicamente sulla nota progetto (valgono per le cinque entità catalogo).
 - `vault.process` richiede un file esistente: la creazione passa da `vault.create` vuoto e poi `process` per il contenuto.
 - Compatibilità dichiarata da Obsidian 1.5.0.
 
@@ -33,11 +33,11 @@
 
 ### Features
 
-- Project creation wizard (touch-friendly modal): auto ID from a settings pattern/counter (`PRJ-YYYY-###`), name, Semplificato or PRINCE2 governance, fuzzy autocomplete on Customer and Project Type notes, multi-select Technologies and Team (optional per-project role), chip input for multiple work orders, assigned days, project URL, and `teams_channel_url` with a quick-launch button.
+- Project creation wizard (touch-friendly modal): auto ID from a settings pattern/counter (`PRJ-YYYY-###`), name, Semplificato or PRINCE2 governance, fuzzy autocomplete on Customer and Project Type notes, multi-select Technologies, Team (optional per-project role), and **Stakeholders** (project, customer, or both), chip input for multiple work orders, assigned days, project URL, and `teams_channel_url` with a quick-launch button.
 - Entity-as-a-Note persistence: YAML stores `[[wikilinks]]`, a Links section in the body feeds Graph View, and new notes include Semplificato or PRINCE2 register templates.
 - DAG scheduler: topological sort, cycle detection with user notification, auto-schedule and cascade when a blocking task slips (duration preserved). PRINCE2 end-of-stage milestones are formal blocks.
 - Typed time logs `{ date, duration, member, note }` and an Undo/Redo stack (Command Pattern).
-- Settings: ID pattern/counter, entity folders, indexer debounce, hours per manday, and custom-field schemas (text, number, date, select, multi-select, person, checkbox, url) on four entity kinds.
+- Settings: ID pattern/counter, entity folders, indexer debounce, hours per manday, and custom-field schemas (text, number, date, select, multi-select, person, checkbox, url) on **five** entity kinds (Customer, Team Member, Project Type, Project Technology, Stakeholder).
 
 ### Architecture & Performance (Mobile-first)
 
@@ -52,6 +52,6 @@
 - v1.0.0 is a foundation: types, scheduler, wizard, settings, and plugin scaffolding. It does not yet ship a Gantt, a persistent Kanban board, a full portfolio view, or a recursive task editor UI.
 - Scheduling uses **UTC calendar days**, not a working-day / holiday calendar.
 - Undo/Redo covers in-memory schedule mutations; it is not an unbounded note history.
-- Custom fields are configurable in Settings; the project wizard does not yet render every catalogue custom field onto the project note itself (they apply to the four catalogue entities).
+- Custom fields are configurable in Settings; the project wizard does not yet render every catalogue custom field onto the project note itself (they apply to the five catalogue entities).
 - `vault.process` requires an existing file: create uses an empty `vault.create` followed by `process` for content.
 - Declared compatibility is Obsidian 1.5.0+.

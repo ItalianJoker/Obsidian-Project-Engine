@@ -11,10 +11,12 @@ import { Modal, Notice, TFile, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import {
 	toWikiLink,
+	type EntityType,
 	type GovernanceModel,
 	type ProjectTeamAssignment,
 } from "../models/types";
 import { buildGraphLinksSection, buildMarkdownNote } from "../services/frontmatter";
+import { appendEntityLink } from "../services/linkSync";
 import { nextAvailableProjectId } from "../services/projectId";
 import { isValidHttpUrl, isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
 import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from "../services/vaultIo";
@@ -25,6 +27,16 @@ interface TeamChip {
 	role: string;
 }
 
+/**
+ * Wizard row for a stakeholder. `linkToCustomer` writes the customer wikilink
+ * both ways (stakeholder.customer + customer.stakeholders) in addition to the
+ * project-level `stakeholders` list.
+ */
+interface StakeholderChip {
+	name: string;
+	linkToCustomer: boolean;
+}
+
 interface CreationForm {
 	id: string;
 	name: string;
@@ -33,6 +45,7 @@ interface CreationForm {
 	projectType: string;
 	technologies: string[];
 	team: TeamChip[];
+	stakeholders: StakeholderChip[];
 	workOrders: string[];
 	assignedDays: string;
 	projectUrl: string;
@@ -82,6 +95,7 @@ export class ProjectCreationModal extends Modal {
 			projectType: "",
 			technologies: [],
 			team: [],
+			stakeholders: [],
 			workOrders: [],
 			assignedDays: "",
 			projectUrl: "",
@@ -139,6 +153,7 @@ export class ProjectCreationModal extends Modal {
 		);
 
 		this.addTeamPicker();
+		this.addStakeholderPicker();
 		this.addWorkOrderChips();
 
 		this.addTextField("Assigned days *", "Estimated budget mandays", (value) => {
@@ -346,6 +361,78 @@ export class ProjectCreationModal extends Modal {
 		renderTeam();
 	}
 
+	/**
+	 * Multi-select fuzzy picker for Stakeholder notes.
+	 * Each chip can also associate the stakeholder with the selected Customer.
+	 */
+	private addStakeholderPicker(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: "Stakeholders", cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Link to this project. Optionally also link to the customer (both-ways wikilinks for Graph View).",
+		});
+		const list = wrap.createDiv({ cls: "pe-team-list" });
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "text", placeholder: "Search stakeholders and add…", spellcheck: "false" },
+		});
+
+		const renderRows = (): void => {
+			list.empty();
+			this.form.stakeholders.forEach((item, index) => {
+				const row = list.createDiv({ cls: "pe-team-row" });
+				row.createEl("span", { text: item.name, cls: "pe-chip-label" });
+				const checkWrap = row.createEl("label", { cls: "pe-check-label pe-touch-target" });
+				const checkbox = checkWrap.createEl("input", {
+					attr: { type: "checkbox" },
+				});
+				checkbox.checked = item.linkToCustomer;
+				checkWrap.createSpan({ text: "Also link to customer" });
+				checkbox.addEventListener("change", () => {
+					const current = this.form.stakeholders[index];
+					if (current) {
+						current.linkToCustomer = checkbox.checked;
+					}
+				});
+				const remove = row.createEl("button", {
+					text: "Remove",
+					cls: "pe-chip-remove pe-touch-target",
+					attr: { type: "button", "aria-label": `Remove ${item.name}` },
+				});
+				remove.addEventListener("click", () => {
+					this.form.stakeholders = this.form.stakeholders.filter((_, i) => i !== index);
+					renderRows();
+				});
+			});
+		};
+
+		const addStakeholder = (name: string): void => {
+			const trimmed = name.trim();
+			if (!trimmed || this.form.stakeholders.some((item) => item.name === trimmed)) {
+				return;
+			}
+			this.form.stakeholders.push({ name: trimmed, linkToCustomer: true });
+			input.value = "";
+			renderRows();
+		};
+
+		const suggest = new EntitySuggest(
+			this.app,
+			input,
+			() => this.plugin.indexer.list("stakeholder"),
+			(suggestion) => addStakeholder(suggestionName(suggestion)),
+		);
+		this.suggests.push(suggest);
+		input.addEventListener("keydown", (event) => {
+			if (event.key === "Enter") {
+				event.preventDefault();
+				addStakeholder(input.value);
+			}
+		});
+		renderRows();
+	}
+
 	private addWorkOrderChips(): void {
 		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
 		wrap.createEl("label", { text: "Work orders (Commesse)", cls: "pe-label" });
@@ -474,6 +561,7 @@ export class ProjectCreationModal extends Modal {
 				this.allocateId();
 			}
 			const file = await this.writeProjectNote();
+			await this.linkStakeholdersBothWays(file);
 			this.plugin.settings.projectIdCounter = this.nextCounter;
 			await this.plugin.saveSettings();
 			this.plugin.indexer.rebuild();
@@ -538,7 +626,7 @@ export class ProjectCreationModal extends Modal {
 	}
 
 	/**
-	 * Create missing Customer / Type / Technology / Person notes so wikilinks resolve.
+	 * Create missing Customer / Type / Technology / Person / Stakeholder notes so wikilinks resolve.
 	 */
 	private async ensureEntityNotes(): Promise<void> {
 		const settings = this.plugin.settings;
@@ -550,10 +638,13 @@ export class ProjectCreationModal extends Modal {
 		for (const member of this.form.team) {
 			await this.ensureOne("team-member", member.name, settings.teamMembersFolder);
 		}
+		for (const stakeholder of this.form.stakeholders) {
+			await this.ensureOne("stakeholder", stakeholder.name, settings.stakeholdersFolder);
+		}
 	}
 
 	private async ensureOne(
-		peType: "customer" | "project-type" | "technology" | "team-member",
+		peType: "customer" | "project-type" | "technology" | "team-member" | "stakeholder",
 		name: string,
 		folder: string,
 	): Promise<void> {
@@ -593,6 +684,7 @@ export class ProjectCreationModal extends Modal {
 			member: toWikiLink(member.name),
 			role: member.role.trim() || undefined,
 		}));
+		const stakeholders = this.form.stakeholders.map((item) => toWikiLink(item.name));
 		const assignedDays = Number.parseFloat(this.form.assignedDays);
 
 		const frontmatter: Record<string, unknown> = {
@@ -611,6 +703,7 @@ export class ProjectCreationModal extends Modal {
 				}
 				return row;
 			}),
+			stakeholders,
 			work_orders: this.form.workOrders,
 			assigned_days: assignedDays,
 			actual_days: 0,
@@ -625,6 +718,7 @@ export class ProjectCreationModal extends Modal {
 			{ label: "Type", wikiLink: projectType },
 			...technologies.map((wikiLink) => ({ label: "Technology", wikiLink })),
 			...team.map((item) => ({ label: "Team", wikiLink: item.member })),
+			...stakeholders.map((wikiLink) => ({ label: "Stakeholder", wikiLink })),
 		]);
 
 		const teamsBlock = this.form.teamsChannelUrl.trim()
@@ -646,6 +740,81 @@ export class ProjectCreationModal extends Modal {
 			throw new Error(`A note already exists at ${path}`);
 		}
 		return writeNoteAtomic(this.app.vault, path, markdown);
+	}
+
+	/**
+	 * Write reverse wikilinks so Graph View clusters stakeholders with the
+	 * project and, when requested, with the customer (both directions).
+	 */
+	private async linkStakeholdersBothWays(projectFile: TFile): Promise<void> {
+		if (this.form.stakeholders.length === 0) {
+			return;
+		}
+		this.plugin.indexer.rebuild();
+		const projectLink = toWikiLink(projectFile.basename);
+		const customerName = sanitiseNoteBasename(this.form.customer.trim());
+		const customerFile = this.resolveEntityFile(
+			"customer",
+			customerName,
+			this.plugin.settings.customersFolder,
+		);
+
+		for (const item of this.form.stakeholders) {
+			const stakeholderFile = this.resolveEntityFile(
+				"stakeholder",
+				item.name,
+				this.plugin.settings.stakeholdersFolder,
+			);
+			if (!stakeholderFile) {
+				continue;
+			}
+			await appendEntityLink(
+				this.app.vault,
+				stakeholderFile,
+				"projects",
+				projectLink,
+				"Project",
+				"list",
+			);
+			if (item.linkToCustomer && customerFile && customerName) {
+				const customerLink = toWikiLink(customerFile.basename);
+				await appendEntityLink(
+					this.app.vault,
+					stakeholderFile,
+					"customer",
+					customerLink,
+					"Customer",
+					"scalar",
+				);
+				await appendEntityLink(
+					this.app.vault,
+					customerFile,
+					"stakeholders",
+					toWikiLink(stakeholderFile.basename),
+					"Stakeholder",
+					"list",
+				);
+			}
+		}
+	}
+
+	/**
+	 * Resolve an Entity-as-a-Note file by indexed name, then by configured folder path.
+	 */
+	private resolveEntityFile(type: EntityType, name: string, folder: string): TFile | null {
+		const basename = sanitiseNoteBasename(name);
+		if (!basename) {
+			return null;
+		}
+		const indexed = this.plugin.indexer
+			.list(type)
+			.find((item) => item.name.toLowerCase() === basename.toLowerCase());
+		if (indexed) {
+			return indexed.file;
+		}
+		const path = joinVaultPath(folder, `${basename}.md`);
+		const file = this.app.vault.getAbstractFileByPath(path);
+		return file instanceof TFile ? file : null;
 	}
 }
 

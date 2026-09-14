@@ -1,6 +1,6 @@
 /**
  * Settings tab: project-id pattern/counter, folder map, indexer debounce,
- * and the custom-field schema configurator for the four entity kinds.
+ * and the custom-field schema configurator for the five entity kinds.
  */
 
 import { type App, Notice, PluginSettingTab, Setting } from "obsidian";
@@ -16,6 +16,7 @@ const ENTITY_KINDS: { id: CustomFieldEntityKind; label: string }[] = [
 	{ id: "team-member", label: "Team member" },
 	{ id: "project-type", label: "Project type" },
 	{ id: "project-technology", label: "Project technology" },
+	{ id: "stakeholder", label: "Stakeholder" },
 ];
 
 const FIELD_TYPES: CustomFieldType[] = [
@@ -100,6 +101,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		this.addFolderSetting("Team members", "teamMembersFolder");
 		this.addFolderSetting("Project types", "projectTypesFolder");
 		this.addFolderSetting("Technologies", "technologiesFolder");
+		this.addFolderSetting("Stakeholders", "stakeholdersFolder");
 		this.addFolderSetting("Tasks", "tasksFolder");
 	}
 
@@ -111,6 +113,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			| "teamMembersFolder"
 			| "projectTypesFolder"
 			| "technologiesFolder"
+			| "stakeholdersFolder"
 			| "tasksFolder",
 	): void {
 		new Setting(this.containerEl).setName(name).addText((text) => {
@@ -165,7 +168,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		containerEl.createEl("h3", { text: "Custom field schemas" });
 		containerEl.createEl("p", {
 			cls: "setting-item-description",
-			text: "Dynamic fields for Customer, Team Member, Project Type, and Project Technology notes.",
+			text: "Dynamic fields for Customer, Team Member, Project Type, Project Technology, and Stakeholder notes.",
 		});
 
 		for (const schema of this.plugin.settings.customFieldSchemas) {

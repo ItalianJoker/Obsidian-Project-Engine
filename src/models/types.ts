@@ -4,7 +4,7 @@
  * All entities follow the Entity-as-a-Note pattern: each record lives as a
  * Markdown file whose YAML frontmatter is the source of truth. Relationship
  * fields store Obsidian-compliant wikilinks (`[[Note Name]]`) so Graph View
- * clusters customers, technologies, and team members without extra plugins.
+ * clusters customers, technologies, team members, and stakeholders without extra plugins.
  *
  * TypeScript property names are camelCase. Corresponding YAML keys are
  * documented with `@remarks` and are snake_case (for example `teams_channel_url`).
@@ -56,6 +56,7 @@ export type EntityType =
 	| "team-member"
 	| "project-type"
 	| "technology"
+	| "stakeholder"
 	| "task"
 	| "work-package"
 	| "prince2-stage"
@@ -98,13 +99,14 @@ export type TaskStatus = SemplificatoStatus | "blocked" | "cancelled";
 
 /**
  * Entities that accept administrator-defined custom fields.
- * Matches the four schema targets in plugin settings.
+ * Matches the five schema targets in plugin settings.
  */
 export type CustomFieldEntityKind =
 	| "customer"
 	| "team-member"
 	| "project-type"
-	| "project-technology";
+	| "project-technology"
+	| "stakeholder";
 
 /**
  * Supported custom-field data types.
@@ -240,6 +242,11 @@ export interface Customer {
 	name: string;
 	filePath: string;
 	wikiLink: WikiLink;
+	/**
+	 * Stakeholders associated at customer level (independent of any project).
+	 * @remarks YAML: `stakeholders` (wikilink list)
+	 */
+	stakeholders: WikiLink[];
 	aliases?: string[];
 	customFields: CustomFieldMap;
 }
@@ -286,6 +293,33 @@ export interface Technology {
 	filePath: string;
 	wikiLink: WikiLink;
 	description?: string;
+	aliases?: string[];
+	customFields: CustomFieldMap;
+}
+
+/**
+ * Person or organisation with an interest in a project, a customer, or both.
+ *
+ * Entity-as-a-Note. Association is valid at three levels:
+ *
+ * 1. **Project only** — the project YAML `stakeholders` list points here.
+ * 2. **Customer only** — this note's YAML `customer` wikilink points at a
+ *    Customer note, which lists this entity under its own `stakeholders`.
+ * 3. **Both** — project and customer wikilinks are written in both directions
+ *    so Graph View clusters the stakeholder with the account and the delivery.
+ *
+ * @remarks YAML `pe_type: stakeholder`. Reverse project links: `projects`.
+ */
+export interface Stakeholder {
+	name: string;
+	filePath: string;
+	wikiLink: WikiLink;
+	/** Optional customer association. @remarks YAML: `customer` */
+	customer?: WikiLink;
+	/** Projects that reference this stakeholder. @remarks YAML: `projects` */
+	projects: WikiLink[];
+	/** Optional engagement role (example: "Sponsor", "CIO"). */
+	role?: string;
 	aliases?: string[];
 	customFields: CustomFieldMap;
 }
@@ -378,7 +412,7 @@ export interface Task {
  * Project record created by {@link ProjectCreationModal}.
  *
  * @remarks YAML `pe_type: project`. Wikilink fields: `customer`, `project_type`,
- * `technologies`, `team[].member`. Teams deep link: `teams_channel_url`.
+ * `technologies`, `team[].member`, `stakeholders`. Teams deep link: `teams_channel_url`.
  */
 export interface Project {
 	id: string;
@@ -388,6 +422,11 @@ export interface Project {
 	projectType: WikiLink;
 	technologies: WikiLink[];
 	team: ProjectTeamAssignment[];
+	/**
+	 * Stakeholder notes linked to this project (project-level association).
+	 * @remarks YAML: `stakeholders`
+	 */
+	stakeholders: WikiLink[];
 	/** Work-order / commessa codes (example: `COM-2026-01`). @remarks YAML: `work_orders` */
 	workOrders: string[];
 	/** Budgeted mandays. @remarks YAML: `assigned_days` */
@@ -582,6 +621,7 @@ export interface ProjectsEngineSettings {
 	teamMembersFolder: string;
 	projectTypesFolder: string;
 	technologiesFolder: string;
+	stakeholdersFolder: string;
 	tasksFolder: string;
 	/** Hours that constitute one manday when rolling up time logs. */
 	hoursPerManday: number;
@@ -590,7 +630,7 @@ export interface ProjectsEngineSettings {
 	 * Keeps the UI thread responsive on mobile.
 	 */
 	indexerDebounceMs: number;
-	/** Dynamic field schemas for the four configurable entity kinds. */
+	/** Dynamic field schemas for the five configurable entity kinds. */
 	customFieldSchemas: CustomFieldSchema[];
 }
 
@@ -605,6 +645,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	teamMembersFolder: "Entities/Team Members",
 	projectTypesFolder: "Entities/Project Types",
 	technologiesFolder: "Entities/Technologies",
+	stakeholdersFolder: "Entities/Stakeholders",
 	tasksFolder: "Projects/Tasks",
 	hoursPerManday: 8,
 	indexerDebounceMs: 250,
