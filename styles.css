@@ -237,4 +237,473 @@
 	.pe-segmented {
 		flex-direction: column;
 	}
+
+	.pe-table-section {
+		display: none;
+	}
+
+	.pe-card-section {
+		display: block;
+	}
+
+	.pe-kanban {
+		grid-template-columns: 1fr;
+	}
+
+	.pe-toolbar {
+		flex-direction: column;
+		align-items: stretch;
+	}
+}
+
+@media (min-width: 721px) {
+	.pe-card-section {
+		display: none;
+	}
+}
+
+/* Portfolio / workspace view */
+.projects-engine-view {
+	padding: 12px 16px 32px;
+	overflow: auto;
+}
+
+.pe-portfolio-header {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.pe-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.pe-section {
+	margin-bottom: 24px;
+}
+
+.pe-section-title {
+	margin: 0 0 8px;
+}
+
+.pe-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.pe-table th,
+.pe-table td {
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding: 8px 10px;
+	text-align: left;
+	vertical-align: middle;
+}
+
+.pe-table tr.is-selected,
+.pe-accordion.is-selected {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
+
+.pe-accordion {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 4px 8px;
+	margin-bottom: 8px;
+	background: var(--background-secondary);
+}
+
+.pe-accordion-summary {
+	font-weight: 600;
+	cursor: pointer;
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+}
+
+.pe-accordion-body {
+	padding: 8px 4px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.pe-kanban {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.pe-kanban-column {
+	background: var(--background-secondary);
+	border-radius: 8px;
+	padding: 8px;
+	min-height: 120px;
+}
+
+.pe-kanban-title {
+	margin: 4px 8px 8px;
+	font-size: 0.95em;
+}
+
+.pe-kanban-cards {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.pe-kanban-card {
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.pe-kanban-card-title {
+	font-weight: 600;
+}
+
+.pe-kanban-move {
+	font-size: 0.8em;
+	padding: 0 8px;
+}
+
+.pe-project-status-row {
+	margin-top: 12px;
+	flex-wrap: wrap;
+}
+
+.pe-stage-list {
+	padding-left: 1.2em;
+}
+
+.pe-multi-select {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.pe-custom-fields {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-top: 8px;
+}
+
+.pe-timelog-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.pe-timelog-row {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+	gap: 8px;
+	align-items: center;
+}
+
+.pe-manday-summary {
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: var(--background-secondary);
+}
+
+.pe-flag-row {
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.pe-tree-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.pe-tree-node {
+	border-left: 2px solid var(--background-modifier-border);
+	padding-left: 8px;
+	margin-left: 4px;
+}
+
+.pe-tree-summary {
+	cursor: pointer;
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+}
+
+.pe-schedule-actions {
+	flex-wrap: wrap;
+}
+
+/* ---- Empty states ---- */
+.pe-empty-state {
+	padding: 24px 16px;
+	text-align: center;
+	color: var(--text-muted);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+}
+
+/* ---- Kanban DnD ---- */
+.pe-kanban-card-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pe-kanban-handle {
+	cursor: grab;
+	flex-shrink: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+	font-size: 1.1em;
+	line-height: 1;
+	padding: 0;
+}
+
+.pe-kanban-handle:active {
+	cursor: grabbing;
+}
+
+.pe-kanban-card.is-dragging {
+	opacity: 0.45;
+}
+
+.pe-kanban-column.is-drop-target {
+	outline: 2px dashed var(--interactive-accent);
+	outline-offset: 2px;
+	background: var(--background-modifier-hover);
+}
+
+.pe-kanban-ghost {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 1000;
+	pointer-events: none;
+	opacity: 0.9;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+	border-radius: 8px;
+	background: var(--background-primary);
+	border: 1px solid var(--interactive-accent);
+}
+
+.pe-kanban-empty {
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: 8px;
+	margin: 4px 0;
+}
+
+@media (max-width: 719px) {
+	.pe-kanban-move {
+		/* Keep status buttons prominent on small screens as DnD fallback. */
+		flex: 1 1 auto;
+	}
+}
+
+/* ---- Gantt timeline ---- */
+.pe-gantt-view {
+	padding: 12px 16px 32px;
+	overflow: auto;
+	height: 100%;
+	box-sizing: border-box;
+}
+
+.pe-gantt-header {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.pe-gantt-zoom,
+.pe-segmented {
+	display: flex;
+	gap: 4px;
+	flex-wrap: wrap;
+}
+
+.pe-segment {
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	cursor: pointer;
+	padding: 0 12px;
+}
+
+.pe-segment.is-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.pe-gantt-scroll {
+	overflow: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	max-height: calc(100% - 120px);
+	-webkit-overflow-scrolling: touch;
+}
+
+.pe-gantt-chart {
+	position: relative;
+	min-width: 100%;
+}
+
+.pe-gantt-axis {
+	display: flex;
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pe-gantt-corner {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	padding: 0 12px;
+	font-weight: 600;
+	border-right: 1px solid var(--background-modifier-border);
+	position: sticky;
+	left: 0;
+	background: var(--background-secondary);
+	z-index: 3;
+}
+
+.pe-gantt-ticks {
+	position: relative;
+	height: 100%;
+}
+
+.pe-gantt-tick {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	display: flex;
+	align-items: center;
+	padding-left: 4px;
+	font-size: 0.75em;
+	color: var(--text-muted);
+	border-left: 1px solid var(--background-modifier-border);
+	box-sizing: border-box;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.pe-gantt-body {
+	position: relative;
+}
+
+.pe-gantt-row {
+	display: flex;
+	position: absolute;
+	left: 0;
+	right: 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pe-gantt-label {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	padding-right: 8px;
+	box-sizing: border-box;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	border-right: 1px solid var(--background-modifier-border);
+	position: sticky;
+	left: 0;
+	background: var(--background-primary);
+	z-index: 1;
+	cursor: pointer;
+}
+
+.pe-gantt-label:hover {
+	color: var(--interactive-accent);
+}
+
+.pe-gantt-track {
+	position: relative;
+	height: 100%;
+}
+
+.pe-gantt-bar {
+	position: absolute;
+	top: 6px;
+	bottom: 6px;
+	border-radius: 6px;
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-size: 0.75em;
+	display: flex;
+	align-items: center;
+	padding: 0 8px;
+	overflow: hidden;
+	white-space: nowrap;
+	cursor: pointer;
+	box-sizing: border-box;
+	min-width: 12px;
+}
+
+.pe-gantt-bar.is-milestone {
+	background: transparent;
+	color: var(--interactive-accent);
+	font-size: 1.2em;
+	justify-content: center;
+	padding: 0;
+	border-radius: 0;
+}
+
+.pe-gantt-bar.is-boundary {
+	outline: 2px solid var(--text-warning, #d4a017);
+	outline-offset: 1px;
+}
+
+.pe-gantt-deps {
+	position: absolute;
+	top: 0;
+	pointer-events: none;
+	overflow: visible;
+}
+
+.pe-gantt-dep-path {
+	stroke: var(--text-muted);
+	stroke-width: 1.5;
+	stroke-dasharray: 4 3;
+	opacity: 0.85;
+}
+
+.pe-gantt-dep-tip {
+	fill: var(--interactive-accent);
+}
+
+@media (max-width: 720px) {
+	.pe-gantt-bar {
+		font-size: 0;
+		padding: 0;
+	}
+
+	.pe-gantt-bar.is-milestone {
+		font-size: 1.1em;
+	}
 }

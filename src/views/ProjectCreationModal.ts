@@ -562,6 +562,12 @@ export class ProjectCreationModal extends Modal {
 			}
 			const file = await this.writeProjectNote();
 			await this.linkStakeholdersBothWays(file);
+			await this.plugin.afterProjectCreated(
+				file,
+				this.form.governance,
+				this.form.id,
+				this.form.name.trim(),
+			);
 			this.plugin.settings.projectIdCounter = this.nextCounter;
 			await this.plugin.saveSettings();
 			this.plugin.indexer.rebuild();
