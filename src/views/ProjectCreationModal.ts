@@ -1,0 +1,710 @@
+/**
+ * Touch-friendly project creation wizard.
+ *
+ * Collects the v1.0.0 required fields, validates them, and writes an
+ * Entity-as-a-Note Markdown file whose YAML stores Obsidian wikilinks.
+ * Content is persisted exclusively through `vault.process` (via
+ * {@link writeNoteAtomic}) to stay safe under Obsidian Sync and iCloud.
+ */
+
+import { Modal, Notice, TFile, type App } from "obsidian";
+import type ProjectsEnginePlugin from "../main";
+import {
+	toWikiLink,
+	type GovernanceModel,
+	type ProjectTeamAssignment,
+} from "../models/types";
+import { buildGraphLinksSection, buildMarkdownNote } from "../services/frontmatter";
+import { nextAvailableProjectId } from "../services/projectId";
+import { isValidHttpUrl, isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
+import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from "../services/vaultIo";
+import { EntitySuggest, type EntitySuggestion } from "./suggest";
+
+interface TeamChip {
+	name: string;
+	role: string;
+}
+
+interface CreationForm {
+	id: string;
+	name: string;
+	governance: GovernanceModel;
+	customer: string;
+	projectType: string;
+	technologies: string[];
+	team: TeamChip[];
+	workOrders: string[];
+	assignedDays: string;
+	projectUrl: string;
+	teamsChannelUrl: string;
+}
+
+/**
+ * Interactive, mobile-ready project creation modal.
+ */
+export class ProjectCreationModal extends Modal {
+	private form: CreationForm;
+	private errorEl: HTMLElement | null = null;
+	private readonly suggests: EntitySuggest[] = [];
+	/** Counter to persist after a successful create (accounts for collision skips). */
+	private nextCounter = 1;
+
+	constructor(
+		app: App,
+		private readonly plugin: ProjectsEnginePlugin,
+	) {
+		super(app);
+		this.form = this.emptyForm();
+		this.modalEl.addClass("projects-engine-modal");
+	}
+
+	override onOpen(): void {
+		this.plugin.indexer.rebuild();
+		this.form = this.emptyForm();
+		this.allocateId();
+		this.render();
+	}
+
+	override onClose(): void {
+		for (const suggest of this.suggests) {
+			suggest.close();
+		}
+		this.suggests.length = 0;
+		this.contentEl.empty();
+	}
+
+	private emptyForm(): CreationForm {
+		return {
+			id: "",
+			name: "",
+			governance: "Semplificato",
+			customer: "",
+			projectType: "",
+			technologies: [],
+			team: [],
+			workOrders: [],
+			assignedDays: "",
+			projectUrl: "",
+			teamsChannelUrl: "",
+		};
+	}
+
+	private allocateId(): void {
+		const allocated = nextAvailableProjectId(
+			this.plugin.settings.projectIdPattern,
+			this.plugin.settings.projectIdCounter,
+			(id) => this.plugin.indexer.hasProjectId(id),
+		);
+		this.form.id = allocated.id;
+		this.nextCounter = allocated.nextCounter;
+	}
+
+	private render(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("pe-modal-body");
+
+		contentEl.createEl("h2", { text: "Create project" });
+		contentEl.createEl("p", {
+			cls: "pe-modal-lead",
+			text: "Fields marked * are required. Wikilinks are stored in frontmatter so Graph View can cluster entities.",
+		});
+
+		this.errorEl = contentEl.createDiv({ cls: "pe-errors", attr: { role: "alert" } });
+		this.errorEl.hide();
+
+		this.addReadOnly("Project ID", this.form.id);
+
+		this.addTextField("Project name *", "Identifying title", (value) => {
+			this.form.name = value;
+		});
+
+		this.addGovernanceToggle();
+
+		this.addEntityPicker("Customer *", "customer", (name) => {
+			this.form.customer = name;
+		});
+
+		this.addEntityPicker("Project type *", "project-type", (name) => {
+			this.form.projectType = name;
+		});
+
+		this.addMultiEntityPicker(
+			"Project technologies",
+			"technology",
+			() => this.form.technologies,
+			(next) => {
+				this.form.technologies = next;
+			},
+		);
+
+		this.addTeamPicker();
+		this.addWorkOrderChips();
+
+		this.addTextField("Assigned days *", "Estimated budget mandays", (value) => {
+			this.form.assignedDays = value;
+		}, "number");
+
+		this.addTextField("Project URL", "Issue tracker or documentation", (value) => {
+			this.form.projectUrl = value;
+		}, "url");
+
+		this.addTeamsField();
+		this.addActions();
+	}
+
+	private addReadOnly(label: string, value: string): HTMLElement {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: label, cls: "pe-label" });
+		const valueEl = wrap.createEl("div", { text: value, cls: "pe-readonly pe-touch-target" });
+		return valueEl;
+	}
+
+	private addTextField(
+		label: string,
+		placeholder: string,
+		onChange: (value: string) => void,
+		inputType: string = "text",
+	): HTMLInputElement {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: label, cls: "pe-label" });
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: inputType, placeholder, spellcheck: "false" },
+		});
+		input.addEventListener("input", () => onChange(input.value));
+		return input;
+	}
+
+	private addGovernanceToggle(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: "Governance model *", cls: "pe-label" });
+		const group = wrap.createDiv({ cls: "pe-segmented", attr: { role: "radiogroup" } });
+
+		const makeButton = (model: GovernanceModel): void => {
+			const button = group.createEl("button", {
+				text: model,
+				cls: "pe-segment pe-touch-target",
+				attr: { type: "button", "aria-pressed": String(this.form.governance === model) },
+			});
+			if (this.form.governance === model) {
+				button.addClass("is-active");
+			}
+			button.addEventListener("click", () => {
+				this.form.governance = model;
+				group.findAll(".pe-segment").forEach((el) => {
+					el.removeClass("is-active");
+					el.setAttr("aria-pressed", "false");
+				});
+				button.addClass("is-active");
+				button.setAttr("aria-pressed", "true");
+			});
+		};
+
+		makeButton("Semplificato");
+		makeButton("PRINCE2");
+	}
+
+	private addEntityPicker(
+		label: string,
+		type: "customer" | "project-type",
+		onPick: (name: string) => void,
+	): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: label, cls: "pe-label" });
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "text", placeholder: "Search or create…", spellcheck: "false" },
+		});
+		const suggest = new EntitySuggest(
+			this.app,
+			input,
+			() => this.plugin.indexer.list(type),
+			(suggestion) => {
+				const name = suggestionName(suggestion);
+				input.value = name;
+				onPick(name);
+			},
+		);
+		this.suggests.push(suggest);
+		input.addEventListener("input", () => onPick(input.value.trim()));
+	}
+
+	private addMultiEntityPicker(
+		label: string,
+		type: "technology" | "team-member",
+		getValues: () => string[],
+		setValues: (next: string[]) => void,
+	): HTMLElement {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: label, cls: "pe-label" });
+		const chips = wrap.createDiv({ cls: "pe-chip-row" });
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "text", placeholder: "Search and add…", spellcheck: "false" },
+		});
+
+		const renderChips = (): void => {
+			chips.empty();
+			for (const name of getValues()) {
+				this.renderChip(chips, name, () => {
+					setValues(getValues().filter((item) => item !== name));
+					renderChips();
+				});
+			}
+		};
+
+		const addName = (name: string): void => {
+			const trimmed = name.trim();
+			if (!trimmed) {
+				return;
+			}
+			if (!getValues().includes(trimmed)) {
+				setValues([...getValues(), trimmed]);
+			}
+			input.value = "";
+			renderChips();
+		};
+
+		const suggest = new EntitySuggest(
+			this.app,
+			input,
+			() => this.plugin.indexer.list(type),
+			(suggestion) => addName(suggestionName(suggestion)),
+		);
+		this.suggests.push(suggest);
+		input.addEventListener("keydown", (event) => {
+			if (event.key === "Enter") {
+				event.preventDefault();
+				addName(input.value);
+			}
+		});
+		renderChips();
+		return wrap;
+	}
+
+	private addTeamPicker(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: "Team members", cls: "pe-label" });
+		const list = wrap.createDiv({ cls: "pe-team-list" });
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "text", placeholder: "Search people and add…", spellcheck: "false" },
+		});
+
+		const renderTeam = (): void => {
+			list.empty();
+			this.form.team.forEach((member, index) => {
+				const row = list.createDiv({ cls: "pe-team-row" });
+				row.createEl("span", { text: member.name, cls: "pe-chip-label" });
+				const role = row.createEl("input", {
+					cls: "pe-input pe-role-input pe-touch-target",
+					attr: { type: "text", placeholder: "Role (optional)" },
+				});
+				role.value = member.role;
+				role.addEventListener("input", () => {
+					const current = this.form.team[index];
+					if (current) {
+						current.role = role.value;
+					}
+				});
+				const remove = row.createEl("button", {
+					text: "Remove",
+					cls: "pe-chip-remove pe-touch-target",
+					attr: { type: "button", "aria-label": `Remove ${member.name}` },
+				});
+				remove.addEventListener("click", () => {
+					this.form.team = this.form.team.filter((_, i) => i !== index);
+					renderTeam();
+				});
+			});
+		};
+
+		const addMember = (name: string): void => {
+			const trimmed = name.trim();
+			if (!trimmed || this.form.team.some((member) => member.name === trimmed)) {
+				return;
+			}
+			this.form.team.push({ name: trimmed, role: "" });
+			input.value = "";
+			renderTeam();
+		};
+
+		const suggest = new EntitySuggest(
+			this.app,
+			input,
+			() => this.plugin.indexer.list("team-member"),
+			(suggestion) => addMember(suggestionName(suggestion)),
+		);
+		this.suggests.push(suggest);
+		input.addEventListener("keydown", (event) => {
+			if (event.key === "Enter") {
+				event.preventDefault();
+				addMember(input.value);
+			}
+		});
+		renderTeam();
+	}
+
+	private addWorkOrderChips(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: "Work orders (Commesse)", cls: "pe-label" });
+		const chips = wrap.createDiv({ cls: "pe-chip-row" });
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "text", placeholder: "COM-2026-01 — Enter or comma to add", spellcheck: "false" },
+		});
+
+		const renderChips = (): void => {
+			chips.empty();
+			for (const code of this.form.workOrders) {
+				this.renderChip(chips, code, () => {
+					this.form.workOrders = this.form.workOrders.filter((item) => item !== code);
+					renderChips();
+				});
+			}
+		};
+
+		const addCodes = (raw: string): void => {
+			const parts = raw
+				.split(/[,;]/)
+				.map((part) => part.trim())
+				.filter((part) => part.length > 0);
+			for (const part of parts) {
+				if (!this.form.workOrders.includes(part)) {
+					this.form.workOrders.push(part);
+				}
+			}
+			input.value = "";
+			renderChips();
+		};
+
+		input.addEventListener("keydown", (event) => {
+			if (event.key === "Enter" || event.key === ",") {
+				event.preventDefault();
+				addCodes(input.value);
+			}
+		});
+		input.addEventListener("blur", () => {
+			if (input.value.trim()) {
+				addCodes(input.value);
+			}
+		});
+		renderChips();
+	}
+
+	private addTeamsField(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: "Teams channel URL", cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "https://teams.microsoft.com/... or msteams:// deep link. Rendered as a quick-launch button.",
+		});
+		const row = wrap.createDiv({ cls: "pe-inline-row" });
+		const input = row.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: {
+				type: "url",
+				placeholder: "https://teams.microsoft.com/l/channel/…",
+				spellcheck: "false",
+			},
+		});
+		const launch = row.createEl("button", {
+			text: "Open",
+			cls: "pe-secondary pe-touch-target",
+			attr: { type: "button" },
+		});
+		launch.disabled = true;
+		input.addEventListener("input", () => {
+			this.form.teamsChannelUrl = input.value;
+			launch.disabled = !isValidTeamsChannelUrl(input.value);
+		});
+		launch.addEventListener("click", () => {
+			if (isValidTeamsChannelUrl(this.form.teamsChannelUrl)) {
+				openExternalUrl(this.form.teamsChannelUrl.trim());
+			}
+		});
+	}
+
+	private addActions(): void {
+		const row = this.contentEl.createDiv({ cls: "pe-actions" });
+		const cancel = row.createEl("button", {
+			text: "Cancel",
+			cls: "pe-secondary pe-touch-target",
+			attr: { type: "button" },
+		});
+		cancel.addEventListener("click", () => this.close());
+
+		const submit = row.createEl("button", {
+			text: "Create project",
+			cls: "pe-primary pe-touch-target",
+			attr: { type: "button" },
+		});
+		submit.addEventListener("click", () => {
+			void this.submit();
+		});
+	}
+
+	private renderChip(parent: HTMLElement, label: string, onRemove: () => void): void {
+		const chip = parent.createDiv({ cls: "pe-chip" });
+		chip.createEl("span", { text: label, cls: "pe-chip-label" });
+		const remove = chip.createEl("button", {
+			text: "×",
+			cls: "pe-chip-remove pe-touch-target",
+			attr: { type: "button", "aria-label": `Remove ${label}` },
+		});
+		remove.addEventListener("click", onRemove);
+	}
+
+	/**
+	 * Validate the form, persist the project note, and bump the ID counter.
+	 */
+	private async submit(): Promise<void> {
+		const errors = this.validate();
+		this.showErrors(errors);
+		if (errors.length > 0) {
+			new Notice(errors[0] ?? "Please fix the highlighted fields");
+			return;
+		}
+
+		try {
+			await this.ensureEntityNotes();
+			this.plugin.indexer.rebuild();
+			if (this.plugin.indexer.hasProjectId(this.form.id)) {
+				this.allocateId();
+			}
+			const file = await this.writeProjectNote();
+			this.plugin.settings.projectIdCounter = this.nextCounter;
+			await this.plugin.saveSettings();
+			this.plugin.indexer.rebuild();
+			new Notice(`Created project ${this.form.id}`);
+			this.close();
+			const leaf = this.app.workspace.getLeaf(false);
+			await leaf.openFile(file);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			new Notice(`Could not create project: ${message}`);
+			this.showErrors([message]);
+		}
+	}
+
+	/**
+	 * Return English validation messages. Empty array means the form is ready.
+	 */
+	private validate(): string[] {
+		const errors: string[] = [];
+		if (!this.form.name.trim()) {
+			errors.push("Project name is required");
+		}
+		if (this.form.governance !== "Semplificato" && this.form.governance !== "PRINCE2") {
+			errors.push("Governance model is required");
+		}
+		if (!this.form.customer.trim()) {
+			errors.push("Customer is required");
+		}
+		if (!this.form.projectType.trim()) {
+			errors.push("Project type is required");
+		}
+		const days = Number.parseFloat(this.form.assignedDays);
+		if (!Number.isFinite(days) || days < 0) {
+			errors.push("Assigned days must be a number greater than or equal to 0");
+		}
+		if (this.form.projectUrl.trim() && !isValidHttpUrl(this.form.projectUrl)) {
+			errors.push("Project URL must be a valid http(s) URL");
+		}
+		if (this.form.teamsChannelUrl.trim() && !isValidTeamsChannelUrl(this.form.teamsChannelUrl)) {
+			errors.push("Teams channel must be a teams.microsoft.com / teams.live.com URL or an msteams:// deep link");
+		}
+		if (!this.form.id.trim()) {
+			errors.push("Project ID could not be generated");
+		}
+		return errors;
+	}
+
+	private showErrors(errors: string[]): void {
+		if (!this.errorEl) {
+			return;
+		}
+		this.errorEl.empty();
+		if (errors.length === 0) {
+			this.errorEl.hide();
+			return;
+		}
+		this.errorEl.show();
+		const list = this.errorEl.createEl("ul");
+		for (const error of errors) {
+			list.createEl("li", { text: error });
+		}
+	}
+
+	/**
+	 * Create missing Customer / Type / Technology / Person notes so wikilinks resolve.
+	 */
+	private async ensureEntityNotes(): Promise<void> {
+		const settings = this.plugin.settings;
+		await this.ensureOne("customer", this.form.customer, settings.customersFolder);
+		await this.ensureOne("project-type", this.form.projectType, settings.projectTypesFolder);
+		for (const tech of this.form.technologies) {
+			await this.ensureOne("technology", tech, settings.technologiesFolder);
+		}
+		for (const member of this.form.team) {
+			await this.ensureOne("team-member", member.name, settings.teamMembersFolder);
+		}
+	}
+
+	private async ensureOne(
+		peType: "customer" | "project-type" | "technology" | "team-member",
+		name: string,
+		folder: string,
+	): Promise<void> {
+		const basename = sanitiseNoteBasename(name);
+		if (!basename) {
+			return;
+		}
+		const existing = this.plugin.indexer.list(peType).some(
+			(item) => item.name.toLowerCase() === basename.toLowerCase(),
+		);
+		if (existing) {
+			return;
+		}
+		const path = joinVaultPath(folder, `${basename}.md`);
+		if (noteExists(this.app.vault, path)) {
+			return;
+		}
+		const markdown = buildMarkdownNote(
+			{
+				pe_type: peType,
+				name: basename,
+			},
+			`# ${basename}\n`,
+		);
+		await writeNoteAtomic(this.app.vault, path, markdown);
+	}
+
+	/**
+	 * Compose YAML + body and write through vault.process.
+	 */
+	private async writeProjectNote(): Promise<TFile> {
+		const now = new Date().toISOString();
+		const customer = toWikiLink(this.form.customer.trim());
+		const projectType = toWikiLink(this.form.projectType.trim());
+		const technologies = this.form.technologies.map((name) => toWikiLink(name));
+		const team: ProjectTeamAssignment[] = this.form.team.map((member) => ({
+			member: toWikiLink(member.name),
+			role: member.role.trim() || undefined,
+		}));
+		const assignedDays = Number.parseFloat(this.form.assignedDays);
+
+		const frontmatter: Record<string, unknown> = {
+			pe_type: "project",
+			id: this.form.id,
+			name: this.form.name.trim(),
+			governance: this.form.governance,
+			status: "backlog",
+			customer,
+			project_type: projectType,
+			technologies,
+			team: team.map((item) => {
+				const row: Record<string, string> = { member: item.member };
+				if (item.role) {
+					row.role = item.role;
+				}
+				return row;
+			}),
+			work_orders: this.form.workOrders,
+			assigned_days: assignedDays,
+			actual_days: 0,
+			project_url: this.form.projectUrl.trim(),
+			teams_channel_url: this.form.teamsChannelUrl.trim(),
+			created: now,
+			updated: now,
+		};
+
+		const graphLinks = buildGraphLinksSection([
+			{ label: "Customer", wikiLink: customer },
+			{ label: "Type", wikiLink: projectType },
+			...technologies.map((wikiLink) => ({ label: "Technology", wikiLink })),
+			...team.map((item) => ({ label: "Team", wikiLink: item.member })),
+		]);
+
+		const teamsBlock = this.form.teamsChannelUrl.trim()
+			? `## Teams\n\n[Open Teams channel](${this.form.teamsChannelUrl.trim()})\n\n`
+			: "";
+
+		const body = [
+			`# ${this.form.name.trim()}`,
+			"",
+			teamsBlock,
+			graphLinks,
+			this.form.governance === "PRINCE2" ? prince2Template() : semplificatoTemplate(),
+		].join("\n");
+
+		const markdown = buildMarkdownNote(frontmatter, body);
+		const filename = `${sanitiseNoteBasename(`${this.form.id} ${this.form.name.trim()}`)}.md`;
+		const path = joinVaultPath(this.plugin.settings.projectsFolder, filename);
+		if (noteExists(this.app.vault, path)) {
+			throw new Error(`A note already exists at ${path}`);
+		}
+		return writeNoteAtomic(this.app.vault, path, markdown);
+	}
+}
+
+function suggestionName(suggestion: EntitySuggestion): string {
+	return suggestion.kind === "file" ? suggestion.entity.name : suggestion.name;
+}
+
+function semplificatoTemplate(): string {
+	return [
+		"## Semplificato",
+		"",
+		"Linear operational flow: **Backlog → In Progress → Review → Done**.",
+		"",
+		"| Status | Notes |",
+		"| --- | --- |",
+		"| Backlog | |",
+		"| In Progress | |",
+		"| Review | |",
+		"| Done | |",
+		"",
+		"Track actual days against `assigned_days` using task time logs.",
+		"",
+	].join("\n");
+}
+
+function prince2Template(): string {
+	return [
+		"## PRINCE2",
+		"",
+		"Organised by management stages. End-of-stage milestones are formal scheduler blocks.",
+		"",
+		"### Business Case",
+		"",
+		"- Summary:",
+		"- Reasons:",
+		"- Options:",
+		"- Expected benefits:",
+		"",
+		"### Risk Register",
+		"",
+		"| ID | Description | Probability | Impact | Owner | Status |",
+		"| --- | --- | --- | --- | --- | --- |",
+		"|  |  |  |  |  | open |",
+		"",
+		"### Issue & Change Log",
+		"",
+		"| ID | Type | Description | Status | Decision |",
+		"| --- | --- | --- | --- | --- |",
+		"|  | issue |  | open |  |",
+		"",
+		"### Quality Register",
+		"",
+		"| ID | Product | Method | Reviewer | Result |",
+		"| --- | --- | --- | --- | --- |",
+		"|  |  |  |  | pending |",
+		"",
+		"### Work Packages",
+		"",
+		"- WP-01:",
+		"",
+	].join("\n");
+}
