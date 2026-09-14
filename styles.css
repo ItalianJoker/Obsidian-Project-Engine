@@ -1,0 +1,240 @@
+/*
+ * Projects Engine — mobile-first styles.
+ * Touch targets follow a 44×44px minimum. Dense tables collapse to stacked
+ * cards/accordions below 720px. All selectors are prefixed to avoid collisions.
+ */
+
+.projects-engine-modal {
+	width: min(720px, 100vw);
+	max-height: 100vh;
+}
+
+.projects-engine-modal .modal-content {
+	padding: 16px;
+}
+
+.pe-modal-body {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.pe-modal-lead,
+.pe-help,
+.projects-engine-settings .setting-item-description {
+	color: var(--text-muted);
+	font-size: 0.9em;
+	margin: 0;
+}
+
+.pe-errors {
+	background: var(--background-modifier-error);
+	border-radius: 8px;
+	padding: 8px 12px;
+	color: var(--text-on-accent, var(--text-normal));
+}
+
+.pe-errors ul {
+	margin: 0;
+	padding-left: 1.2em;
+}
+
+.pe-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.pe-label {
+	font-weight: 600;
+}
+
+.pe-touch-target,
+.projects-engine-modal button,
+.projects-engine-modal input,
+.projects-engine-settings input,
+.projects-engine-settings select,
+.projects-engine-settings button {
+	min-height: 44px;
+	min-width: 44px;
+}
+
+.pe-input,
+.pe-readonly {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px 12px;
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+}
+
+.pe-readonly {
+	display: flex;
+	align-items: center;
+	font-family: var(--font-monospace);
+}
+
+.pe-segmented {
+	display: flex;
+	gap: 8px;
+}
+
+.pe-segment {
+	flex: 1;
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	cursor: pointer;
+}
+
+.pe-segment.is-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.pe-chip-row,
+.pe-team-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.pe-chip,
+.pe-team-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 4px 4px 12px;
+	border-radius: 999px;
+	background: var(--background-secondary);
+	min-height: 44px;
+}
+
+.pe-team-row {
+	width: 100%;
+	border-radius: 8px;
+	padding: 4px 8px;
+}
+
+.pe-chip-label {
+	font-weight: 500;
+}
+
+.pe-role-input {
+	flex: 1;
+}
+
+.pe-check-label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 44px;
+	font-size: 0.9em;
+	white-space: nowrap;
+}
+
+.pe-check-label input[type="checkbox"] {
+	width: 22px;
+	height: 22px;
+	min-width: 22px;
+	min-height: 22px;
+}
+
+.pe-inline-row,
+.pe-actions {
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+}
+
+.pe-inline-row .pe-input {
+	flex: 1;
+}
+
+.pe-actions {
+	justify-content: flex-end;
+	margin-top: 8px;
+	position: sticky;
+	bottom: 0;
+	padding-top: 8px;
+	background: var(--background-primary);
+}
+
+.pe-primary,
+.pe-secondary {
+	border-radius: 8px;
+	padding: 0 16px;
+	cursor: pointer;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.pe-primary {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.pe-secondary {
+	background: var(--background-secondary);
+}
+
+.pe-suggest-row {
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+	padding: 0 12px;
+}
+
+/* Dense tables → stacked cards on small displays (foundation for later views). */
+@media (max-width: 720px) {
+	.projects-engine-modal {
+		width: 100vw;
+		max-width: 100vw;
+		height: 100vh;
+		max-height: 100vh;
+		border-radius: 0;
+		top: 0 !important;
+		left: 0 !important;
+		transform: none !important;
+	}
+
+	.pe-table,
+	.projects-engine-view table {
+		display: block;
+	}
+
+	.pe-table thead,
+	.projects-engine-view table thead {
+		display: none;
+	}
+
+	.pe-table tr,
+	.projects-engine-view table tr {
+		display: block;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: 8px;
+		padding: 8px;
+		margin-bottom: 8px;
+	}
+
+	.pe-table td,
+	.projects-engine-view table td {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		min-height: 44px;
+		align-items: center;
+	}
+
+	.pe-table td::before,
+	.projects-engine-view table td::before {
+		content: attr(data-label);
+		font-weight: 600;
+	}
+
+	.pe-segmented {
+		flex-direction: column;
+	}
+}

@@ -1,0 +1,25 @@
+{
+	"name": "obsidian-projects-engine",
+	"version": "1.0.0",
+	"description": "Projects Engine — Obsidian plugin for project portfolio, governance, and delivery management in Markdown.",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
+		"version": "node version-bump.mjs && git add manifest.json versions.json"
+	},
+	"keywords": [
+		"obsidian",
+		"obsidian-plugin",
+		"project-management",
+		"prince2"
+	],
+	"author": "Luca",
+	"license": "MIT",
+	"devDependencies": {
+		"esbuild": "0.25.5",
+		"obsidian": "latest",
+		"typescript": "^5.8.3"
+	}
+}

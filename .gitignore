@@ -1,0 +1,17 @@
+# Editor
+.vscode
+*.iml
+.idea
+
+# npm
+node_modules
+
+# Bundled plugin output (attach on GitHub Releases)
+main.js
+*.map
+
+# Obsidian runtime data if developing inside a vault
+data.json
+
+# OS
+.DS_Store
