@@ -10,6 +10,7 @@
 import { Modal, Notice, TFile, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import {
+	defaultProjectStatusId,
 	toWikiLink,
 	type EntityType,
 	type GovernanceModel,
@@ -156,9 +157,14 @@ export class ProjectCreationModal extends Modal {
 		this.addStakeholderPicker();
 		this.addWorkOrderChips();
 
-		this.addTextField("Assigned days *", "Estimated budget mandays", (value) => {
-			this.form.assignedDays = value;
-		}, "number");
+		this.addTextField(
+			"Budget (giornate) *",
+			`Management days (1 g = ${this.plugin.settings.hoursPerManday} h)`,
+			(value) => {
+				this.form.assignedDays = value;
+			},
+			"number",
+		);
 
 		this.addTextField("Project URL", "Issue tracker or documentation", (value) => {
 			this.form.projectUrl = value;
@@ -601,7 +607,7 @@ export class ProjectCreationModal extends Modal {
 		}
 		const days = Number.parseFloat(this.form.assignedDays);
 		if (!Number.isFinite(days) || days < 0) {
-			errors.push("Assigned days must be a number greater than or equal to 0");
+			errors.push("Budget (giornate) must be a number greater than or equal to 0");
 		}
 		if (this.form.projectUrl.trim() && !isValidHttpUrl(this.form.projectUrl)) {
 			errors.push("Project URL must be a valid http(s) URL");
@@ -698,7 +704,7 @@ export class ProjectCreationModal extends Modal {
 			id: this.form.id,
 			name: this.form.name.trim(),
 			governance: this.form.governance,
-			status: "backlog",
+			status: defaultProjectStatusId(this.plugin.settings.projectStatuses),
 			customer,
 			project_type: projectType,
 			technologies,

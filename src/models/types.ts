@@ -77,15 +77,46 @@ export type GovernanceModel = "Semplificato" | "PRINCE2";
 export type SemplificatoStatus = "backlog" | "in-progress" | "review" | "done";
 
 /**
- * High-level project lifecycle status (portfolio view).
+ * High-level project lifecycle status id (portfolio / overview).
+ *
+ * Builtin defaults live in {@link DEFAULT_PROJECT_STATUSES}; users may add,
+ * rename, reorder, or archive entries in Settings. Stored on the project note
+ * as YAML `status` (string id).
  */
-export type ProjectStatus =
-	| "draft"
-	| "active"
-	| "on-hold"
-	| "closing"
-	| "closed"
-	| SemplificatoStatus;
+export type ProjectStatus = string;
+
+/**
+ * One configurable project-status option (Settings → Project statuses).
+ */
+export interface ProjectStatusOption {
+	/** Stable id written to YAML `status`. */
+	id: string;
+	/** Label shown in portfolio, overview, and filters. */
+	label: string;
+	/** Optional accent colour (CSS hex) for chips. */
+	color?: string;
+	/**
+	 * When true the status is hidden from the default create picker but still
+	 * resolves for existing notes (archive without remapping).
+	 */
+	archived?: boolean;
+}
+
+/**
+ * Default project lifecycle palette (dotpm-like configurability, PE labels).
+ */
+export const DEFAULT_PROJECT_STATUSES: ProjectStatusOption[] = [
+	{ id: "draft", label: "Draft", color: "#94a3b8" },
+	{ id: "active", label: "Active", color: "#22c55e" },
+	{ id: "on-hold", label: "On hold", color: "#f59e0b" },
+	{ id: "closing", label: "Closing", color: "#3b82f6" },
+	{ id: "closed", label: "Closed", color: "#64748b", archived: false },
+];
+
+/**
+ * Task delivery priority (workspace table / filters).
+ */
+export type TaskPriority = "none" | "low" | "medium" | "high" | "urgent";
 
 /**
  * Task status. PRINCE2 work-package tasks reuse the same vocabulary so a
@@ -189,12 +220,15 @@ export interface CustomField {
 /**
  * One time-log row on a task (`time_logs` in YAML).
  *
- * Remaining mandays = `estimateMandays - sum(duration hours) / hoursPerManday`.
+ * Effort model (§7):
+ * - Task estimates and time-log `duration` are in **hours** (fractions OK).
+ * - Management budget (`assigned_days`) is in **giornate** (days).
+ * - Conversion: **1 giornata = {@link ProjectsEngineSettings.hoursPerManday} hours** (default 8).
  */
 export interface TimeLog {
 	/** Day the work was performed. @remarks YAML: `date` */
 	date: IsoDate;
-	/** Duration in hours (decimals allowed). @remarks YAML: `duration` */
+	/** Duration in hours (decimals allowed, e.g. 0.5, 1.25). @remarks YAML: `duration` */
 	duration: number;
 	/** Team member who logged the time. @remarks YAML: `member` (wikilink) */
 	member: WikiLink;
@@ -389,11 +423,29 @@ export interface Task {
 	endDate: IsoDate | null;
 	/** Inclusive calendar-day duration; `0` means a zero-length milestone. */
 	durationDays: number;
+	/**
+	 * Planned effort in **hours** (fractions allowed).
+	 * @remarks YAML: `estimate_hours` (preferred). Legacy `estimate_mandays` is
+	 * migrated as `estimate_mandays * hoursPerManday` when hours are absent.
+	 */
+	estimateHours: number;
+	/**
+	 * Planned effort in giornate (derived: hours / hoursPerManday).
+	 * Kept for rollups and YAML `estimate_mandays` compatibility.
+	 */
 	estimateMandays: number;
+	/** Logged effort in giornate (hours logged / hoursPerManday). */
 	actualMandays: number;
+	/** Remaining giornate (clamped ≥ 0). */
 	remainingMandays: number;
+	/** Logged hours (sum of time-log durations). */
+	actualHours: number;
+	/** Remaining hours (clamped ≥ 0). */
+	remainingHours: number;
 	timeLogs: TimeLog[];
 	status: TaskStatus;
+	/** Delivery priority for the task dashboard. @remarks YAML: `priority` */
+	priority: TaskPriority;
 	/** Zero-duration checkpoint (also used for PRINCE2 stage boundaries). */
 	isMilestone: boolean;
 	/** When true, later stages cannot start until this task ends. */
@@ -429,9 +481,13 @@ export interface Project {
 	stakeholders: WikiLink[];
 	/** Work-order / commessa codes (example: `COM-2026-01`). @remarks YAML: `work_orders` */
 	workOrders: string[];
-	/** Budgeted mandays. @remarks YAML: `assigned_days` */
+	/**
+	 * Budgeted management effort in **giornate** (days).
+	 * UI may also show the hour equivalent (`assignedDays * hoursPerManday`).
+	 * @remarks YAML: `assigned_days`
+	 */
 	assignedDays: number;
-	/** Actual mandays rolled up from time logs. @remarks YAML: `actual_days` */
+	/** Actual giornate rolled up from task time logs. @remarks YAML: `actual_days` */
 	actualDays: number;
 	projectUrl: string;
 	/** Microsoft Teams channel URL or `msteams://` deep link. */
@@ -634,7 +690,10 @@ export interface ProjectsEngineSettings {
 	technologiesFolder: string;
 	stakeholdersFolder: string;
 	tasksFolder: string;
-	/** Hours that constitute one manday when rolling up time logs. */
+	/**
+	 * Hours that constitute one **giornata** (management day).
+	 * Default **8**. Used for budget days ↔ task hours conversion.
+	 */
 	hoursPerManday: number;
 	/**
 	 * Debounce for the in-memory entity indexer and graph-adjacent recalculation.
@@ -647,6 +706,11 @@ export interface ProjectsEngineSettings {
 	projectSurface: ProjectSurface;
 	/** Initial Table / Gantt / Board mode when opening the workspace. */
 	defaultView: DefaultWorkspaceView;
+	/**
+	 * Configurable project lifecycle statuses (add / rename / reorder / archive).
+	 * At least one non-archived entry should remain for new projects.
+	 */
+	projectStatuses: ProjectStatusOption[];
 	/** Dynamic field schemas for the five configurable entity kinds. */
 	customFieldSchemas: CustomFieldSchema[];
 }
@@ -668,8 +732,30 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	indexerDebounceMs: 250,
 	projectSurface: "overview",
 	defaultView: "table",
+	projectStatuses: DEFAULT_PROJECT_STATUSES.map((item) => ({ ...item })),
 	customFieldSchemas: [],
 };
+
+/**
+ * Resolve a project-status id to its display label (falls back to the raw id).
+ */
+export function projectStatusLabel(
+	statuses: readonly ProjectStatusOption[],
+	id: string,
+): string {
+	const hit = statuses.find((item) => item.id === id);
+	return hit?.label ?? id;
+}
+
+/**
+ * First non-archived status id, or `"active"` when the list is empty.
+ */
+export function defaultProjectStatusId(
+	statuses: readonly ProjectStatusOption[],
+): string {
+	const open = statuses.find((item) => !item.archived);
+	return open?.id ?? statuses[0]?.id ?? "active";
+}
 
 // ---------------------------------------------------------------------------
 // Wikilink helpers (no Node path/url — string ops only)

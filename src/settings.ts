@@ -10,6 +10,7 @@ import type {
 	CustomFieldSchema,
 	CustomFieldType,
 } from "./models/types";
+import { DEFAULT_PROJECT_STATUSES } from "./models/types";
 
 const ENTITY_KINDS: { id: CustomFieldEntityKind; label: string }[] = [
 	{ id: "customer", label: "Customer" },
@@ -51,6 +52,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		this.renderIdSection();
 		this.renderFolderSection();
 		this.renderNavigationSection();
+		this.renderProjectStatusesSection();
 		this.renderPerformanceSection();
 		this.renderCustomFieldsSection();
 	}
@@ -192,11 +194,14 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Hours per manday")
-			.setDesc("Used when rolling time logs into remaining mandays.")
+			.setName("Hours per giornata")
+			.setDesc(
+				"Conversion rate for the §7 time model: task estimates and time logs use hours; project budget uses giornate (days). Default 1 giornata = 8 hours.",
+			)
 			.addText((text) => {
 				text.inputEl.type = "number";
 				text.inputEl.min = "1";
+				text.inputEl.step = "0.25";
 				text.inputEl.addClass("pe-touch-target");
 				text.setValue(String(this.plugin.settings.hoursPerManday)).onChange(async (value) => {
 					const parsed = Number.parseFloat(value);
@@ -206,6 +211,143 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 					}
 				});
 			});
+	}
+
+	/**
+	 * Configurable project lifecycle statuses (add / rename / reorder / archive).
+	 * Pattern adapted from obsidian-pm PaletteListEditor (MIT).
+	 */
+	private renderProjectStatusesSection(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Project statuses" });
+		containerEl.createEl("p", {
+			cls: "setting-item-description",
+			text: "Lifecycle statuses shown on the portfolio and project overview. Drag to reorder. Archive hides an option from new picks without remapping existing notes.",
+		});
+
+		const list = containerEl.createDiv({ cls: "pe-status-list" });
+		this.renderStatusRows(list);
+
+		new Setting(containerEl)
+			.setName("Add status")
+			.addButton((button) => {
+				button.setButtonText("+ add status");
+				button.buttonEl.addClass("pe-touch-target");
+				button.onClick(async () => {
+					const id = `status-${Date.now().toString(36)}`;
+					this.plugin.settings.projectStatuses.push({
+						id,
+						label: "New status",
+						color: "#94a3b8",
+						archived: false,
+					});
+					await this.plugin.saveSettings();
+					this.display();
+				});
+			})
+			.addButton((button) => {
+				button.setButtonText("Reset defaults");
+				button.buttonEl.addClass("pe-touch-target");
+				button.onClick(async () => {
+					this.plugin.settings.projectStatuses = DEFAULT_PROJECT_STATUSES.map((item) => ({
+						...item,
+					}));
+					await this.plugin.saveSettings();
+					this.display();
+				});
+			});
+	}
+
+	private renderStatusRows(list: HTMLElement): void {
+		list.empty();
+		const items = this.plugin.settings.projectStatuses;
+		items.forEach((status, index) => {
+			const row = list.createDiv({ cls: "pe-status-row pe-touch-target" });
+			row.draggable = true;
+			row.createSpan({ text: "⠿", cls: "pe-status-drag" });
+
+			row.addEventListener("dragstart", (event) => {
+				event.dataTransfer?.setData("text/plain", String(index));
+				row.addClass("is-dragging");
+			});
+			row.addEventListener("dragend", () => row.removeClass("is-dragging"));
+			row.addEventListener("dragover", (event) => event.preventDefault());
+			row.addEventListener("drop", (event) => {
+				event.preventDefault();
+				const from = Number.parseInt(event.dataTransfer?.getData("text/plain") ?? "", 10);
+				if (!Number.isFinite(from) || from === index) {
+					return;
+				}
+				const [moved] = items.splice(from, 1);
+				if (!moved) {
+					return;
+				}
+				items.splice(index, 0, moved);
+				void this.plugin.saveSettings().then(() => this.display());
+			});
+
+			const label = row.createEl("input", {
+				cls: "pe-input pe-status-label",
+				attr: { type: "text", "aria-label": "Status label" },
+			});
+			label.value = status.label;
+			label.addEventListener("change", () => {
+				status.label = label.value.trim() || status.id;
+				void this.plugin.saveSettings();
+			});
+
+			const idInput = row.createEl("input", {
+				cls: "pe-input pe-status-id",
+				attr: { type: "text", "aria-label": "Status id", spellcheck: "false" },
+			});
+			idInput.value = status.id;
+			idInput.addEventListener("change", () => {
+				const next = idInput.value.trim().toLowerCase().replace(/\s+/g, "-");
+				if (!next) {
+					idInput.value = status.id;
+					return;
+				}
+				if (items.some((item, i) => i !== index && item.id === next)) {
+					new Notice("Status id must be unique");
+					idInput.value = status.id;
+					return;
+				}
+				status.id = next;
+				void this.plugin.saveSettings();
+			});
+
+			const color = row.createEl("input", {
+				attr: { type: "color", "aria-label": "Status colour" },
+			});
+			color.value = status.color ?? "#94a3b8";
+			color.addEventListener("change", () => {
+				status.color = color.value;
+				void this.plugin.saveSettings();
+			});
+
+			const archive = row.createEl("label", { cls: "pe-check-label pe-status-archive" });
+			const checkbox = archive.createEl("input", { attr: { type: "checkbox" } });
+			checkbox.checked = status.archived === true;
+			archive.createSpan({ text: "Archive" });
+			checkbox.addEventListener("change", () => {
+				status.archived = checkbox.checked;
+				void this.plugin.saveSettings();
+			});
+
+			const remove = row.createEl("button", {
+				text: "Remove",
+				cls: "pe-secondary pe-touch-target",
+				attr: { type: "button" },
+			});
+			remove.addEventListener("click", () => {
+				if (items.length <= 1) {
+					new Notice("Keep at least one project status");
+					return;
+				}
+				items.splice(index, 1);
+				void this.plugin.saveSettings().then(() => this.display());
+			});
+		});
 	}
 
 	private renderCustomFieldsSection(): void {

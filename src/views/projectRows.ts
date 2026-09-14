@@ -45,9 +45,9 @@ export function loadProjectRows(app: App): ProjectRow[] {
 			customer: typeof fm.customer === "string" ? fm.customer : "",
 			projectType: typeof fm.project_type === "string" ? fm.project_type : "",
 			technologies: asStringArray(fm.technologies),
-			team: asStringArray(fm.team),
+			team: asTeamNames(fm.team),
 			stakeholders: asStringArray(fm.stakeholders),
-			commesse: asStringArray(fm.commesse),
+			commesse: asStringArray(fm.work_orders?.length ? fm.work_orders : fm.commesse),
 			assignedDays: typeof fm.assigned_days === "number" ? fm.assigned_days : 0,
 			actualDays: typeof fm.actual_days === "number" ? fm.actual_days : 0,
 			projectUrl: typeof fm.project_url === "string" ? fm.project_url : "",
@@ -72,4 +72,25 @@ function asStringArray(value: unknown): string[] {
 		return [];
 	}
 	return value.filter((item): item is string => typeof item === "string");
+}
+
+/**
+ * Team YAML may be a list of wikilinks or `{ member, role }` objects.
+ */
+function asTeamNames(value: unknown): string[] {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+	const names: string[] = [];
+	for (const item of value) {
+		if (typeof item === "string") {
+			names.push(item);
+		} else if (item && typeof item === "object" && !Array.isArray(item)) {
+			const member = (item as { member?: unknown }).member;
+			if (typeof member === "string") {
+				names.push(member);
+			}
+		}
+	}
+	return names;
 }

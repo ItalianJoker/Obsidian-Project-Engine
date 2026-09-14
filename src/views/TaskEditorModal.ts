@@ -10,6 +10,7 @@ import type {
 	IsoDate,
 	Task,
 	TaskId,
+	TaskPriority,
 	TaskStatus,
 	TimeLog,
 	WikiLink,
@@ -33,7 +34,11 @@ import {
 	uniqueTaskPath,
 	type TaskDraft,
 } from "../services/taskIo";
-import { computeMandayRollup } from "../services/timeLogs";
+import {
+	computeEffortRollup,
+	formatHours,
+	formatHoursAndGiornate,
+} from "../services/timeLogs";
 import { splitFrontmatter } from "../services/frontmatter";
 import { EntitySuggest } from "./suggest";
 
@@ -45,6 +50,8 @@ const TASK_STATUSES: TaskStatus[] = [
 	"blocked",
 	"cancelled",
 ];
+
+const TASK_PRIORITIES: TaskPriority[] = ["none", "low", "medium", "high", "urgent"];
 
 /**
  * Modal that edits one task and surfaces its recursive subtree.
@@ -132,16 +139,22 @@ export class TaskEditorModal extends Modal {
 		});
 
 		this.addStatus();
+		this.addPriority();
 		this.addNumber("Duration (calendar days)", this.draft.durationDays, (value) => {
 			this.draft.durationDays = value;
 			if (value === 0) {
 				this.draft.isMilestone = true;
 			}
 		});
-		this.addNumber("Estimate (mandays)", this.draft.estimateMandays, (value) => {
-			this.draft.estimateMandays = value;
-			this.refreshMandays();
-		});
+		this.addNumber(
+			"Estimate (hours)",
+			this.draft.estimateHours,
+			(value) => {
+				this.draft.estimateHours = value;
+				this.refreshMandays();
+			},
+			`Fractions OK (0.5, 1.25). 1 giornata = ${this.plugin.settings.hoursPerManday} h.`,
+		);
 
 		this.addDate("Start date", this.draft.startDate, (value) => {
 			this.draft.startDate = value;
@@ -176,9 +189,17 @@ export class TaskEditorModal extends Modal {
 		input.addEventListener("input", () => onChange(input.value));
 	}
 
-	private addNumber(label: string, value: number, onChange: (value: number) => void): void {
+	private addNumber(
+		label: string,
+		value: number,
+		onChange: (value: number) => void,
+		help?: string,
+	): void {
 		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
 		wrap.createEl("label", { text: label, cls: "pe-label" });
+		if (help) {
+			wrap.createEl("p", { text: help, cls: "pe-help" });
+		}
 		const input = wrap.createEl("input", {
 			cls: "pe-input pe-touch-target",
 			attr: { type: "number", min: "0", step: "0.25" },
@@ -187,6 +208,22 @@ export class TaskEditorModal extends Modal {
 		input.addEventListener("input", () => {
 			const parsed = Number.parseFloat(input.value);
 			onChange(Number.isFinite(parsed) ? parsed : 0);
+		});
+	}
+
+	private addPriority(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: "Priority", cls: "pe-label" });
+		const select = wrap.createEl("select", {
+			cls: "pe-input pe-touch-target",
+			attr: { "aria-label": "Priority" },
+		});
+		for (const priority of TASK_PRIORITIES) {
+			select.createEl("option", { text: priority, attr: { value: priority } });
+		}
+		select.value = this.draft.priority;
+		select.addEventListener("change", () => {
+			this.draft.priority = select.value as TaskPriority;
 		});
 	}
 
@@ -424,17 +461,22 @@ export class TaskEditorModal extends Modal {
 
 	private refreshMandays(): void {
 		if (!this.mandayEl) return;
-		const rollup = computeMandayRollup(
-			this.draft.estimateMandays,
+		const hoursPer = this.plugin.settings.hoursPerManday;
+		const rollup = computeEffortRollup(
+			this.draft.estimateHours,
 			this.draft.timeLogs,
-			this.plugin.settings.hoursPerManday,
+			hoursPer,
 		);
 		this.mandayEl.empty();
 		this.mandayEl.createEl("strong", { text: "Effort" });
 		this.mandayEl.createEl("p", {
-			text: `Estimate ${rollup.estimateMandays.toFixed(2)} md · Actual ${rollup.actualMandays.toFixed(2)} md · Remaining ${rollup.remainingMandays.toFixed(2)} md${
-				rollup.overrunMandays > 0 ? ` · Overrun ${rollup.overrunMandays.toFixed(2)} md` : ""
+			text: `Estimate ${formatHoursAndGiornate(rollup.estimateHours, hoursPer)} · Logged ${formatHoursAndGiornate(rollup.actualHours, hoursPer)} · Remaining ${formatHours(rollup.remainingHours)}${
+				rollup.overrunHours > 0 ? ` · Overrun ${formatHours(rollup.overrunHours)}` : ""
 			}`,
+		});
+		this.mandayEl.createEl("p", {
+			cls: "pe-help",
+			text: `Time logs use hours. Management budget uses giornate (1 g = ${hoursPer} h).`,
 		});
 	}
 
@@ -781,9 +823,10 @@ function taskToDraft(task: Task): TaskDraft {
 		startDate: task.startDate,
 		endDate: task.endDate,
 		durationDays: task.durationDays,
-		estimateMandays: task.estimateMandays,
+		estimateHours: task.estimateHours,
 		timeLogs: task.timeLogs.map((log) => ({ ...log })),
 		status: task.status,
+		priority: task.priority,
 		isMilestone: task.isMilestone,
 		isStageBoundary: task.isStageBoundary,
 		stageId: task.stageId,

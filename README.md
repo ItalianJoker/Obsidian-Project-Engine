@@ -2,7 +2,7 @@
 
 Obsidian.md plugin for Project Portfolio, Governance, and Delivery Management in Markdown.
 
-Version **1.0.0** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
+Version **1.1.0** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
 
 Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT); domain features and branding remain Projects Engine. See `NOTICE`.
 
@@ -59,10 +59,20 @@ Modale mobile-ready che raccoglie e valida:
 - **Nome**, **governance** (`Semplificato` | `PRINCE2`)
 - **Customer** e **Project type** — autocomplete fuzzy (crea nota se manca)
 - **Technologies**, **Team** (ruolo opzionale), **Stakeholders** (progetto e/o cliente)
-- **Commesse** (chip multipli), **giorni assegnati**, **Project URL**
+- **Commesse** (chip multipli), **budget in giornate**, **Project URL**
 - **`teams_channel_url`** — URL Teams / deep link `msteams://`, con pulsante di avvio rapido
 
 Le scritture usano solo `vault.process` (sicure con Obsidian Sync / iCloud).
+
+### Modello tempo (ore ↔ giornate)
+
+- **Budget di progetto** (`assigned_days`): **giornate** (giorni gestione).
+- **Stime task e time log** (`estimate_hours`, `duration` nei log): **ore** (anche frazionarie, es. `0.5`, `1.25`).
+- Conversione: **1 giornata = 8 ore** (impostabile in Settings → Hours per giornata). L’UI mostra entrambe le unità dove utile.
+
+### Status progetto configurabili
+
+In Settings → **Project statuses** si aggiungono, rinomina, riordinano (drag) e archivia status. Visibili in portfolio e modificabili da Overview / Edit project.
 
 ### Governance
 
@@ -75,22 +85,22 @@ Le scritture usano solo `vault.process` (sicure con Obsidian Sync / iCloud).
 - Sotto-task ricorsivi a profondità arbitraria (`parent_id` / `child_ids`)
 - Dipendenze intra- e cross-project: `blocked_by` / `blocking`
 - Cycle detection prima del salvataggio; Notice se si chiude un ciclo
-- Time log `[{ date, duration, member, note }]`; estimate vs actual / remaining mandays
+- Time log `[{ date, duration, member, note }]` con `duration` in **ore**; estimate in **ore** (`estimate_hours`) con mirror legacy `estimate_mandays`
 - Auto-schedule e cascade: se un blocker slitta, i dipendenti vengono ripianificati conservando la durata
 - Undo/Redo (Command Pattern) su date, dipendenze e status board; persistenza via `vault.process`
 
 ### Viste: Projects → Overview → Workspace
 
-**Projects (Dashboard)** — elenco progetti con ricerca, filtro governance, menu contestuale (overview / workspace / table / board / Gantt). Sotto i 720px: card/accordion. Toolbar `+ new project` e CRUD entità.
+**Projects (Dashboard)** — elenco progetti con filtri combinabili **Governance** + **Customer**, ricerca, chip status, budget giornate/ore, menu contestuale (overview / workspace / **Edit project** / table / board / Gantt). Sotto i 720px: card/accordion. Toolbar `+ new project` e CRUD entità.
 
-**Overview** — home del progetto: metriche (task, mandays), entità collegate, azioni Teams/URL, pannello governance Semplificato o PRINCE2 (registri / stage), CTA **Open workspace**.
+**Overview** — home del progetto (stile dotpm): glyph, meta compact, metriche ore↔giornate, **status editabile**, CTA **Edit project** / Open workspace / add task, entità, governance Semplificato o PRINCE2.
 
 **Workspace** — un’unica leaf con switcher **Table | Gantt | Board**:
-- **Table** — gerarchia task, status, date, remaining mandays
+- **Table (task dashboard)** — gerarchia, status, priority, assignee, estimate/remaining ore, filtri status/priority
 - **Board (Kanban)** — colonne Backlog / In Progress / Review / Done; DnD HTML5 + pointer-capture; pulsanti status come fallback
 - **Gantt** — barre, zoom Day/Week/Month, curve SVG dipendenze; click apre l’editor
 
-In Settings: **Open projects in** (Overview | Workspace) e **Default workspace view**.
+In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Project statuses**, **Hours per giornata**.
 
 ### Modello dati (frontmatter)
 
@@ -136,7 +146,7 @@ projects:
 ---
 ```
 
-Campi task rilevanti: `blocked_by`, `blocking`, `start_date`, `end_date`, `duration_days`, `time_logs`, `estimate_mandays`, `is_milestone`, `is_stage_boundary`.
+Campi task rilevanti: `blocked_by`, `blocking`, `start_date`, `end_date`, `duration_days`, `time_logs`, `estimate_hours` (preferito; legacy `estimate_mandays`), `priority`, `is_milestone`, `is_stage_boundary`.
 
 ### Come installare il plugin in Obsidian
 
@@ -248,10 +258,20 @@ Mobile-ready modal that collects and validates:
 - **Name**, **governance** (`Semplificato` | `PRINCE2`)
 - **Customer** and **Project type** — fuzzy autocomplete (creates the note if missing)
 - **Technologies**, **Team** (optional role), **Stakeholders** (project and/or customer)
-- **Work orders** (multi chips), **assigned days**, **Project URL**
+- **Work orders** (multi chips), **budget in giornate**, **Project URL**
 - **`teams_channel_url`** — Teams URL / `msteams://` deep link with quick-launch button
 
 All content writes go through `vault.process` only (safe with Obsidian Sync / iCloud).
+
+### Time model (hours ↔ giornate)
+
+- **Project budget** (`assigned_days`): **giornate** (management days).
+- **Task estimates and time logs** (`estimate_hours`, log `duration`): **hours** (fractions OK, e.g. `0.5`, `1.25`).
+- Conversion: **1 giornata = 8 hours** (configurable in Settings → Hours per giornata). UI shows both units where useful.
+
+### Configurable project statuses
+
+Settings → **Project statuses**: add, rename, reorder (drag), and archive. Visible on the portfolio and editable from Overview / Edit project.
 
 ### Governance
 
@@ -264,22 +284,22 @@ All content writes go through `vault.process` only (safe with Obsidian Sync / iC
 - Recursively nested subtasks (`parent_id` / `child_ids`)
 - Intra- and cross-project dependencies: `blocked_by` / `blocking`
 - Cycle detection before save; Notice if a loop would close
-- Time logs `[{ date, duration, member, note }]`; estimate vs actual / remaining mandays
+- Time logs `[{ date, duration, member, note }]` with `duration` in **hours**; estimates in **hours** (`estimate_hours`) with legacy `estimate_mandays` mirror
 - Auto-schedule and cascade: when a blocker slips, dependents are replaned with duration preserved
 - Undo/Redo (Command Pattern) for dates, dependencies, and board status; persisted via `vault.process`
 
 ### Views: Projects → Overview → Workspace
 
-**Projects (Dashboard)** — searchable project list with governance filter and context menu (overview / workspace / table / board / Gantt). Below 720px: card/accordion. Toolbar: `+ new project` and entity CRUD.
+**Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, status chips, budget as giornate/hours, context menu (overview / workspace / **Edit project** / table / board / Gantt). Below 720px: card/accordion. Toolbar: `+ new project` and entity CRUD.
 
-**Overview** — project home: metrics (tasks, mandays), linked entities, Teams/URL actions, Semplificato or PRINCE2 governance panel (registers / stages), **Open workspace** CTA.
+**Overview** — project home (dotpm-like): glyph, compact meta, hours↔giornate metrics, **editable status**, **Edit project** / Open workspace / add task CTAs, entities, Semplificato or PRINCE2 governance.
 
 **Workspace** — one leaf with **Table | Gantt | Board** switcher:
-- **Table** — nested tasks, status, dates, remaining mandays
+- **Table (task dashboard)** — hierarchy, status, priority, assignee, estimate/remaining hours, status/priority filters
 - **Board (Kanban)** — Backlog / In Progress / Review / Done; HTML5 + pointer-capture DnD; status buttons as fallback
 - **Gantt** — bars, Day/Week/Month zoom, SVG dependency curves; click opens the editor
 
-Settings: **Open projects in** (Overview | Workspace) and **Default workspace view**.
+Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Project statuses**, **Hours per giornata**.
 
 ### Frontmatter data model
 
@@ -325,7 +345,7 @@ projects:
 ---
 ```
 
-Scheduler-relevant task fields: `blocked_by`, `blocking`, `start_date`, `end_date`, `duration_days`, `time_logs`, `estimate_mandays`, `is_milestone`, `is_stage_boundary`.
+Scheduler-relevant task fields: `blocked_by`, `blocking`, `start_date`, `end_date`, `duration_days`, `time_logs`, `estimate_hours` (preferred; legacy `estimate_mandays`), `priority`, `is_milestone`, `is_stage_boundary`.
 
 ### How to install the plugin in Obsidian
 

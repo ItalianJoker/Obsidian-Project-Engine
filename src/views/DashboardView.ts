@@ -12,9 +12,12 @@
 import { ItemView, Menu, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import type { GovernanceModel } from "../models/types";
+import { projectStatusLabel } from "../models/types";
 import { EmptyState } from "../ui/EmptyState";
 import { openEntityModal } from "./EntityModal";
+import { ProjectEditModal } from "./ProjectEditModal";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
+import { giornateToHours, formatGiornate, formatHours } from "../services/timeLogs";
 
 /** Registered ItemView type id. */
 export const DASHBOARD_VIEW_TYPE = "projects-engine-dashboard";
@@ -25,6 +28,7 @@ export const DASHBOARD_VIEW_TYPE = "projects-engine-dashboard";
 export class DashboardView extends ItemView {
 	private projects: ProjectRow[] = [];
 	private filterGovernance: "all" | GovernanceModel = "all";
+	private filterCustomer = "all";
 	private searchText = "";
 	private reloadTimer: number | null = null;
 	private toolbarEl!: HTMLElement;
@@ -95,14 +99,16 @@ export class DashboardView extends ItemView {
 		this.render();
 	}
 
-	private render(): void {
-		this.renderToolbar();
-		this.bodyEl.empty();
-		this.bodyEl.addClass("pe-project-list-container");
-
-		const visible = this.projects.filter((row) => {
+	private visibleRows(): ProjectRow[] {
+		return this.projects.filter((row) => {
 			if (this.filterGovernance !== "all" && row.governance !== this.filterGovernance) {
 				return false;
+			}
+			if (this.filterCustomer !== "all") {
+				const customer = stripWiki(row.customer).toLowerCase();
+				if (customer !== this.filterCustomer.toLowerCase()) {
+					return false;
+				}
 			}
 			if (!this.searchText) {
 				return true;
@@ -110,6 +116,14 @@ export class DashboardView extends ItemView {
 			const hay = `${row.id} ${row.name} ${row.customer} ${row.status}`.toLowerCase();
 			return hay.includes(this.searchText.toLowerCase());
 		});
+	}
+
+	private render(): void {
+		this.renderToolbar();
+		this.bodyEl.empty();
+		this.bodyEl.addClass("pe-project-list-container");
+
+		const visible = this.visibleRows();
 
 		if (visible.length === 0) {
 			new EmptyState(this.bodyEl)
@@ -118,7 +132,7 @@ export class DashboardView extends ItemView {
 				.setBody(
 					this.projects.length === 0
 						? "Create a project to start portfolio, governance, and delivery in Markdown."
-						: "Try a different search or governance filter.",
+						: "Try a different search or clear Governance / Customer filters.",
 				)
 				.setAction("+ new project", () => this.plugin.openCreationModal());
 			return;
@@ -135,7 +149,7 @@ export class DashboardView extends ItemView {
 		const left = bar.createDiv({ cls: "pe-toolbar-left" });
 		left.createEl("h2", { text: "Projects", cls: "pe-toolbar-title" });
 
-		const center = bar.createDiv({ cls: "pe-toolbar-center" });
+		const center = bar.createDiv({ cls: "pe-toolbar-center pe-toolbar-filters" });
 		const search = center.createEl("input", {
 			cls: "pe-toolbar-search pe-touch-target",
 			attr: {
@@ -148,28 +162,20 @@ export class DashboardView extends ItemView {
 		search.value = this.searchText;
 		search.addEventListener("input", () => {
 			this.searchText = search.value;
-			// Rebuild body only — keep caret in the search field (obsidian-pm redraw rule).
 			this.bodyEl.empty();
 			this.bodyEl.addClass("pe-project-list-container");
-			const visible = this.projects.filter((row) => {
-				if (this.filterGovernance !== "all" && row.governance !== this.filterGovernance) {
-					return false;
-				}
-				if (!this.searchText) return true;
-				const hay = `${row.id} ${row.name} ${row.customer} ${row.status}`.toLowerCase();
-				return hay.includes(this.searchText.toLowerCase());
-			});
+			const visible = this.visibleRows();
 			if (visible.length === 0) {
 				new EmptyState(this.bodyEl)
 					.setTitle("No matches")
-					.setBody("Try a different search or governance filter.");
+					.setBody("Try a different search or clear Governance / Customer filters.");
 				return;
 			}
 			this.renderTable(visible);
 			this.renderCards(visible);
 		});
 
-		const filter = center.createEl("select", {
+		const gov = center.createEl("select", {
 			cls: "pe-input pe-touch-target pe-toolbar-filter",
 			attr: { "aria-label": "Filter by governance" },
 		});
@@ -178,11 +184,26 @@ export class DashboardView extends ItemView {
 			{ value: "Semplificato", label: "Semplificato" },
 			{ value: "PRINCE2", label: "PRINCE2" },
 		]) {
-			filter.createEl("option", { text: option.label, attr: { value: option.value } });
+			gov.createEl("option", { text: option.label, attr: { value: option.value } });
 		}
-		filter.value = this.filterGovernance;
-		filter.addEventListener("change", () => {
-			this.filterGovernance = filter.value as "all" | GovernanceModel;
+		gov.value = this.filterGovernance;
+		gov.addEventListener("change", () => {
+			this.filterGovernance = gov.value as "all" | GovernanceModel;
+			this.render();
+		});
+
+		const customers = uniqueCustomers(this.projects);
+		const cust = center.createEl("select", {
+			cls: "pe-input pe-touch-target pe-toolbar-filter",
+			attr: { "aria-label": "Filter by customer" },
+		});
+		cust.createEl("option", { text: "All customers", attr: { value: "all" } });
+		for (const name of customers) {
+			cust.createEl("option", { text: name, attr: { value: name } });
+		}
+		cust.value = this.filterCustomer;
+		cust.addEventListener("change", () => {
+			this.filterCustomer = cust.value;
 			this.render();
 		});
 
@@ -214,11 +235,12 @@ export class DashboardView extends ItemView {
 	}
 
 	private renderTable(rows: ProjectRow[]): void {
+		const hoursPer = this.plugin.settings.hoursPerManday;
 		const section = this.bodyEl.createDiv({ cls: "pe-section pe-table-section" });
 		const table = section.createEl("table", { cls: "pe-table pe-project-list" });
 		const thead = table.createEl("thead");
 		const headRow = thead.createEl("tr");
-		for (const label of ["ID", "Name", "Governance", "Status", "Customer", "Days", ""]) {
+		for (const label of ["ID", "Name", "Governance", "Status", "Customer", "Budget", ""]) {
 			headRow.createEl("th", { text: label });
 		}
 		const tbody = table.createEl("tbody");
@@ -234,9 +256,22 @@ export class DashboardView extends ItemView {
 			this.td(tr, "ID", row.id);
 			this.td(tr, "Name", row.name);
 			this.td(tr, "Governance", row.governance);
-			this.td(tr, "Status", row.status);
+			const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
+			const chip = statusTd.createSpan({
+				text: projectStatusLabel(this.plugin.settings.projectStatuses, row.status),
+				cls: "pe-status-chip",
+			});
+			const meta = this.plugin.settings.projectStatuses.find((item) => item.id === row.status);
+			if (meta?.color) {
+				chip.style.setProperty("--pe-status-color", meta.color);
+			}
 			this.td(tr, "Customer", stripWiki(row.customer));
-			this.td(tr, "Days", `${row.actualDays}/${row.assignedDays}`);
+			const budgetHours = giornateToHours(row.assignedDays, hoursPer);
+			this.td(
+				tr,
+				"Budget",
+				`${formatGiornate(row.assignedDays)} · ${formatHours(budgetHours)}`,
+			);
 			const actions = tr.createEl("td", { attr: { "data-label": "Actions" } });
 			const open = actions.createEl("button", {
 				text: "Open",
@@ -251,6 +286,7 @@ export class DashboardView extends ItemView {
 	}
 
 	private renderCards(rows: ProjectRow[]): void {
+		const hoursPer = this.plugin.settings.hoursPerManday;
 		const section = this.bodyEl.createDiv({ cls: "pe-section pe-card-section" });
 		for (const row of rows) {
 			const details = section.createEl("details", { cls: "pe-accordion pe-touch-target" });
@@ -262,9 +298,13 @@ export class DashboardView extends ItemView {
 			});
 			const body = details.createDiv({ cls: "pe-accordion-body" });
 			body.createEl("p", { text: `Governance: ${row.governance}` });
-			body.createEl("p", { text: `Status: ${row.status}` });
+			body.createEl("p", {
+				text: `Status: ${projectStatusLabel(this.plugin.settings.projectStatuses, row.status)}`,
+			});
 			body.createEl("p", { text: `Customer: ${stripWiki(row.customer)}` });
-			body.createEl("p", { text: `Days: ${row.actualDays} / ${row.assignedDays}` });
+			body.createEl("p", {
+				text: `Budget: ${formatGiornate(row.assignedDays)} (${formatHours(giornateToHours(row.assignedDays, hoursPer))}) · Actual ${formatGiornate(row.actualDays)}`,
+			});
 			const actions = body.createDiv({ cls: "pe-inline-row" });
 			const open = actions.createEl("button", {
 				text: "Open",
@@ -286,7 +326,7 @@ export class DashboardView extends ItemView {
 	}
 
 	/**
-	 * Context menu: overview / workspace / note / entities — mirrors obsidian-pm row menus.
+	 * Context menu: overview / workspace / edit / note — mirrors obsidian-pm row menus.
 	 */
 	private openRowMenu(row: ProjectRow, event: MouseEvent): void {
 		const menu = new Menu();
@@ -298,6 +338,11 @@ export class DashboardView extends ItemView {
 		menu.addItem((item) => {
 			item.setTitle("Open workspace").onClick(() => {
 				void this.plugin.router.openWorkspace(row.file.path);
+			});
+		});
+		menu.addItem((item) => {
+			item.setTitle("Edit project").onClick(() => {
+				new ProjectEditModal(this.app, this.plugin, row, () => this.reload()).open();
 			});
 		});
 		menu.addItem((item) => {
@@ -331,6 +376,15 @@ export class DashboardView extends ItemView {
 
 function stripWiki(value: string): string {
 	return value.replace(/^\[\[/, "").replace(/\]\]$/, "");
+}
+
+function uniqueCustomers(rows: ProjectRow[]): string[] {
+	const set = new Set<string>();
+	for (const row of rows) {
+		const name = stripWiki(row.customer).trim();
+		if (name) set.add(name);
+	}
+	return [...set].sort((a, b) => a.localeCompare(b));
 }
 
 /**
