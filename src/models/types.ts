@@ -606,6 +606,17 @@ export interface DatePatch {
 // ---------------------------------------------------------------------------
 
 /**
+ * Where a Dashboard project row lands when opened.
+ * Mirrors the dual-surface IA from obsidian-pm (`overview` | tasks workspace).
+ */
+export type ProjectSurface = "overview" | "workspace";
+
+/**
+ * Default SubView mode inside the project delivery workspace.
+ */
+export type DefaultWorkspaceView = "table" | "gantt" | "kanban";
+
+/**
  * Persisted plugin settings (`data.json`).
  */
 export interface ProjectsEngineSettings {
@@ -630,6 +641,12 @@ export interface ProjectsEngineSettings {
 	 * Keeps the UI thread responsive on mobile.
 	 */
 	indexerDebounceMs: number;
+	/**
+	 * Dashboard click landing: project overview (governance home) or delivery workspace.
+	 */
+	projectSurface: ProjectSurface;
+	/** Initial Table / Gantt / Board mode when opening the workspace. */
+	defaultView: DefaultWorkspaceView;
 	/** Dynamic field schemas for the five configurable entity kinds. */
 	customFieldSchemas: CustomFieldSchema[];
 }
@@ -649,6 +666,8 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	tasksFolder: "Projects/Tasks",
 	hoursPerManday: 8,
 	indexerDebounceMs: 250,
+	projectSurface: "overview",
+	defaultView: "table",
 	customFieldSchemas: [],
 };
 

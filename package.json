@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-projects-engine",
 	"version": "1.0.0",
-	"description": "Projects Engine — Obsidian plugin for project portfolio, governance, and delivery management in Markdown.",
+	"description": "Projects Engine \u2014 Obsidian plugin for project portfolio, governance, and delivery management in Markdown.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {

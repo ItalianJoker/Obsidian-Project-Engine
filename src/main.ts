@@ -1,8 +1,11 @@
 /**
  * Projects Engine — Obsidian plugin entry point.
  *
- * Registers the creation modal, settings tab, portfolio view, entity CRUD,
- * task editor, scheduler undo stack, and a debounced entity indexer.
+ * Registers the ViewRouter-driven Dashboard → Overview → Workspace funnel
+ * (adapted from [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) IA),
+ * creation modal, settings, entity CRUD, task editor, scheduler undo stack,
+ * and a debounced entity indexer.
+ *
  * Mobile-first: `isDesktopOnly` is false, writes go through `vault.process`,
  * and no Node.js builtins are imported.
  */
@@ -18,15 +21,16 @@ import { ProjectsEngineSettingTab } from "./settings";
 import { openEntityModal } from "./views/EntityModal";
 import { ProjectCreationModal } from "./views/ProjectCreationModal";
 import {
-	GANTT_VIEW_TYPE,
-	GanttView,
-	activateGanttView,
-} from "./views/GanttView";
+	DASHBOARD_VIEW_TYPE,
+	DashboardView,
+} from "./views/DashboardView";
+import { OVERVIEW_VIEW_TYPE, ProjectOverviewView } from "./views/ProjectOverviewView";
 import {
-	PORTFOLIO_VIEW_TYPE,
-	PortfolioView,
-	activatePortfolioView,
-} from "./views/PortfolioView";
+	WORKSPACE_VIEW_TYPE,
+	ProjectWorkspaceView,
+} from "./views/ProjectWorkspaceView";
+import { activateGanttView } from "./views/GanttView";
+import { ViewRouter } from "./views/ViewRouter";
 import { openTaskEditorForActiveProject } from "./views/TaskEditorModal";
 
 /**
@@ -35,6 +39,7 @@ import { openTaskEditorForActiveProject } from "./views/TaskEditorModal";
 export default class ProjectsEnginePlugin extends Plugin {
 	public override settings!: ProjectsEngineSettings;
 	public indexer!: EntityIndexer;
+	public router!: ViewRouter;
 	public readonly scheduler = new Scheduler();
 	public readonly commandStack = new CommandStack();
 
@@ -49,6 +54,7 @@ export default class ProjectsEnginePlugin extends Plugin {
 			() => this.settings,
 			this.settings.indexerDebounceMs,
 		);
+		this.router = new ViewRouter(this);
 
 		this.registerEvent(
 			this.app.vault.on("create", () => this.indexer.scheduleRebuild()),
@@ -66,33 +72,69 @@ export default class ProjectsEnginePlugin extends Plugin {
 			this.app.metadataCache.on("resolved", () => this.indexer.scheduleRebuild()),
 		);
 
-		this.registerView(PORTFOLIO_VIEW_TYPE, (leaf) => new PortfolioView(leaf, this));
-		this.registerView(GANTT_VIEW_TYPE, (leaf) => new GanttView(leaf, this));
+		this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
+		this.registerView(OVERVIEW_VIEW_TYPE, (leaf) => new ProjectOverviewView(leaf, this));
+		this.registerView(WORKSPACE_VIEW_TYPE, (leaf) => new ProjectWorkspaceView(leaf, this));
 
 		this.app.workspace.onLayoutReady(() => {
 			this.indexer.rebuild();
 		});
 
-		this.addRibbonIcon("briefcase", "Projects Engine: Portfolio", () => {
-			void activatePortfolioView(this);
-		});
-		this.addRibbonIcon("calendar-range", "Projects Engine: Gantt", () => {
-			void activateGanttView(this);
+		this.addRibbonIcon("briefcase", "Projects Engine: Projects", () => {
+			void this.router.openDashboard();
 		});
 
 		this.addCommand({
 			id: "open-portfolio",
-			name: "Open portfolio view",
+			name: "Open projects pane",
 			callback: () => {
-				void activatePortfolioView(this);
+				void this.router.openDashboard();
 			},
 		});
 
 		this.addCommand({
 			id: "open-gantt",
-			name: "Open Gantt timeline",
+			name: "Open Gantt for current project",
 			callback: () => {
 				void activateGanttView(this);
+			},
+		});
+
+		this.addCommand({
+			id: "open-workspace",
+			name: "Open workspace for current project",
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file) {
+					return false;
+				}
+				const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+				if (fm?.pe_type !== "project") {
+					return false;
+				}
+				if (!checking) {
+					void this.router.openWorkspace(file.path);
+				}
+				return true;
+			},
+		});
+
+		this.addCommand({
+			id: "open-overview",
+			name: "Open overview for current project",
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file) {
+					return false;
+				}
+				const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+				if (fm?.pe_type !== "project") {
+					return false;
+				}
+				if (!checking) {
+					void this.router.openOverview(file.path);
+				}
+				return true;
 			},
 		});
 
@@ -176,6 +218,15 @@ export default class ProjectsEnginePlugin extends Plugin {
 		if (!Array.isArray(this.settings.customFieldSchemas)) {
 			this.settings.customFieldSchemas = [];
 		}
+		if (this.settings.projectSurface !== "workspace") {
+			this.settings.projectSurface = "overview";
+		}
+		if (
+			this.settings.defaultView !== "gantt" &&
+			this.settings.defaultView !== "kanban"
+		) {
+			this.settings.defaultView = "table";
+		}
 	}
 
 	public async saveSettings(): Promise<void> {
@@ -184,9 +235,14 @@ export default class ProjectsEnginePlugin extends Plugin {
 
 	/**
 	 * Called by the creation modal after a project note is written so PRINCE2
-	 * registers can be scaffolded without coupling the modal to governance I/O.
+	 * registers can be scaffolded and the router can open the new project.
 	 */
-	public async afterProjectCreated(file: TFile, governance: string, projectId: string, name: string): Promise<void> {
+	public async afterProjectCreated(
+		file: TFile,
+		governance: string,
+		projectId: string,
+		name: string,
+	): Promise<void> {
 		if (governance === "PRINCE2") {
 			await scaffoldGovernance({
 				vault: this.app.vault,
@@ -196,6 +252,7 @@ export default class ProjectsEnginePlugin extends Plugin {
 				projectName: name,
 			});
 		}
+		await this.router.openProjectLink(file.path);
 	}
 
 	private registerEntityCommands(): void {

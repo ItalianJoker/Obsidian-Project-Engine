@@ -4,6 +4,8 @@ Obsidian.md plugin for Project Portfolio, Governance, and Delivery Management in
 
 Version **1.0.0** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
 
+Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT); domain features and branding remain Projects Engine. See `NOTICE`.
+
 ---
 
 ## Italiano
@@ -12,13 +14,15 @@ Version **1.0.0** · Plugin id `projects-engine` · Mobile-compatible (`isDeskto
 
 **Projects Engine** gestisce portafoglio, governance e delivery **dentro il vault**, senza database esterni. Ogni cliente, persona, stakeholder, tipo di progetto, tecnologia e task è una nota Markdown (**Entity-as-a-Note**). I collegamenti sono wikilink nativi `[[Nota]]`: Graph View raggruppa i lavori per cliente, stack tecnologico, team e stakeholder.
 
+La navigazione segue un funnel coerente: **Projects (lista) → Overview (home governance) → Workspace (Table / Gantt / Board)** nello stesso spirito di [obsidian-pm](https://github.com/dotpm/obsidian-pm), senza copiarne branding o Local API.
+
 Il plugin include:
 
 - wizard di creazione progetto (desktop e mobile) con Teams URL
 - campi personalizzati configurabili sulle cinque entità catalogo
 - editor task (sotto-task annidati, dipendenze, time log, Undo/Redo)
 - governance **Semplificato** e **PRINCE2**
-- vista portafoglio (tabella / card), Kanban con drag-and-drop, Gantt interattivo
+- Dashboard progetti, Overview, Workspace unificato (Table / Kanban / Gantt)
 - scheduling DAG con cycle detection e cascade delle date
 
 ### Architettura delle entità e Graph View
@@ -75,13 +79,18 @@ Le scritture usano solo `vault.process` (sicure con Obsidian Sync / iCloud).
 - Auto-schedule e cascade: se un blocker slitta, i dipendenti vengono ripianificati conservando la durata
 - Undo/Redo (Command Pattern) su date, dipendenze e status board; persistenza via `vault.process`
 
-### Viste: Portafoglio, Kanban, Gantt
+### Viste: Projects → Overview → Workspace
 
-**Portafoglio** — elenco progetti tabellare; sotto i 720px diventa card/accordion. Toolbar per CRUD entità, nuovo progetto/task, Gantt.
+**Projects (Dashboard)** — elenco progetti con ricerca, filtro governance, menu contestuale (overview / workspace / table / board / Gantt). Sotto i 720px: card/accordion. Toolbar `+ new project` e CRUD entità.
 
-**Kanban (Semplificato)** — colonne Backlog / In Progress / Review / Done. Drag-and-drop HTML5 (desktop) e pointer-capture da handle ≥44×44px (touch). Pulsanti status sempre disponibili come fallback mobile/accessibilità.
+**Overview** — home del progetto: metriche (task, mandays), entità collegate, azioni Teams/URL, pannello governance Semplificato o PRINCE2 (registri / stage), CTA **Open workspace**.
 
-**Gantt** — timeline a barre con zoom **Day / Week / Month**, filtri per progetto, curve SVG per le dipendenze. Click su barra/etichetta apre l’editor task. Ribbon (icona calendario) e comando **Open Gantt timeline**.
+**Workspace** — un’unica leaf con switcher **Table | Gantt | Board**:
+- **Table** — gerarchia task, status, date, remaining mandays
+- **Board (Kanban)** — colonne Backlog / In Progress / Review / Done; DnD HTML5 + pointer-capture; pulsanti status come fallback
+- **Gantt** — barre, zoom Day/Week/Month, curve SVG dipendenze; click apre l’editor
+
+In Settings: **Open projects in** (Overview | Workspace) e **Default workspace view**.
 
 ### Modello dati (frontmatter)
 
@@ -168,8 +177,10 @@ Dopo la sync del vault, abilita **Projects Engine anche sull’app mobile** (Imp
 
 | Comando | Azione |
 | --- | --- |
-| Open portfolio view | Vista portafoglio / Kanban (ribbon valigetta) |
-| Open Gantt timeline | Timeline Gantt (ribbon calendario) |
+| Open projects pane | Dashboard progetti (ribbon valigetta) |
+| Open overview for current project | Home governance del progetto attivo |
+| Open workspace for current project | Workspace Table/Gantt/Board |
+| Open Gantt for current project | Workspace in modalità Gantt |
 | Create project | Wizard di creazione |
 | Create task for active project | Editor task sul progetto/task attivo |
 | Create customer / team member / project type / technology / stakeholder | CRUD Entity-as-a-Note |
@@ -192,13 +203,15 @@ Dopo la sync del vault, abilita **Projects Engine anche sull’app mobile** (Imp
 
 **Projects Engine** manages portfolio, governance, and delivery **inside the vault** — no external database. Every customer, person, stakeholder, project type, technology, and task is a Markdown note (**Entity-as-a-Note**). Relationships are native `[[wikilinks]]`, so Graph View clusters work by customer, technology stack, team, and stakeholder.
 
+Navigation follows a coherent funnel: **Projects (list) → Overview (governance home) → Workspace (Table / Gantt / Board)**, inspired by [obsidian-pm](https://github.com/dotpm/obsidian-pm), without copying its branding or Local API. See `NOTICE`.
+
 The plugin ships with:
 
 - a touch-friendly project creation wizard (including Teams URL)
 - configurable custom fields on the five catalogue entities
 - a task editor (nested subtasks, dependencies, time logs, Undo/Redo)
 - **Semplificato** and **PRINCE2** governance
-- portfolio view (table / cards), Kanban with drag-and-drop, interactive Gantt
+- Projects dashboard, Overview, and a unified Workspace (Table / Kanban / Gantt)
 - DAG scheduling with cycle detection and date cascade
 
 ### Entity architecture and Graph View
@@ -255,13 +268,18 @@ All content writes go through `vault.process` only (safe with Obsidian Sync / iC
 - Auto-schedule and cascade: when a blocker slips, dependents are replaned with duration preserved
 - Undo/Redo (Command Pattern) for dates, dependencies, and board status; persisted via `vault.process`
 
-### Views: Portfolio, Kanban, Gantt
+### Views: Projects → Overview → Workspace
 
-**Portfolio** — tabular project listing; below 720px falls back to cards/accordions. Toolbar for entity CRUD, new project/task, Gantt.
+**Projects (Dashboard)** — searchable project list with governance filter and context menu (overview / workspace / table / board / Gantt). Below 720px: card/accordion. Toolbar: `+ new project` and entity CRUD.
 
-**Kanban (Semplificato)** — Backlog / In Progress / Review / Done columns. HTML5 drag-and-drop (desktop) and pointer-capture from a ≥44×44px handle (touch). Status buttons always available as mobile/accessibility fallback.
+**Overview** — project home: metrics (tasks, mandays), linked entities, Teams/URL actions, Semplificato or PRINCE2 governance panel (registers / stages), **Open workspace** CTA.
 
-**Gantt** — bar timeline with **Day / Week / Month** zoom, per-project filter, SVG dependency curves. Clicking a bar/label opens the task editor. Ribbon (calendar icon) and **Open Gantt timeline** command.
+**Workspace** — one leaf with **Table | Gantt | Board** switcher:
+- **Table** — nested tasks, status, dates, remaining mandays
+- **Board (Kanban)** — Backlog / In Progress / Review / Done; HTML5 + pointer-capture DnD; status buttons as fallback
+- **Gantt** — bars, Day/Week/Month zoom, SVG dependency curves; click opens the editor
+
+Settings: **Open projects in** (Overview | Workspace) and **Default workspace view**.
 
 ### Frontmatter data model
 
@@ -348,8 +366,10 @@ After vault sync, **enable Projects Engine on the mobile app as well** (Settings
 
 | Command | Action |
 | --- | --- |
-| Open portfolio view | Portfolio / Kanban leaf (briefcase ribbon) |
-| Open Gantt timeline | Gantt leaf (calendar ribbon) |
+| Open projects pane | Projects dashboard (briefcase ribbon) |
+| Open overview for current project | Governance home for the active project |
+| Open workspace for current project | Table / Gantt / Board workspace |
+| Open Gantt for current project | Workspace in Gantt mode |
 | Create project | Creation wizard |
 | Create task for active project | Task editor for active project/task |
 | Create customer / team member / project type / technology / stakeholder | Entity-as-a-Note CRUD |
@@ -366,4 +386,4 @@ After vault sync, **enable Projects Engine on the mobile app as well** (Settings
 
 ### License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Navigation/UI architecture portions adapted from [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT © 2026 Stepan Kropachev and dotpm contributors); see [NOTICE](NOTICE).

@@ -50,8 +50,53 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 		this.renderIdSection();
 		this.renderFolderSection();
+		this.renderNavigationSection();
 		this.renderPerformanceSection();
 		this.renderCustomFieldsSection();
+	}
+
+	/**
+	 * Dashboard landing surface and default workspace mode (obsidian-pm-like IA).
+	 */
+	private renderNavigationSection(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Navigation & views" });
+
+		new Setting(containerEl)
+			.setName("Open projects in")
+			.setDesc(
+				"Where a project row opens from the Projects pane: Overview (governance home) or Workspace (Table / Gantt / Board).",
+			)
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("overview", "Overview")
+					.addOption("workspace", "Workspace")
+					.setValue(this.plugin.settings.projectSurface)
+					.onChange(async (value) => {
+						this.plugin.settings.projectSurface =
+							value === "workspace" ? "workspace" : "overview";
+						await this.plugin.saveSettings();
+					});
+				dropdown.selectEl.addClass("pe-touch-target");
+			});
+
+		new Setting(containerEl)
+			.setName("Default workspace view")
+			.setDesc("Initial mode when opening the delivery workspace.")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("table", "Table")
+					.addOption("gantt", "Gantt")
+					.addOption("kanban", "Board")
+					.setValue(this.plugin.settings.defaultView)
+					.onChange(async (value) => {
+						if (value === "gantt" || value === "kanban" || value === "table") {
+							this.plugin.settings.defaultView = value;
+							await this.plugin.saveSettings();
+						}
+					});
+				dropdown.selectEl.addClass("pe-touch-target");
+			});
 	}
 
 	private renderIdSection(): void {
