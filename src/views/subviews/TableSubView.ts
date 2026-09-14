@@ -1,15 +1,26 @@
 /**
- * Nested task table SubView for a single project workspace.
+ * Nested task table SubView — dashboard-style columns (status, priority,
+ * assignee, estimate hours) rather than a plain note dump.
  */
 
 import type { App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
-import type { Task, TaskId } from "../../models/types";
-import { toWikiLink } from "../../models/types";
+import type { Task, TaskId, TaskPriority, TaskStatus } from "../../models/types";
+import { toWikiLink, wikiLinkTarget } from "../../models/types";
+import { formatHours, formatHoursAndGiornate } from "../../services/timeLogs";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { TaskEditorModal } from "../TaskEditorModal";
 import { EmptyState } from "../../ui/EmptyState";
+
+/**
+ * Workspace task filters (combinable with free-text search).
+ */
+export interface TaskDashboardFilters {
+	text: string;
+	status: "all" | TaskStatus;
+	priority: "all" | TaskPriority;
+}
 
 /**
  * Props for {@link TableSubView}.
@@ -19,30 +30,30 @@ export interface TableSubViewProps {
 	plugin: ProjectsEnginePlugin;
 	project: ProjectRow;
 	tasks: Task[];
-	filterText: string;
+	filters: TaskDashboardFilters;
 	container: HTMLElement;
 }
 
 /**
- * Hierarchical task list with indent, status, dates, and remaining mandays.
+ * Hierarchical task dashboard with indent, status chips, priority, hours.
  */
 export class TableSubView implements SubView {
 	constructor(private readonly props: TableSubViewProps) {}
 
 	public render(): void {
-		const { container, tasks, project, filterText, app, plugin } = this.props;
+		const { container, tasks, project, filters, app, plugin } = this.props;
 		container.empty();
 		container.addClass("pe-subview");
 		container.addClass("pe-table-subview");
 
-		const filtered = filterTasks(tasks, filterText);
+		const filtered = filterTasks(tasks, filters);
 		if (filtered.length === 0) {
 			new EmptyState(container)
 				.setTitle(tasks.length === 0 ? "No tasks yet" : "No matching tasks")
 				.setBody(
 					tasks.length === 0
 						? "Add a task to plan delivery for this project."
-						: "Clear the search or change filters.",
+						: "Clear search or change status / priority filters.",
 				)
 				.setAction("+ add task", () => {
 					new TaskEditorModal(
@@ -55,10 +66,20 @@ export class TableSubView implements SubView {
 			return;
 		}
 
-		const table = container.createEl("table", { cls: "pe-table pe-task-table" });
+		const hoursPer = plugin.settings.hoursPerManday;
+		const table = container.createEl("table", { cls: "pe-table pe-task-table pe-task-dashboard" });
 		const thead = table.createEl("thead");
 		const head = thead.createEl("tr");
-		for (const label of ["Task", "Status", "Start", "End", "Remaining", ""]) {
+		for (const label of [
+			"Task",
+			"Status",
+			"Priority",
+			"Assignee",
+			"Estimate",
+			"Remaining",
+			"Dates",
+			"",
+		]) {
 			head.createEl("th", { text: label });
 		}
 		const tbody = table.createEl("tbody");
@@ -91,15 +112,34 @@ export class TableSubView implements SubView {
 					task.parentId,
 				).open();
 			});
-			tr.createEl("td", { text: task.status, attr: { "data-label": "Status" } });
-			tr.createEl("td", {
-				text: task.startDate ?? "—",
-				attr: { "data-label": "Start" },
+
+			const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
+			statusTd.createSpan({
+				text: task.status,
+				cls: `pe-status-chip pe-status-chip--task pe-status--${task.status}`,
 			});
-			tr.createEl("td", { text: task.endDate ?? "—", attr: { "data-label": "End" } });
+
+			const priorityTd = tr.createEl("td", { attr: { "data-label": "Priority" } });
+			priorityTd.createSpan({
+				text: task.priority === "none" ? "—" : task.priority,
+				cls: `pe-priority-chip pe-priority--${task.priority}`,
+			});
+
 			tr.createEl("td", {
-				text: `${task.remainingMandays.toFixed(1)} md`,
+				text: task.assignee ? wikiLinkTarget(task.assignee) : "—",
+				attr: { "data-label": "Assignee" },
+			});
+			tr.createEl("td", {
+				text: formatHoursAndGiornate(task.estimateHours, hoursPer),
+				attr: { "data-label": "Estimate" },
+			});
+			tr.createEl("td", {
+				text: formatHours(task.remainingHours),
 				attr: { "data-label": "Remaining" },
+			});
+			tr.createEl("td", {
+				text: `${task.startDate ?? "—"} → ${task.endDate ?? "—"}`,
+				attr: { "data-label": "Dates" },
 			});
 			const actions = tr.createEl("td", { attr: { "data-label": "Actions" } });
 			const sub = actions.createEl("button", {
@@ -129,13 +169,19 @@ export class TableSubView implements SubView {
 	}
 }
 
-function filterTasks(tasks: Task[], text: string): Task[] {
-	const q = text.trim().toLowerCase();
-	if (!q) {
-		return tasks;
-	}
+function filterTasks(tasks: Task[], filters: TaskDashboardFilters): Task[] {
+	const q = filters.text.trim().toLowerCase();
 	return tasks.filter((task) => {
-		const hay = `${task.id} ${task.title} ${task.status}`.toLowerCase();
+		if (filters.status !== "all" && task.status !== filters.status) {
+			return false;
+		}
+		if (filters.priority !== "all" && task.priority !== filters.priority) {
+			return false;
+		}
+		if (!q) {
+			return true;
+		}
+		const hay = `${task.id} ${task.title} ${task.status} ${task.priority} ${task.assignee ?? ""}`.toLowerCase();
 		return hay.includes(q);
 	});
 }

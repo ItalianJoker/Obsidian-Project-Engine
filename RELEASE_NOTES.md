@@ -1,5 +1,43 @@
 # Release notes — Projects Engine
 
+## 1.1.0 — Dotpm-parity UX overhaul (§7)
+
+### Italiano
+
+#### Usabilità (§7)
+
+- **Spacing / chrome** — densità toolbar/header/content allineata a obsidian-pm; meta/tag compacti (chip) che non dominano la vista.
+- **Modello tempo** — stime task e time log in **ore** (anche frazionarie); budget progetto in **giornate**; conversione **1 g = 8 h** (Settings); UI duale ore↔giornate.
+- **Filtri portfolio** — **Governance** e **Customer** combinabili, touch-friendly.
+- **Status progetto** — palette configurabile in Settings (add/rename/reorder/archive); visibile in portfolio; editabile in Overview e Edit project.
+- **Overview stile dotpm** — glyph, meta compact, metriche, CTA **Edit project** / Open workspace.
+- **Task dashboard** — tabella con status, priority, assignee, estimate/remaining ore, filtri status/priority (non “solo una nota”).
+- Form/chip/picker rifiniti (create/edit project e task).
+
+#### Provenienza
+
+Refactor **in place** sull’IA già rebase-ata da [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT) — non un restart completo del codice. Dominio PE invariato. Vedi `NOTICE`.
+
+---
+
+### English
+
+#### Usability (§7)
+
+- **Spacing / chrome** — toolbar/header/content density closer to obsidian-pm; compact meta/tag chips that do not dominate the view.
+- **Time model** — task estimates and time logs in **hours** (fractions OK); project budget in **giornate**; conversion **1 day = 8 h** (Settings); dual-unit UI.
+- **Portfolio filters** — combinable **Governance** and **Customer**, touch-friendly.
+- **Project status** — configurable palette in Settings (add/rename/reorder/archive); shown on portfolio; editable on Overview and Edit project.
+- **Dotpm-like Overview** — glyph, compact meta, metrics, **Edit project** / Open workspace CTAs.
+- **Task dashboard** — table with status, priority, assignee, estimate/remaining hours, status/priority filters (not “just a note”).
+- Polished forms/chips/pickers (create/edit project and task).
+
+#### Provenance
+
+**In-place** refactor on the IA already rebased from [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT) — not a full codebase restart. PE domain unchanged. See `NOTICE`.
+
+---
+
 ## 1.0.0 — Full product + UX rebase on obsidian-pm IA
 
 ### Italiano

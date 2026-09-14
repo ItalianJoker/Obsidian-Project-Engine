@@ -9,9 +9,9 @@ Portions of the navigation and UI architecture in Projects Engine are adapted fr
 - License: MIT
 - Copyright: © 2026 Stepan Kropachev and dotpm contributors
 
-Adapted patterns include (non-exhaustive): ViewRouter / in-leaf navigation, Dashboard → Overview → Workspace funnel, ViewSwitcher segmented control, EmptyState fluent panel, toolbar / project-header chrome scaffold, and SubView hosting of Table / Gantt / Board modes.
+Adapted patterns include (non-exhaustive): ViewRouter / in-leaf navigation, Dashboard → Overview → Workspace funnel, ViewSwitcher segmented control, EmptyState fluent panel, toolbar / project-header chrome scaffold, SubView hosting of Table / Gantt / Board modes, and settings status palette / reorder UX patterns.
 
-Projects Engine keeps its own plugin id (`projects-engine`), display name, branding, frontmatter namespace (`pe_type` / PE domain keys), and domain features (governance models, stakeholders, custom catalogue fields, Teams URL, PRINCE2 registers, etc.). Local API / MCP / CLI packages, funding URLs, and dotpm branding were **not** copied.
+Projects Engine keeps its own plugin id (`projects-engine`), display name, branding, frontmatter namespace (`pe_type` / PE domain keys), and domain features (governance models, stakeholders, custom catalogue fields, Teams URL, PRINCE2 registers, hours↔giornate time model, configurable project statuses, etc.). Local API / MCP / CLI packages, funding URLs, and dotpm branding were **not** copied.
 
 The MIT license text for the upstream project:
 

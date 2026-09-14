@@ -10,7 +10,7 @@
 
 import { ExtraButtonComponent, ItemView, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
-import type { Task } from "../models/types";
+import type { Task, TaskPriority, TaskStatus } from "../models/types";
 import { toWikiLink } from "../models/types";
 import { loadAllTasks } from "../services/taskIo";
 import { EmptyState } from "../ui/EmptyState";
@@ -19,7 +19,7 @@ import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows"
 import type { SubView } from "./SubView";
 import { GanttSubView } from "./subviews/GanttSubView";
 import { KanbanSubView } from "./subviews/KanbanSubView";
-import { TableSubView } from "./subviews/TableSubView";
+import { TableSubView, type TaskDashboardFilters } from "./subviews/TableSubView";
 import { TaskEditorModal } from "./TaskEditorModal";
 
 /** Registered ItemView type id. */
@@ -36,15 +36,38 @@ interface WorkspaceState {
 	[key: string]: unknown;
 }
 
+const TASK_STATUS_FILTERS: Array<"all" | TaskStatus> = [
+	"all",
+	"backlog",
+	"in-progress",
+	"review",
+	"done",
+	"blocked",
+	"cancelled",
+];
+
+const TASK_PRIORITY_FILTERS: Array<"all" | TaskPriority> = [
+	"all",
+	"none",
+	"low",
+	"medium",
+	"high",
+	"urgent",
+];
+
 /**
- * Host leaf: toolbar + search + SubView body for one project.
+ * Host leaf: toolbar + search + filter chips + SubView body for one project.
  */
 export class ProjectWorkspaceView extends ItemView {
 	private filePath: string | null = null;
 	private project: ProjectRow | null = null;
 	private tasks: Task[] = [];
 	private mode: WorkspaceViewMode;
-	private filterText = "";
+	private filters: TaskDashboardFilters = {
+		text: "",
+		status: "all",
+		priority: "all",
+	};
 	private zoomId: "day" | "week" | "month" = "week";
 	private subview: SubView | null = null;
 	private toolbarEl!: HTMLElement;
@@ -255,11 +278,56 @@ export class ProjectWorkspaceView extends ItemView {
 				"aria-label": "Filter tasks",
 			},
 		});
-		search.value = this.filterText;
+		search.value = this.filters.text;
 		search.addEventListener("input", () => {
-			this.filterText = search.value;
+			this.filters.text = search.value;
 			this.renderCurrentView();
 		});
+
+		const status = primary.createEl("select", {
+			cls: "pe-input pe-touch-target pe-header-filter",
+			attr: { "aria-label": "Filter by status" },
+		});
+		for (const value of TASK_STATUS_FILTERS) {
+			status.createEl("option", {
+				text: value === "all" ? "All statuses" : value,
+				attr: { value },
+			});
+		}
+		status.value = this.filters.status;
+		status.addEventListener("change", () => {
+			this.filters.status = status.value as TaskDashboardFilters["status"];
+			this.renderCurrentView();
+		});
+
+		const priority = primary.createEl("select", {
+			cls: "pe-input pe-touch-target pe-header-filter",
+			attr: { "aria-label": "Filter by priority" },
+		});
+		for (const value of TASK_PRIORITY_FILTERS) {
+			priority.createEl("option", {
+				text: value === "all" ? "All priorities" : value,
+				attr: { value },
+			});
+		}
+		priority.value = this.filters.priority;
+		priority.addEventListener("change", () => {
+			this.filters.priority = priority.value as TaskDashboardFilters["priority"];
+			this.renderCurrentView();
+		});
+
+		if (this.filters.status !== "all" || this.filters.priority !== "all" || this.filters.text) {
+			const clear = primary.createEl("button", {
+				text: "Clear filters",
+				cls: "pe-secondary pe-touch-target",
+				attr: { type: "button" },
+			});
+			clear.addEventListener("click", () => {
+				this.filters = { text: "", status: "all", priority: "all" };
+				this.renderChrome();
+				this.renderCurrentView();
+			});
+		}
 	}
 
 	private renderCurrentView(): void {
@@ -276,13 +344,23 @@ export class ProjectWorkspaceView extends ItemView {
 			void this.refresh();
 		};
 
+		const scopedTasks = this.tasks.filter((task) => {
+			if (this.filters.status !== "all" && task.status !== this.filters.status) {
+				return false;
+			}
+			if (this.filters.priority !== "all" && task.priority !== this.filters.priority) {
+				return false;
+			}
+			return true;
+		});
+
 		if (this.mode === "table") {
 			this.subview = new TableSubView({
 				app: this.app,
 				plugin: this.plugin,
 				project,
 				tasks: this.tasks,
-				filterText: this.filterText,
+				filters: { ...this.filters },
 				container: this.bodyEl,
 			});
 		} else if (this.mode === "gantt") {
@@ -290,8 +368,8 @@ export class ProjectWorkspaceView extends ItemView {
 				app: this.app,
 				plugin: this.plugin,
 				project,
-				tasks: this.tasks,
-				filterText: this.filterText,
+				tasks: scopedTasks,
+				filterText: this.filters.text,
 				container: this.bodyEl,
 				zoomId: this.zoomId,
 				onZoomChange: (zoom) => {
@@ -304,8 +382,8 @@ export class ProjectWorkspaceView extends ItemView {
 				app: this.app,
 				plugin: this.plugin,
 				project,
-				tasks: this.tasks,
-				filterText: this.filterText,
+				tasks: scopedTasks,
+				filterText: this.filters.text,
 				container: this.bodyEl,
 				onChanged,
 			});

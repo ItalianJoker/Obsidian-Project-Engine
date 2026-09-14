@@ -13,14 +13,23 @@ import type {
 	SchedulableTask,
 	Task,
 	TaskId,
+	TaskPriority,
 	TaskStatus,
 	TimeLog,
 	WikiLink,
 } from "../models/types";
 import { toWikiLink, wikiLinkTarget } from "../models/types";
 import { buildMarkdownNote, splitFrontmatter } from "./frontmatter";
-import { computeMandayRollup, parseTimeLogs, serialiseTimeLogs } from "./timeLogs";
+import {
+	computeEffortRollup,
+	hoursToGiornate,
+	parseTimeLogs,
+	resolveEstimateHours,
+	serialiseTimeLogs,
+} from "./timeLogs";
 import { joinVaultPath, noteExists, processNote, sanitiseNoteBasename, writeNoteAtomic } from "./vaultIo";
+
+const TASK_PRIORITIES: TaskPriority[] = ["none", "low", "medium", "high", "urgent"];
 
 /**
  * Mutable draft used by the task editor before persistence.
@@ -37,9 +46,11 @@ export interface TaskDraft {
 	startDate: IsoDate | null;
 	endDate: IsoDate | null;
 	durationDays: number;
-	estimateMandays: number;
+	/** Planned effort in hours (fractions OK). */
+	estimateHours: number;
 	timeLogs: TimeLog[];
 	status: TaskStatus;
+	priority: TaskPriority;
 	isMilestone: boolean;
 	isStageBoundary: boolean;
 	stageId?: string;
@@ -96,9 +107,10 @@ export function blankTaskDraft(args: {
 		startDate: null,
 		endDate: null,
 		durationDays: 1,
-		estimateMandays: 0,
+		estimateHours: 0,
 		timeLogs: [],
 		status: "backlog",
+		priority: "none",
 		isMilestone: false,
 		isStageBoundary: false,
 		stageId: args.stageId,
@@ -131,11 +143,8 @@ export function parseTaskNote(
 				? id.slice(0, id.indexOf("#"))
 				: "";
 	const timeLogs = parseTimeLogs(data.time_logs);
-	const estimate =
-		typeof data.estimate_mandays === "number"
-			? data.estimate_mandays
-			: Number(data.estimate_mandays) || 0;
-	const rollup = computeMandayRollup(estimate, timeLogs, hoursPerManday);
+	const estimateHours = resolveEstimateHours(data, hoursPerManday);
+	const rollup = computeEffortRollup(estimateHours, timeLogs, hoursPerManday);
 
 	return {
 		id,
@@ -152,11 +161,15 @@ export function parseTaskNote(
 			typeof data.duration_days === "number"
 				? data.duration_days
 				: Number(data.duration_days) || 0,
-		estimateMandays: estimate,
-		actualMandays: rollup.actualMandays,
-		remainingMandays: rollup.remainingMandays,
+		estimateHours,
+		estimateMandays: rollup.estimateGiornate,
+		actualMandays: rollup.actualGiornate,
+		remainingMandays: rollup.remainingGiornate,
+		actualHours: rollup.actualHours,
+		remainingHours: rollup.remainingHours,
 		timeLogs,
 		status: (typeof data.status === "string" ? data.status : "backlog") as TaskStatus,
+		priority: parsePriority(data.priority),
 		isMilestone: data.is_milestone === true,
 		isStageBoundary: data.is_stage_boundary === true,
 		stageId: typeof data.stage_id === "string" ? data.stage_id : undefined,
@@ -174,7 +187,7 @@ export function parseTaskNote(
  * Convert a {@link Task} / {@link TaskDraft} into YAML + body Markdown.
  */
 export function buildTaskMarkdown(draft: TaskDraft, hoursPerManday: number): string {
-	const rollup = computeMandayRollup(draft.estimateMandays, draft.timeLogs, hoursPerManday);
+	const rollup = computeEffortRollup(draft.estimateHours, draft.timeLogs, hoursPerManday);
 	const frontmatter: Record<string, unknown> = {
 		pe_type: "task",
 		id: draft.id,
@@ -188,11 +201,16 @@ export function buildTaskMarkdown(draft: TaskDraft, hoursPerManday: number): str
 		start_date: draft.startDate,
 		end_date: draft.endDate,
 		duration_days: draft.durationDays,
-		estimate_mandays: draft.estimateMandays,
-		actual_mandays: rollup.actualMandays,
-		remaining_mandays: rollup.remainingMandays,
+		estimate_hours: draft.estimateHours,
+		// Legacy giornate mirror for older notes / external tools.
+		estimate_mandays: hoursToGiornate(draft.estimateHours, hoursPerManday),
+		actual_hours: rollup.actualHours,
+		remaining_hours: rollup.remainingHours,
+		actual_mandays: rollup.actualGiornate,
+		remaining_mandays: rollup.remainingGiornate,
 		time_logs: serialiseTimeLogs(draft.timeLogs),
 		status: draft.status,
+		priority: draft.priority,
 		is_milestone: draft.isMilestone,
 		is_stage_boundary: draft.isStageBoundary,
 		custom_fields: draft.customFields,
@@ -324,6 +342,13 @@ export function uniqueTaskPath(vault: Vault, preferred: string): string {
 		i += 1;
 	}
 	return `${base}-${i}.md`;
+}
+
+function parsePriority(raw: unknown): TaskPriority {
+	if (typeof raw === "string" && (TASK_PRIORITIES as string[]).includes(raw)) {
+		return raw as TaskPriority;
+	}
+	return "none";
 }
 
 function readStringArray(raw: unknown): string[] {

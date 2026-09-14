@@ -214,9 +214,30 @@ export default class ProjectsEnginePlugin extends Plugin {
 	 */
 	public async loadSettings(): Promise<void> {
 		const saved = (await this.loadData()) as Partial<ProjectsEngineSettings> | null;
-		this.settings = { ...DEFAULT_SETTINGS, ...saved };
-		if (!Array.isArray(this.settings.customFieldSchemas)) {
-			this.settings.customFieldSchemas = [];
+		this.settings = {
+			...DEFAULT_SETTINGS,
+			...saved,
+			projectStatuses: DEFAULT_SETTINGS.projectStatuses.map((item) => ({ ...item })),
+			customFieldSchemas: [],
+		};
+		if (saved?.customFieldSchemas && Array.isArray(saved.customFieldSchemas)) {
+			this.settings.customFieldSchemas = saved.customFieldSchemas;
+		}
+		if (saved?.projectStatuses && Array.isArray(saved.projectStatuses) && saved.projectStatuses.length > 0) {
+			this.settings.projectStatuses = saved.projectStatuses
+				.filter((item) => item && typeof item.id === "string" && typeof item.label === "string")
+				.map((item) => ({
+					id: item.id.trim(),
+					label: item.label.trim() || item.id,
+					color: typeof item.color === "string" ? item.color : undefined,
+					archived: item.archived === true,
+				}))
+				.filter((item) => item.id.length > 0);
+		}
+		if (this.settings.projectStatuses.length === 0) {
+			this.settings.projectStatuses = DEFAULT_SETTINGS.projectStatuses.map((item) => ({
+				...item,
+			}));
 		}
 		if (this.settings.projectSurface !== "workspace") {
 			this.settings.projectSurface = "overview";
@@ -226,6 +247,9 @@ export default class ProjectsEnginePlugin extends Plugin {
 			this.settings.defaultView !== "kanban"
 		) {
 			this.settings.defaultView = "table";
+		}
+		if (!Number.isFinite(this.settings.hoursPerManday) || this.settings.hoursPerManday <= 0) {
+			this.settings.hoursPerManday = 8;
 		}
 	}
 

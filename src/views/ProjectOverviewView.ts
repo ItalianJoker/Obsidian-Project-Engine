@@ -11,17 +11,25 @@
 
 import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
-import { toWikiLink } from "../models/types";
+import { projectStatusLabel, toWikiLink } from "../models/types";
 import {
 	SEMPLIFICATO_LABELS,
 	createPrince2Stage,
 	ensurePrince2Registers,
 	readProjectStages,
 } from "../services/governance";
+import { setProjectStatus } from "../services/projectIo";
+import {
+	formatGiornate,
+	formatHours,
+	formatHoursAndGiornate,
+	giornateToHours,
+} from "../services/timeLogs";
 import { isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
 import { EmptyState } from "../ui/EmptyState";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
 import { loadAllTasks } from "../services/taskIo";
+import { ProjectEditModal } from "./ProjectEditModal";
 import { TaskEditorModal } from "./TaskEditorModal";
 
 /** Registered ItemView type id. */
@@ -39,7 +47,9 @@ export class ProjectOverviewView extends ItemView {
 	private filePath: string | null = null;
 	private project: ProjectRow | null = null;
 	private taskCount = 0;
-	private remainingMd = 0;
+	private remainingHours = 0;
+	private loggedHours = 0;
+	private estimateHours = 0;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -100,7 +110,9 @@ export class ProjectOverviewView extends ItemView {
 		);
 		const mine = tasks.filter((task) => task.projectId === this.project!.id);
 		this.taskCount = mine.length;
-		this.remainingMd = mine.reduce((sum, task) => sum + task.remainingMandays, 0);
+		this.remainingHours = mine.reduce((sum, task) => sum + task.remainingHours, 0);
+		this.loggedHours = mine.reduce((sum, task) => sum + task.actualHours, 0);
+		this.estimateHours = mine.reduce((sum, task) => sum + task.estimateHours, 0);
 		this.render();
 		(this.leaf as WorkspaceLeaf & { updateHeader?: () => void }).updateHeader?.();
 	}
@@ -142,21 +154,81 @@ export class ProjectOverviewView extends ItemView {
 		crumbs.createSpan({ text: project.name });
 
 		const hero = root.createDiv({ cls: "pe-overview-hero" });
-		hero.createEl("h1", { text: project.name, cls: "pe-overview-title" });
-		hero.createEl("p", {
-			cls: "pe-help",
-			text: `${project.id} · ${project.governance} · ${project.status}`,
-		});
+		const titleRow = hero.createDiv({ cls: "pe-overview-title-row" });
+		titleRow.createSpan({ text: "◇", cls: "pe-overview-glyph" });
+		titleRow.createEl("h1", { text: project.name, cls: "pe-overview-title" });
 
+		const meta = hero.createDiv({ cls: "pe-overview-meta pe-meta-compact" });
+		meta.createSpan({ text: project.id, cls: "pe-meta-chip" });
+		meta.createSpan({ text: project.governance, cls: "pe-meta-chip" });
+		const statusChip = meta.createSpan({
+			text: projectStatusLabel(this.plugin.settings.projectStatuses, project.status),
+			cls: "pe-status-chip pe-meta-chip",
+		});
+		const statusOpt = this.plugin.settings.projectStatuses.find((s) => s.id === project.status);
+		if (statusOpt?.color) {
+			statusChip.style.setProperty("--pe-status-color", statusOpt.color);
+		}
+		if (project.customer) {
+			meta.createSpan({ text: stripWiki(project.customer), cls: "pe-meta-chip" });
+		}
+
+		const hoursPer = this.plugin.settings.hoursPerManday;
+		const budgetHours = giornateToHours(project.assignedDays, hoursPer);
 		const metrics = root.createDiv({ cls: "pe-metric-strip" });
 		this.metric(metrics, "Tasks", String(this.taskCount));
-		this.metric(metrics, "Budget (md)", String(project.assignedDays));
-		this.metric(metrics, "Actual (md)", String(project.actualDays));
-		this.metric(metrics, "Remaining (md)", this.remainingMd.toFixed(1));
+		this.metric(metrics, "Budget", `${formatGiornate(project.assignedDays)}\n${formatHours(budgetHours)}`);
+		this.metric(metrics, "Logged", formatHoursAndGiornate(this.loggedHours, hoursPer));
+		this.metric(metrics, "Remaining", formatHoursAndGiornate(this.remainingHours, hoursPer));
+		this.metric(metrics, "Est. tasks", formatHours(this.estimateHours));
+
+		const statusRow = root.createDiv({ cls: "pe-overview-status-row pe-inline-row" });
+		statusRow.createEl("label", { text: "Status", cls: "pe-label" });
+		const statusSelect = statusRow.createEl("select", {
+			cls: "pe-input pe-touch-target",
+			attr: { "aria-label": "Project status" },
+		});
+		const options = this.plugin.settings.projectStatuses.filter(
+			(item) => !item.archived || item.id === project.status,
+		);
+		for (const option of options) {
+			statusSelect.createEl("option", {
+				text: option.label,
+				attr: { value: option.id },
+			});
+		}
+		if (!options.some((item) => item.id === project.status)) {
+			statusSelect.createEl("option", {
+				text: project.status,
+				attr: { value: project.status },
+			});
+		}
+		statusSelect.value = project.status;
+		statusSelect.addEventListener("change", () => {
+			void (async () => {
+				try {
+					await setProjectStatus(this.app.vault, project.file, statusSelect.value);
+					new Notice(`Status → ${projectStatusLabel(this.plugin.settings.projectStatuses, statusSelect.value)}`);
+					await this.loadProject();
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					new Notice(`Could not update status: ${message}`);
+				}
+			})();
+		});
+		statusRow.createEl("span", {
+			cls: "pe-help",
+			text: `1 giornata = ${hoursPer} h`,
+		});
 
 		const actions = root.createDiv({ cls: "pe-overview-actions pe-inline-row" });
 		this.cta(actions, "Open workspace", true, () => {
 			void this.plugin.router.openWorkspace(project.file.path, this.leaf);
+		});
+		this.cta(actions, "Edit project", false, () => {
+			new ProjectEditModal(this.app, this.plugin, project, () => {
+				void this.loadProject();
+			}).open();
 		});
 		this.cta(actions, "+ add task", false, () => {
 			new TaskEditorModal(
@@ -190,7 +262,10 @@ export class ProjectOverviewView extends ItemView {
 
 	private metric(parent: HTMLElement, label: string, value: string): void {
 		const cell = parent.createDiv({ cls: "pe-metric" });
-		cell.createDiv({ text: value, cls: "pe-metric-value" });
+		const valueEl = cell.createDiv({ cls: "pe-metric-value" });
+		for (const line of value.split("\n")) {
+			valueEl.createDiv({ text: line });
+		}
 		cell.createDiv({ text: label, cls: "pe-metric-label" });
 	}
 
