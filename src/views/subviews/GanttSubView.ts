@@ -13,7 +13,7 @@ import { addDays, endFromStart, formatIsoDate, parseIsoDate } from "../../engine
 import { EmptyState } from "../../ui/EmptyState";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
-import { TaskEditorModal } from "../TaskEditorModal";
+import { openTaskEditor } from "../TaskEditor";
 
 const ZOOM_PRESETS: { id: "day" | "week" | "month"; label: string; pxPerDay: number }[] = [
 	{ id: "day", label: "Day", pxPerDay: 28 },
@@ -76,12 +76,10 @@ export class GanttSubView implements SubView {
 					"Create tasks, set start dates (or run Auto-schedule in the task editor), then refresh.",
 				)
 				.setAction("+ add task", () => {
-					new TaskEditorModal(
-						this.props.app,
-						this.props.plugin,
-						project.id,
-						toWikiLink(project.file.basename),
-					).open();
+					void openTaskEditor(this.props.plugin, {
+						projectId: project.id,
+						projectLink: toWikiLink(project.file.basename),
+					});
 				});
 			return;
 		}
@@ -292,15 +290,13 @@ export class GanttSubView implements SubView {
 	}
 
 	private openTask(task: Task): void {
-		const { app, plugin, project } = this.props;
-		new TaskEditorModal(
-			app,
-			plugin,
-			project.id,
-			toWikiLink(project.file.basename),
-			task,
-			task.parentId,
-		).open();
+		const { plugin, project } = this.props;
+		void openTaskEditor(plugin, {
+					projectId: project.id,
+					projectLink: toWikiLink(project.file.basename),
+					existing: task,
+					parentId: task.parentId,
+				});
 	}
 }
 

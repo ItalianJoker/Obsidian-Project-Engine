@@ -15,7 +15,7 @@ import type { GovernanceModel } from "../models/types";
 import { projectStatusLabel } from "../models/types";
 import { EmptyState } from "../ui/EmptyState";
 import { openEntityModal } from "./EntityModal";
-import { ProjectEditModal } from "./ProjectEditModal";
+import { openProjectEditor } from "./ProjectEditView";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
 import { giornateToHours, formatGiornate, formatHours } from "../services/timeLogs";
 
@@ -342,7 +342,7 @@ export class DashboardView extends ItemView {
 		});
 		menu.addItem((item) => {
 			item.setTitle("Edit project").onClick(() => {
-				new ProjectEditModal(this.app, this.plugin, row, () => this.reload()).open();
+				void openProjectEditor(this.plugin, row, { onSaved: () => this.reload() });
 			});
 		});
 		menu.addItem((item) => {

@@ -1217,3 +1217,56 @@
 	}
 }
 
+
+/* —— Project edit leaf (obsidian-pm ProjectEditView parity) —— */
+.pe-edit {
+	padding: 16px 20px 40px;
+	overflow: auto;
+	max-width: 720px;
+	margin-inline: auto;
+}
+
+.pe-edit .pe-crumbs {
+	margin-bottom: 8px;
+}
+
+/* —— Task editor tab surface —— */
+.pe-te-view {
+	padding: 12px 16px 32px;
+	overflow: auto;
+}
+
+.pe-te-surface.pe-te-view {
+	max-width: 720px;
+	margin-inline: auto;
+}
+
+/* —— Release notes leaf —— */
+.pe-release-notes {
+	padding: 24px 28px 48px;
+	overflow: auto;
+}
+
+.pe-release-notes-page {
+	max-width: var(--file-line-width, 700px);
+	margin-inline: auto;
+}
+
+.pe-release-notes-release {
+	padding-block: 20px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.pe-release-notes-release h2 {
+	margin: 0;
+	line-height: var(--line-height-tight);
+}
+
+.pe-release-notes-release .markdown-rendered {
+	margin-top: 16px;
+}
+
+.pe-release-notes-link {
+	display: inline-block;
+	margin-top: 16px;
+}

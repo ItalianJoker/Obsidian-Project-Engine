@@ -14,7 +14,7 @@ Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.co
 
 **Projects Engine** gestisce portafoglio, governance e delivery **dentro il vault**, senza database esterni. Ogni cliente, persona, stakeholder, tipo di progetto, tecnologia e task è una nota Markdown (**Entity-as-a-Note**). I collegamenti sono wikilink nativi `[[Nota]]`: Graph View raggruppa i lavori per cliente, stack tecnologico, team e stakeholder.
 
-La navigazione segue un funnel coerente: **Projects (lista) → Overview (home governance) → Workspace (Table / Gantt / Board)** nello stesso spirito di [obsidian-pm](https://github.com/dotpm/obsidian-pm), senza copiarne branding o Local API.
+La navigazione segue un funnel coerente: **Projects (lista) → Overview (home governance) → Edit (leaf) → Workspace (Table / Gantt / Board)**, più **Task** (modale o tab) e **Release notes**, nello stesso spirito di [obsidian-pm](https://github.com/dotpm/obsidian-pm), senza copiarne branding o Local API.
 
 Il plugin include:
 
@@ -213,7 +213,7 @@ Dopo la sync del vault, abilita **Projects Engine anche sull’app mobile** (Imp
 
 **Projects Engine** manages portfolio, governance, and delivery **inside the vault** — no external database. Every customer, person, stakeholder, project type, technology, and task is a Markdown note (**Entity-as-a-Note**). Relationships are native `[[wikilinks]]`, so Graph View clusters work by customer, technology stack, team, and stakeholder.
 
-Navigation follows a coherent funnel: **Projects (list) → Overview (governance home) → Workspace (Table / Gantt / Board)**, inspired by [obsidian-pm](https://github.com/dotpm/obsidian-pm), without copying its branding or Local API. See `NOTICE`.
+Navigation follows a coherent funnel: **Projects (list) → Overview (governance home) → Edit (leaf) → Workspace (Table / Gantt / Board)**, plus **Task** (modal or tab) and **Release notes**, inspired by [obsidian-pm](https://github.com/dotpm/obsidian-pm), without copying its branding or Local API. See `NOTICE`.
 
 The plugin ships with:
 
@@ -221,7 +221,7 @@ The plugin ships with:
 - configurable custom fields on the five catalogue entities
 - a task editor (nested subtasks, dependencies, time logs, Undo/Redo)
 - **Semplificato** and **PRINCE2** governance
-- Projects dashboard, Overview, and a unified Workspace (Table / Kanban / Gantt)
+- Projects dashboard, Overview, Project Edit (leaf), unified Workspace (Table / Kanban / Gantt), Task editor (modal or tab), Release notes
 - DAG scheduling with cycle detection and date cascade
 
 ### Entity architecture and Graph View

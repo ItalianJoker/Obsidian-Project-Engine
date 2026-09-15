@@ -19,7 +19,7 @@ import { EmptyState } from "../../ui/EmptyState";
 import { wireKanbanCardDnD, wireKanbanColumnDrop } from "../kanbanDnD";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
-import { TaskEditorModal } from "../TaskEditorModal";
+import { openTaskEditor } from "../TaskEditor";
 
 export interface KanbanSubViewProps {
 	app: App;
@@ -38,7 +38,7 @@ export class KanbanSubView implements SubView {
 	constructor(private readonly props: KanbanSubViewProps) {}
 
 	public render(): void {
-		const { container, project, tasks, filterText, app, plugin, onChanged } = this.props;
+		const { container, project, tasks, filterText, plugin, onChanged } = this.props;
 		container.empty();
 		container.addClass("pe-subview");
 		container.addClass("pe-kanban-subview");
@@ -57,12 +57,10 @@ export class KanbanSubView implements SubView {
 				.setTitle("Board is empty")
 				.setBody("Add tasks, then drag cards between columns (or use status buttons).")
 				.setAction("+ add task", () => {
-					new TaskEditorModal(
-						app,
-						plugin,
-						project.id,
-						toWikiLink(project.file.basename),
-					).open();
+					void openTaskEditor(plugin, {
+					projectId: project.id,
+					projectLink: toWikiLink(project.file.basename),
+				});
 				});
 			return;
 		}
@@ -123,14 +121,12 @@ export class KanbanSubView implements SubView {
 					attr: { type: "button" },
 				});
 				edit.addEventListener("click", () => {
-					new TaskEditorModal(
-						app,
-						plugin,
-						project.id,
-						toWikiLink(project.file.basename),
-						task,
-						task.parentId,
-					).open();
+					void openTaskEditor(plugin, {
+					projectId: project.id,
+					projectLink: toWikiLink(project.file.basename),
+					existing: task,
+					parentId: task.parentId,
+				});
 				});
 				for (const target of SEMPLIFICATO_STATUSES) {
 					if (target === status) continue;
