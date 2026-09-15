@@ -22,7 +22,7 @@ Il plugin include:
 - campi personalizzati configurabili sulle cinque entità catalogo
 - editor task (sotto-task annidati, dipendenze, time log, Undo/Redo)
 - governance **Semplificato** e **PRINCE2**
-- Dashboard progetti, Overview, Workspace unificato (Table / Kanban / Gantt)
+- Dashboard progetti, Overview, Edit progetto (leaf), Workspace unificato (Table / Kanban / Gantt), editor Task (modale o tab), Release notes
 - scheduling DAG con cycle detection e cascade delle date
 
 ### Architettura delle entità e Graph View
