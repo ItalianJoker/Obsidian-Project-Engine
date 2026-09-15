@@ -29,8 +29,8 @@ import { isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
 import { EmptyState } from "../ui/EmptyState";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
 import { loadAllTasks } from "../services/taskIo";
-import { ProjectEditModal } from "./ProjectEditModal";
-import { TaskEditorModal } from "./TaskEditorModal";
+import { openProjectEditor } from "./ProjectEditView";
+import { openTaskEditor } from "./TaskEditor";
 
 /** Registered ItemView type id. */
 export const OVERVIEW_VIEW_TYPE = "projects-engine-overview";
@@ -226,17 +226,18 @@ export class ProjectOverviewView extends ItemView {
 			void this.plugin.router.openWorkspace(project.file.path, this.leaf);
 		});
 		this.cta(actions, "Edit project", false, () => {
-			new ProjectEditModal(this.app, this.plugin, project, () => {
-				void this.loadProject();
-			}).open();
+			void openProjectEditor(this.plugin, project, {
+				leaf: this.leaf,
+				onSaved: () => {
+					void this.loadProject();
+				},
+			});
 		});
 		this.cta(actions, "+ add task", false, () => {
-			new TaskEditorModal(
-				this.app,
-				this.plugin,
-				project.id,
-				toWikiLink(project.file.basename),
-			).open();
+			void openTaskEditor(this.plugin, {
+				projectId: project.id,
+				projectLink: toWikiLink(project.file.basename),
+			});
 		});
 		this.cta(actions, "Open note", false, () => {
 			void this.app.workspace.getLeaf(false).openFile(project.file);

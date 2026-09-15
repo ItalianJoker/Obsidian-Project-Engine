@@ -20,7 +20,7 @@ import type { SubView } from "./SubView";
 import { GanttSubView } from "./subviews/GanttSubView";
 import { KanbanSubView } from "./subviews/KanbanSubView";
 import { TableSubView, type TaskDashboardFilters } from "./subviews/TableSubView";
-import { TaskEditorModal } from "./TaskEditorModal";
+import { openTaskEditor } from "./TaskEditor";
 
 /** Registered ItemView type id. */
 export const WORKSPACE_VIEW_TYPE = "projects-engine-workspace";
@@ -251,12 +251,10 @@ export class ProjectWorkspaceView extends ItemView {
 			attr: { type: "button" },
 		});
 		add.addEventListener("click", () => {
-			new TaskEditorModal(
-				this.app,
-				this.plugin,
-				project.id,
-				toWikiLink(project.file.basename),
-			).open();
+			void openTaskEditor(this.plugin, {
+				projectId: project.id,
+				projectLink: toWikiLink(project.file.basename),
+			});
 		});
 		new ExtraButtonComponent(right)
 			.setIcon("refresh-cw")

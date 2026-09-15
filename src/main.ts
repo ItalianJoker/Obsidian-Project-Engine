@@ -26,12 +26,18 @@ import {
 } from "./views/DashboardView";
 import { OVERVIEW_VIEW_TYPE, ProjectOverviewView } from "./views/ProjectOverviewView";
 import {
+	PROJECT_EDIT_VIEW_TYPE,
+	ProjectEditView,
+} from "./views/ProjectEditView";
+import {
 	WORKSPACE_VIEW_TYPE,
 	ProjectWorkspaceView,
 } from "./views/ProjectWorkspaceView";
+import { RELEASE_NOTES_VIEW_TYPE, ReleaseNotesView } from "./views/ReleaseNotesView";
+import { TASK_VIEW_TYPE, TaskView } from "./views/TaskView";
 import { activateGanttView } from "./views/GanttView";
 import { ViewRouter } from "./views/ViewRouter";
-import { openTaskEditorForActiveProject } from "./views/TaskEditorModal";
+import { openTaskEditorForActiveProject } from "./views/TaskEditor";
 
 /**
  * Plugin façade shared with modals, views, and the settings tab.
@@ -75,6 +81,9 @@ export default class ProjectsEnginePlugin extends Plugin {
 		this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
 		this.registerView(OVERVIEW_VIEW_TYPE, (leaf) => new ProjectOverviewView(leaf, this));
 		this.registerView(WORKSPACE_VIEW_TYPE, (leaf) => new ProjectWorkspaceView(leaf, this));
+		this.registerView(PROJECT_EDIT_VIEW_TYPE, (leaf) => new ProjectEditView(leaf, this));
+		this.registerView(TASK_VIEW_TYPE, (leaf) => new TaskView(leaf, this));
+		this.registerView(RELEASE_NOTES_VIEW_TYPE, (leaf) => new ReleaseNotesView(leaf, this));
 
 		this.app.workspace.onLayoutReady(() => {
 			this.indexer.rebuild();
@@ -89,6 +98,14 @@ export default class ProjectsEnginePlugin extends Plugin {
 			name: "Open projects pane",
 			callback: () => {
 				void this.router.openDashboard();
+			},
+		});
+
+		this.addCommand({
+			id: "show-release-notes",
+			name: "Show release notes",
+			callback: () => {
+				void this.router.openReleaseNotes();
 			},
 		});
 
@@ -133,6 +150,25 @@ export default class ProjectsEnginePlugin extends Plugin {
 				}
 				if (!checking) {
 					void this.router.openOverview(file.path);
+				}
+				return true;
+			},
+		});
+
+		this.addCommand({
+			id: "edit-current-project",
+			name: "Edit current project",
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file) {
+					return false;
+				}
+				const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+				if (fm?.pe_type !== "project") {
+					return false;
+				}
+				if (!checking) {
+					void this.router.openProjectEdit(file.path);
 				}
 				return true;
 			},
@@ -241,6 +277,9 @@ export default class ProjectsEnginePlugin extends Plugin {
 		}
 		if (this.settings.projectSurface !== "workspace") {
 			this.settings.projectSurface = "overview";
+		}
+		if (this.settings.taskEditorSurface !== "modal") {
+			this.settings.taskEditorSurface = "tab";
 		}
 		if (
 			this.settings.defaultView !== "gantt" &&

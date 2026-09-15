@@ -10,7 +10,7 @@ import { toWikiLink, wikiLinkTarget } from "../../models/types";
 import { formatHours, formatHoursAndGiornate } from "../../services/timeLogs";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
-import { TaskEditorModal } from "../TaskEditorModal";
+import { openTaskEditor } from "../TaskEditor";
 import { EmptyState } from "../../ui/EmptyState";
 
 /**
@@ -41,7 +41,7 @@ export class TableSubView implements SubView {
 	constructor(private readonly props: TableSubViewProps) {}
 
 	public render(): void {
-		const { container, tasks, project, filters, app, plugin } = this.props;
+		const { container, tasks, project, filters, plugin } = this.props;
 		container.empty();
 		container.addClass("pe-subview");
 		container.addClass("pe-table-subview");
@@ -56,12 +56,10 @@ export class TableSubView implements SubView {
 						: "Clear search or change status / priority filters.",
 				)
 				.setAction("+ add task", () => {
-					new TaskEditorModal(
-						app,
-						plugin,
-						project.id,
-						toWikiLink(project.file.basename),
-					).open();
+					void openTaskEditor(plugin, {
+					projectId: project.id,
+					projectLink: toWikiLink(project.file.basename),
+				});
 				});
 			return;
 		}
@@ -103,14 +101,12 @@ export class TableSubView implements SubView {
 				});
 			}
 			titleBtn.addEventListener("click", () => {
-				new TaskEditorModal(
-					app,
-					plugin,
-					project.id,
-					toWikiLink(project.file.basename),
-					task,
-					task.parentId,
-				).open();
+				void openTaskEditor(plugin, {
+					projectId: project.id,
+					projectLink: toWikiLink(project.file.basename),
+					existing: task,
+					parentId: task.parentId,
+				});
 			});
 
 			const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
@@ -148,14 +144,11 @@ export class TableSubView implements SubView {
 				attr: { type: "button" },
 			});
 			sub.addEventListener("click", () => {
-				new TaskEditorModal(
-					app,
-					plugin,
-					project.id,
-					toWikiLink(project.file.basename),
-					undefined,
-					task.id,
-				).open();
+				void openTaskEditor(plugin, {
+					projectId: project.id,
+					projectLink: toWikiLink(project.file.basename),
+					parentId: task.id,
+				});
 			});
 		}
 	}
