@@ -89,18 +89,22 @@ In Settings → **Project statuses** si aggiungono, rinomina, riordinano (drag) 
 - Auto-schedule e cascade: se un blocker slitta, i dipendenti vengono ripianificati conservando la durata
 - Undo/Redo (Command Pattern) su date, dipendenze e status board; persistenza via `vault.process`
 
-### Viste: Projects → Overview → Workspace
+### Viste: Projects → Overview → Edit → Workspace (+ Task / Release notes)
 
 **Projects (Dashboard)** — elenco progetti con filtri combinabili **Governance** + **Customer**, ricerca, chip status, budget giornate/ore, menu contestuale (overview / workspace / **Edit project** / table / board / Gantt). Sotto i 720px: card/accordion. Toolbar `+ new project` e CRUD entità.
 
-**Overview** — home del progetto (stile dotpm): glyph, meta compact, metriche ore↔giornate, **status editabile**, CTA **Edit project** / Open workspace / add task, entità, governance Semplificato o PRINCE2.
+**Overview** — home del progetto (stile dotpm): glyph, meta compact, metriche ore↔giornate, **status editabile**, CTA **Edit project** (leaf) / Open workspace / add task, entità, governance Semplificato o PRINCE2.
+
+**Edit project** — leaf dedicata (parità obsidian-pm), non solo modale.
 
 **Workspace** — un’unica leaf con switcher **Table | Gantt | Board**:
 - **Table (task dashboard)** — gerarchia, status, priority, assignee, estimate/remaining ore, filtri status/priority
 - **Board (Kanban)** — colonne Backlog / In Progress / Review / Done; DnD HTML5 + pointer-capture; pulsanti status come fallback
 - **Gantt** — barre, zoom Day/Week/Month, curve SVG dipendenze; click apre l’editor
 
-In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Project statuses**, **Hours per giornata**.
+**Task** — editor in **tab** (default) o modale. **Release notes** — comando dedicato.
+
+In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per giornata**.
 
 ### Modello dati (frontmatter)
 
@@ -288,18 +292,22 @@ Settings → **Project statuses**: add, rename, reorder (drag), and archive. Vis
 - Auto-schedule and cascade: when a blocker slips, dependents are replaned with duration preserved
 - Undo/Redo (Command Pattern) for dates, dependencies, and board status; persisted via `vault.process`
 
-### Views: Projects → Overview → Workspace
+### Views: Projects → Overview → Edit → Workspace (+ Task / Release notes)
 
 **Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, status chips, budget as giornate/hours, context menu (overview / workspace / **Edit project** / table / board / Gantt). Below 720px: card/accordion. Toolbar: `+ new project` and entity CRUD.
 
-**Overview** — project home (dotpm-like): glyph, compact meta, hours↔giornate metrics, **editable status**, **Edit project** / Open workspace / add task CTAs, entities, Semplificato or PRINCE2 governance.
+**Overview** — project home (dotpm-like): glyph, compact meta, hours↔giornate metrics, **editable status**, **Edit project** (leaf) / Open workspace / add task CTAs, entities, Semplificato or PRINCE2 governance.
+
+**Edit project** — dedicated leaf (obsidian-pm parity), not modal-only.
 
 **Workspace** — one leaf with **Table | Gantt | Board** switcher:
 - **Table (task dashboard)** — hierarchy, status, priority, assignee, estimate/remaining hours, status/priority filters
 - **Board (Kanban)** — Backlog / In Progress / Review / Done; HTML5 + pointer-capture DnD; status buttons as fallback
 - **Gantt** — bars, Day/Week/Month zoom, SVG dependency curves; click opens the editor
 
-Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Project statuses**, **Hours per giornata**.
+**Task** — editor in a **tab** (default) or modal. **Release notes** — dedicated command.
+
+Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per giornata**.
 
 ### Frontmatter data model
 
