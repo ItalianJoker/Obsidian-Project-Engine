@@ -12,7 +12,10 @@ import type { Task, TaskId, WikiLink } from "../models/types";
 import { toWikiLink } from "../models/types";
 import { loadAllTasks, parseTaskNote } from "../services/taskIo";
 import { EmptyState } from "../ui/EmptyState";
+import { DASHBOARD_VIEW_TYPE } from "./DashboardView";
 import { loadProjectRows } from "./projectRows";
+import { OVERVIEW_VIEW_TYPE } from "./ProjectOverviewView";
+import { WORKSPACE_VIEW_TYPE } from "./ProjectWorkspaceView";
 import { TaskEditor } from "./TaskEditor";
 
 /** Registered ItemView type id. */
@@ -85,6 +88,48 @@ export class TaskView extends ItemView {
 		this.contentEl.empty();
 	}
 
+	/**
+	 * Close the task tab without history.back / opening an unrelated view.
+	 *
+	 * On desktop, task often opens as an extra tab — detach and re-reveal the
+	 * existing Projects leaf. On single-pane (mobile), task may have replaced
+	 * the only PE leaf; restore Overview/Workspace in-place instead of detach
+	 * (detach would fall through Obsidian history to the previous markdown note).
+	 */
+	private async dismissTaskSurface(): Promise<void> {
+		const ws = this.app.workspace;
+		const peTypes = [WORKSPACE_VIEW_TYPE, OVERVIEW_VIEW_TYPE, DASHBOARD_VIEW_TYPE];
+		let sibling: WorkspaceLeaf | undefined;
+		for (const type of peTypes) {
+			sibling = ws.getLeavesOfType(type).find((leaf) => leaf !== this.leaf);
+			if (sibling) {
+				break;
+			}
+		}
+		if (sibling) {
+			this.leaf.detach();
+			ws.revealLeaf(sibling);
+			return;
+		}
+
+		const projectId = this.state.projectId;
+		const rows = loadProjectRows(this.app);
+		const project = projectId ? rows.find((row) => row.id === projectId) : null;
+		if (project) {
+			const surface = this.plugin.settings.projectSurface;
+			if (surface === "workspace") {
+				await this.plugin.router.openWorkspace(project.file.path, this.leaf);
+			} else {
+				await this.plugin.router.openOverview(project.file.path, this.leaf);
+			}
+			return;
+		}
+
+		// Last resort: keep a PE leaf alive rather than Obsidian history.back.
+		await this.plugin.router.openDashboard();
+		this.leaf.detach();
+	}
+
 	private async loadTask(): Promise<void> {
 		this.editor?.destroy();
 		this.editor = null;
@@ -116,6 +161,7 @@ export class TaskView extends ItemView {
 			existing = parsed;
 			projectId = parsed.projectId;
 			projectLink = parsed.project;
+			this.state.projectId = projectId;
 		} else if (!projectId) {
 			this.showMissing("No task or project was specified.");
 			return;
@@ -151,7 +197,7 @@ export class TaskView extends ItemView {
 			{
 				surface: "tab",
 				close: () => {
-					this.leaf.detach();
+					void this.dismissTaskSurface();
 				},
 			},
 		);

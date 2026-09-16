@@ -17,6 +17,7 @@ import {
 	type ProjectTeamAssignment,
 } from "../models/types";
 import { buildMarkdownNote } from "../services/frontmatter";
+import { governanceDisplayLabel } from "../services/governance";
 import { appendEntityLink } from "../services/linkSync";
 import { patchProjectFrontmatter } from "../services/projectIo";
 import {
@@ -369,7 +370,7 @@ export class ProjectEditor {
 		const group = wrap.createDiv({ cls: "pe-segmented", attr: { role: "radiogroup" } });
 		for (const model of ["Semplificato", "PRINCE2"] as GovernanceModel[]) {
 			const button = group.createEl("button", {
-				text: model,
+				text: governanceDisplayLabel(model),
 				cls: `pe-segment pe-touch-target${this.form.governance === model ? " is-active" : ""}`,
 				attr: { type: "button", "aria-pressed": String(this.form.governance === model) },
 			});

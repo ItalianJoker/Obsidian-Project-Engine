@@ -839,7 +839,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	hoursPerManday: 8,
 	indexerDebounceMs: 250,
 	projectSurface: "overview",
-	taskEditorSurface: "tab",
+	taskEditorSurface: "modal",
 	defaultView: "table",
 	projectStatuses: DEFAULT_PROJECT_STATUSES.map((item) => ({ ...item })),
 	dateFormat: "DD/MM/YYYY",

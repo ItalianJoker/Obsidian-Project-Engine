@@ -13,6 +13,7 @@ import { ItemView, Menu, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import type { GovernanceModel } from "../models/types";
 import { projectStatusLabel } from "../models/types";
+import { governanceDisplayLabel } from "../services/governance";
 import { EmptyState } from "../ui/EmptyState";
 import { openEntityModal } from "./EntityModal";
 import { openProjectEditor } from "./ProjectEditView";
@@ -132,7 +133,6 @@ export class DashboardView extends ItemView {
 	private render(): void {
 		this.renderToolbar();
 		this.bodyEl.empty();
-		this.bodyEl.addClass("pe-project-list-container");
 
 		const visible = this.visibleRows();
 
@@ -194,7 +194,6 @@ export class DashboardView extends ItemView {
 		search.addEventListener("input", () => {
 			this.searchText = search.value;
 			this.bodyEl.empty();
-			this.bodyEl.addClass("pe-project-list-container");
 			const visible = this.visibleRows();
 			if (visible.length === 0) {
 				new EmptyState(this.bodyEl)
@@ -213,7 +212,7 @@ export class DashboardView extends ItemView {
 		});
 		for (const option of [
 			{ value: "all", label: "All governance" },
-			{ value: "Semplificato", label: "Semplificato" },
+			{ value: "Semplificato", label: governanceDisplayLabel("Semplificato") },
 			{ value: "PRINCE2", label: "PRINCE2" },
 		]) {
 			gov.createEl("option", { text: option.label, attr: { value: option.value } });
@@ -278,7 +277,7 @@ export class DashboardView extends ItemView {
 			});
 			this.td(tr, "ID", row.id);
 			this.td(tr, "Name", row.name);
-			this.td(tr, "Governance", row.governance);
+			this.td(tr, "Governance", governanceDisplayLabel(row.governance));
 			const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
 			const chip = statusTd.createSpan({
 				text: projectStatusLabel(this.plugin.settings.projectStatuses, row.status),
@@ -315,7 +314,7 @@ export class DashboardView extends ItemView {
 				this.openRowMenu(row, event);
 			});
 			const body = details.createDiv({ cls: "pe-accordion-body" });
-			body.createEl("p", { text: `Governance: ${row.governance}` });
+			body.createEl("p", { text: `Governance: ${governanceDisplayLabel(row.governance)}` });
 			body.createEl("p", {
 				text: `Status: ${projectStatusLabel(this.plugin.settings.projectStatuses, row.status)}`,
 			});

@@ -278,8 +278,8 @@ export default class ProjectsEnginePlugin extends Plugin {
 		if (this.settings.projectSurface !== "workspace") {
 			this.settings.projectSurface = "overview";
 		}
-		if (this.settings.taskEditorSurface !== "modal") {
-			this.settings.taskEditorSurface = "tab";
+		if (this.settings.taskEditorSurface !== "tab") {
+			this.settings.taskEditorSurface = "modal";
 		}
 		if (
 			this.settings.defaultView !== "gantt" &&

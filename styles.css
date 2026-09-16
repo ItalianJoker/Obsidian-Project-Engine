@@ -1264,13 +1264,26 @@
 	font-weight: 600;
 }
 
-/* Projects Dashboard: match Overview / Workspace inset (avoid near-zero edges). */
-.pe-dashboard .pe-content {
-	padding: 12px 20px 32px;
+/*
+ * Projects Dashboard inset — pad the root leaf wrapper so horizontal gutters
+ * cannot be cancelled by child width:100% tables or dual-class padding:0 rules.
+ * (PR #9 set .pe-content padding then zeroed it via .pe-project-list-container
+ * on the same element; that cascade left the page flush to the leaf edges.)
+ */
+.workspace-leaf-content.pe-view > .view-content.pe-dashboard.pe-root,
+.pe-dashboard.pe-root {
+	padding: 12px 20px 28px !important;
+	box-sizing: border-box;
 }
 
-.pe-dashboard .pe-project-list-container {
-	padding: 0;
+.pe-dashboard .pe-toolbar {
+	padding-left: 0;
+	padding-right: 0;
+	margin-inline: 0;
+}
+
+.pe-dashboard .pe-content {
+	padding: 12px 0 8px;
 }
 
 .pe-dashboard-actions {
@@ -1289,6 +1302,7 @@
 }
 
 .pe-project-list-container {
+	/* list chrome only — never use this class on .pe-content itself */
 	padding: 0;
 }
 
@@ -2147,10 +2161,11 @@
 	margin-top: 4px;
 }
 
-.pe-root {
+/* Non-dashboard roots stay flush so Overview/Workspace chrome controls inset. */
+.pe-root:not(.pe-dashboard) {
 	padding: 0;
 }
 
-.pe-view .view-content {
+.pe-view .view-content:not(.pe-dashboard) {
 	padding: 0;
 }
