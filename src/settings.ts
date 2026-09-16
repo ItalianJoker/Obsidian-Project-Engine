@@ -4,8 +4,9 @@
  * Table / Gantt / Board → Scheduling → Date & time → Paths → Scaffold → Statuses →
  * Custom fields → Performance.
  *
- * PE adaptations: Projects root + Entities under it, project ID pattern, hours/giornate,
+ * PE adaptations: Projects root + Entities under it, project ID pattern, hours↔days,
  * governance-aware scaffold folder names. English UI. Lone buttons stay flat (no card).
+ * Date & time formats apply to editors and views (default DD/MM/YYYY + 24h).
  */
 
 import { type App, Notice, PluginSettingTab, Setting } from "obsidian";
@@ -161,7 +162,9 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Date format")
-			.setDesc("How calendar dates appear in tables, boards, and Gantt. Stored as ISO in YAML.")
+			.setDesc(
+				"How calendar dates appear and are entered (task editor, tables, board, Gantt). Default DD/MM/YYYY. Stored as ISO in YAML.",
+			)
 			.addDropdown((dropdown) => {
 				dropdown
 					.addOption("DD/MM/YYYY", "DD/MM/YYYY")
@@ -178,7 +181,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Time format")
-			.setDesc("Clock style for timestamps (default 24-hour).")
+			.setDesc("Clock style for due/scheduled times and displays (default 24-hour).")
 			.addDropdown((dropdown) => {
 				dropdown
 					.addOption("24h", "24-hour")
@@ -435,9 +438,9 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		containerEl.createEl("h3", { text: "Time model" });
 
 		new Setting(containerEl)
-			.setName("Hours per giornata")
+			.setName("Hours per day")
 			.setDesc(
-				"Task estimates and time logs use hours; project budget uses giornate. Default 1 giornata = 8 hours.",
+				"Task estimates and time logs use hours; project budget uses days. Default 1 day = 8 hours.",
 			)
 			.addText((text) => {
 				text.inputEl.type = "number";

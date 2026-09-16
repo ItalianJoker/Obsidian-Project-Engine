@@ -12,6 +12,7 @@ import type { IsoDate, Task, TaskId } from "../../models/types";
 import { toWikiLink } from "../../models/types";
 import { addDays, endFromStart, formatIsoDate, parseIsoDate } from "../../engine/Scheduler";
 import { EmptyState } from "../../ui/EmptyState";
+import { formatDisplayDate, formatDisplayDateTime } from "../../services/dateFormat";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
@@ -386,17 +387,25 @@ export class GanttSubView implements SubView {
 				const barWidth = isMilestone ? Math.max(px, 12) : span * px;
 				bar.style.left = `${offset * px}px`;
 				bar.style.width = `${barWidth}px`;
+				const dateFormat = this.props.plugin.settings.dateFormat;
+				const timeFormat = this.props.plugin.settings.timeFormat;
 				if (!isMilestone) {
-					bar.setText(`${row.start.slice(5)} → ${row.end.slice(5)}`);
+					bar.setText(
+						`${formatDisplayDate(row.start, dateFormat)} → ${formatDisplayDate(row.end, dateFormat)}`,
+					);
 				} else {
 					bar.setText("◆");
 				}
 				bar.title = [
 					row.task.title,
-					`${row.start} → ${row.end}`,
+					`${formatDisplayDate(row.start, dateFormat)} → ${formatDisplayDate(row.end, dateFormat)}`,
 					row.task.status,
-					row.task.due ? `Due date: ${row.task.due}` : null,
-					row.task.scheduled ? `Scheduled: ${row.task.scheduled}` : null,
+					row.task.due
+						? `Due date: ${formatDisplayDateTime(row.task.due, dateFormat, timeFormat)}`
+						: null,
+					row.task.scheduled
+						? `Scheduled: ${formatDisplayDateTime(row.task.scheduled, dateFormat, timeFormat)}`
+						: null,
 				]
 					.filter(Boolean)
 					.join("\n");

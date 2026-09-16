@@ -1,10 +1,13 @@
 /**
- * Effort math: task hours ↔ management giornate.
+ * Effort math: task hours ↔ management days.
  *
- * §7 time model:
+ * Product time model:
  * - Task estimates and time-log durations are in **hours** (fractions OK).
- * - Portfolio / project budget uses **giornate** (`assigned_days`).
- * - Conversion: **1 giornata = hoursPerManday hours** (default 8).
+ * - Portfolio / project budget uses **days** (`assigned_days` in YAML).
+ * - Conversion: **1 day = hoursPerManday hours** (default 8).
+ * - UI chips use `d` for days and `h` for hours (e.g. `5 d · 40 h`).
+ *
+ * Function names still say “giornate” for historical API stability; display strings are English.
  */
 
 import type { TimeLog } from "../models/types";
@@ -45,14 +48,14 @@ export interface EffortRollup {
 export type MandayRollup = EffortRollup;
 
 /**
- * Normalise hours-per-giornata (never ≤ 0).
+ * Normalise hours-per-management-day (never ≤ 0). Default 8.
  */
 export function normaliseHoursPerGiornata(hoursPerManday: number): number {
 	return hoursPerManday > 0 ? hoursPerManday : 8;
 }
 
 /**
- * Convert hours → giornate.
+ * Convert hours → management days.
  */
 export function hoursToGiornate(hours: number, hoursPerManday: number): number {
 	const per = normaliseHoursPerGiornata(hoursPerManday);
@@ -60,7 +63,7 @@ export function hoursToGiornate(hours: number, hoursPerManday: number): number {
 }
 
 /**
- * Convert giornate → hours.
+ * Convert management days → hours.
  */
 export function giornateToHours(giornate: number, hoursPerManday: number): number {
 	return giornate * normaliseHoursPerGiornata(hoursPerManday);
@@ -78,22 +81,29 @@ export function formatHours(hours: number): string {
 }
 
 /**
- * Compact display for giornate.
+ * Compact display for management days (1 day = hoursPerManday hours).
  */
 export function formatGiornate(giornate: number): string {
 	if (!Number.isFinite(giornate)) {
-		return "0 g";
+		return "0 d";
 	}
 	const rounded = Math.round(giornate * 100) / 100;
-	return `${trimNumber(rounded)} g`;
+	return `${trimNumber(rounded)} d`;
 }
 
 /**
- * Dual-unit chip text, e.g. `16 h · 2 g` (1 g = 8 h).
+ * Dual-unit chip text, e.g. `16 h · 2 d` (1 day = 8 h by default).
  */
 export function formatHoursAndGiornate(hours: number, hoursPerManday: number): string {
 	const g = hoursToGiornate(hours, hoursPerManday);
 	return `${formatHours(hours)} · ${formatGiornate(g)}`;
+}
+
+/**
+ * Budget chip: days and hours on one line, e.g. `5 d · 40 h`.
+ */
+export function formatBudgetDaysAndHours(days: number, hoursPerManday: number): string {
+	return `${formatGiornate(days)} · ${formatHours(giornateToHours(days, hoursPerManday))}`;
 }
 
 /**

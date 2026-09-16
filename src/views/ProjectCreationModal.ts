@@ -170,8 +170,8 @@ export class ProjectCreationModal extends Modal {
 		this.addWorkOrderChips();
 
 		this.addTextField(
-			"Budget (giornate) *",
-			`Management days (1 g = ${this.plugin.settings.hoursPerManday} h)`,
+			"Budget (days) *",
+			`Management days (1 day = ${this.plugin.settings.hoursPerManday} h)`,
 			(value) => {
 				this.form.assignedDays = value;
 			},
@@ -529,7 +529,7 @@ export class ProjectCreationModal extends Modal {
 
 	private addWorkOrderChips(): void {
 		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
-		wrap.createEl("label", { text: "Work orders (Commesse)", cls: "pe-label" });
+		wrap.createEl("label", { text: "Work orders", cls: "pe-label" });
 		const chips = wrap.createDiv({ cls: "pe-chip-row" });
 		const input = wrap.createEl("input", {
 			cls: "pe-input pe-touch-target",
@@ -708,7 +708,7 @@ export class ProjectCreationModal extends Modal {
 		}
 		const days = Number.parseFloat(this.form.assignedDays);
 		if (!Number.isFinite(days) || days < 0) {
-			errors.push("Budget (giornate) must be a number greater than or equal to 0");
+			errors.push("Budget (days) must be a number greater than or equal to 0");
 		}
 		if (this.form.projectUrl.trim() && !isValidHttpUrl(this.form.projectUrl)) {
 			errors.push("Project URL must be a valid http(s) URL");

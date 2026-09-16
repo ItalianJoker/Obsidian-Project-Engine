@@ -1,7 +1,7 @@
 /**
  * Mountable task editor: recursive nested subtasks, dependencies with cycle detection,
- * time logs, estimate vs actual / remaining mandays, and undo/redo via the
- * Scheduler Command Pattern + vault.process persistence.
+ * time logs, estimate vs actual / remaining effort, due/scheduled using Settings date/time
+ * formats, and undo/redo via the Scheduler Command Pattern + vault.process persistence.
  *
  * Hosted in a modal or as {@link TaskView} ItemView (obsidian-pm parity).
  */
@@ -42,7 +42,16 @@ import {
 	formatHoursAndGiornate,
 } from "../services/timeLogs";
 import { splitFrontmatter } from "../services/frontmatter";
-import { joinDateTime, splitDateTime } from "../services/dateFormat";
+import {
+	dateFormatPlaceholder,
+	formatDisplayDate,
+	formatDisplayTime,
+	joinDateTime,
+	parseDisplayDate,
+	parseDisplayTime,
+	splitDateTime,
+	timeFormatPlaceholder,
+} from "../services/dateFormat";
 import { resolveProjectTasksFolder } from "../services/projectScaffold";
 import { findProjectRow, loadProjectRows } from "./projectRows";
 import { EntitySuggest } from "./suggest";
@@ -218,7 +227,7 @@ export class TaskEditor {
 				this.draft.estimateHours = value;
 				this.refreshMandays();
 			},
-			`Fractions OK (0.5, 1.25). 1 giornata = ${this.plugin.settings.hoursPerManday} h.`,
+			`Fractions OK (0.5, 1.25). 1 day = ${this.plugin.settings.hoursPerManday} h.`,
 		);
 
 		this.addDate("Start date", this.draft.startDate, (value) => {
@@ -294,50 +303,104 @@ export class TaskEditor {
 		});
 	}
 
+	/**
+	 * Single calendar date field (start/end). Values shown and typed in Settings format;
+	 * stored as ISO `YYYY-MM-DD` in YAML.
+	 */
 	private addDate(
 		label: string,
 		value: IsoDate | null,
 		onChange: (value: IsoDate | null) => void,
 	): void {
+		const dateFormat = this.plugin.settings.dateFormat;
 		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
 		wrap.createEl("label", { text: label, cls: "pe-label" });
 		const input = wrap.createEl("input", {
 			cls: "pe-input pe-touch-target",
-			attr: { type: "date" },
+			attr: {
+				type: "text",
+				placeholder: dateFormatPlaceholder(dateFormat),
+				spellcheck: "false",
+				"aria-label": label,
+			},
 		});
-		input.value = value ?? "";
-		input.addEventListener("input", () => {
-			onChange(input.value.trim() ? input.value : null);
-		});
+		input.value = value ? formatDisplayDate(value, dateFormat) : "";
+		const commit = (): void => {
+			const trimmed = input.value.trim();
+			if (!trimmed) {
+				onChange(null);
+				return;
+			}
+			const iso = parseDisplayDate(trimmed, dateFormat);
+			if (iso) {
+				onChange(iso);
+				input.value = formatDisplayDate(iso, dateFormat);
+			}
+		};
+		input.addEventListener("change", commit);
+		input.addEventListener("blur", commit);
 	}
 
 	/**
-	 * Date + optional time for Due date / Scheduled (Settings format is display-only).
+	 * Due date / Scheduled: calendar date + optional time, both using Settings formats.
+	 * YAML stays `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`.
 	 */
 	private addDateTimeField(label: string, key: "due" | "scheduled"): void {
+		const dateFormat = this.plugin.settings.dateFormat;
+		const timeFormat = this.plugin.settings.timeFormat;
 		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
 		wrap.createEl("label", { text: label, cls: "pe-label" });
 		wrap.createEl("p", {
 			cls: "pe-help",
-			text: "Optional time. Stored in frontmatter; displayed using Settings date/time format.",
+			text: `Optional time. Enter as ${dateFormatPlaceholder(dateFormat)} and ${timeFormatPlaceholder(timeFormat)}. Stored as ISO in frontmatter.`,
 		});
 		const row = wrap.createDiv({ cls: "pe-inline-row" });
 		const parts = splitDateTime(this.draft[key]);
 		const dateInput = row.createEl("input", {
 			cls: "pe-input pe-touch-target",
-			attr: { type: "date", "aria-label": `${label} date` },
+			attr: {
+				type: "text",
+				placeholder: dateFormatPlaceholder(dateFormat),
+				spellcheck: "false",
+				"aria-label": `${label} date`,
+			},
 		});
-		dateInput.value = parts.date;
+		dateInput.value = parts.date ? formatDisplayDate(parts.date, dateFormat) : "";
 		const timeInput = row.createEl("input", {
 			cls: "pe-input pe-touch-target",
-			attr: { type: "time", "aria-label": `${label} time (optional)` },
+			attr: {
+				type: "text",
+				placeholder: timeFormatPlaceholder(timeFormat),
+				spellcheck: "false",
+				"aria-label": `${label} time (optional)`,
+			},
 		});
-		timeInput.value = parts.time;
+		timeInput.value = parts.time ? formatDisplayTime(parts.time, timeFormat) : "";
 		const sync = (): void => {
-			this.draft[key] = joinDateTime(dateInput.value, timeInput.value);
+			const dateRaw = dateInput.value.trim();
+			const timeRaw = timeInput.value.trim();
+			if (!dateRaw) {
+				this.draft[key] = null;
+				return;
+			}
+			const isoDate = parseDisplayDate(dateRaw, dateFormat);
+			if (!isoDate) {
+				return;
+			}
+			const isoTime = timeRaw ? parseDisplayTime(timeRaw, timeFormat) : "";
+			if (timeRaw && isoTime === null) {
+				return;
+			}
+			this.draft[key] = joinDateTime(isoDate, isoTime || "");
+			dateInput.value = formatDisplayDate(isoDate, dateFormat);
+			if (isoTime) {
+				timeInput.value = formatDisplayTime(isoTime, timeFormat);
+			}
 		};
-		dateInput.addEventListener("input", sync);
-		timeInput.addEventListener("input", sync);
+		dateInput.addEventListener("change", sync);
+		dateInput.addEventListener("blur", sync);
+		timeInput.addEventListener("change", sync);
+		timeInput.addEventListener("blur", sync);
 	}
 
 	private addStatus(): void {
@@ -479,17 +542,35 @@ export class TaskEditor {
 
 		const render = (): void => {
 			list.empty();
+			const dateFormat = this.plugin.settings.dateFormat;
 			this.draft.timeLogs.forEach((log, index) => {
 				const row = list.createDiv({ cls: "pe-timelog-row" });
 				const date = row.createEl("input", {
 					cls: "pe-input pe-touch-target",
-					attr: { type: "date" },
+					attr: {
+						type: "text",
+						placeholder: dateFormatPlaceholder(dateFormat),
+						spellcheck: "false",
+						"aria-label": "Time log date",
+					},
 				});
-				date.value = log.date;
-				date.addEventListener("input", () => {
-					log.date = date.value;
-					this.refreshMandays();
-				});
+				date.value = log.date ? formatDisplayDate(log.date, dateFormat) : "";
+				const commitDate = (): void => {
+					const trimmed = date.value.trim();
+					if (!trimmed) {
+						log.date = "";
+						this.refreshMandays();
+						return;
+					}
+					const iso = parseDisplayDate(trimmed, dateFormat);
+					if (iso) {
+						log.date = iso;
+						date.value = formatDisplayDate(iso, dateFormat);
+						this.refreshMandays();
+					}
+				};
+				date.addEventListener("change", commitDate);
+				date.addEventListener("blur", commitDate);
 				const duration = row.createEl("input", {
 					cls: "pe-input pe-touch-target",
 					attr: { type: "number", min: "0", step: "0.25", placeholder: "Hours" },
@@ -572,7 +653,7 @@ export class TaskEditor {
 		});
 		this.mandayEl.createEl("p", {
 			cls: "pe-help",
-			text: `Time logs use hours. Management budget uses giornate (1 g = ${hoursPer} h).`,
+			text: `Time logs use hours. Management budget uses days (1 day = ${hoursPer} h).`,
 		});
 	}
 

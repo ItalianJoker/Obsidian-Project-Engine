@@ -69,7 +69,7 @@ export interface ProjectEditorHost {
 }
 
 /**
- * Mountable project editor (PE domain fields: governance, stakeholders, Teams, giornate).
+ * Mountable project editor (PE domain fields: governance, stakeholders, Teams, budget days).
  */
 export class ProjectEditor {
 	private form!: EditForm;
@@ -177,7 +177,7 @@ export class ProjectEditor {
 		contentEl.createEl("h2", { text: "Edit project" });
 		contentEl.createEl("p", {
 			cls: "pe-modal-lead",
-			text: `Budget in giornate · 1 giornata = ${this.plugin.settings.hoursPerManday} h. Changing ID or name does not rename the project folder in this version.`,
+			text: `Budget in days · 1 day = ${this.plugin.settings.hoursPerManday} h. Changing ID or name does not rename the project folder in this version.`,
 		});
 
 		this.errorEl = contentEl.createDiv({ cls: "pe-errors", attr: { role: "alert" } });
@@ -211,7 +211,7 @@ export class ProjectEditor {
 		this.addStakeholderEditor();
 		this.addWorkOrders();
 		this.addText(
-			"Budget (giornate) *",
+			"Budget (days) *",
 			this.form.assignedDays,
 			(value) => {
 				this.form.assignedDays = value;
@@ -567,7 +567,7 @@ export class ProjectEditor {
 
 	private addWorkOrders(): void {
 		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
-		wrap.createEl("label", { text: "Commesse / work orders", cls: "pe-label" });
+		wrap.createEl("label", { text: "Work orders", cls: "pe-label" });
 		const chips = wrap.createDiv({ cls: "pe-chip-row" });
 		const input = wrap.createEl("input", {
 			cls: "pe-input pe-touch-target",
@@ -626,7 +626,7 @@ export class ProjectEditor {
 		}
 		const days = Number.parseFloat(this.form.assignedDays);
 		if (!Number.isFinite(days) || days < 0) {
-			errors.push("Budget (giornate) must be a number ≥ 0");
+			errors.push("Budget (days) must be a number ≥ 0");
 		}
 		if (this.form.projectUrl.trim() && !isValidHttpUrl(this.form.projectUrl)) {
 			errors.push("Project URL must be a valid http(s) URL");

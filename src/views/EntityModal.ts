@@ -179,6 +179,7 @@ export class EntityModal extends Modal {
 			schemas,
 			initial: this.initialCustom,
 			listPeople: () => this.plugin.indexer.list("team-member"),
+			dateFormat: this.plugin.settings.dateFormat,
 			registerSuggest: (suggest) => this.suggests.push(suggest),
 		});
 

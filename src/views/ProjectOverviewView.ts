@@ -292,8 +292,8 @@ export class ProjectOverviewView extends ItemView {
 		this.metric(metrics, "Tasks", String(this.tasks.length));
 		this.metric(
 			metrics,
-			"Budget (giornate)",
-			`${formatGiornate(project.assignedDays)}\n${formatHours(budgetHours)}`,
+			"Budget",
+			`${formatGiornate(project.assignedDays)} · ${formatHours(budgetHours)}`,
 		);
 		this.metric(metrics, "Logged", formatHoursAndGiornate(loggedHours, hoursPer));
 		this.metric(metrics, "Remaining", formatHoursAndGiornate(remainingHours, hoursPer));
@@ -445,7 +445,7 @@ export class ProjectOverviewView extends ItemView {
 		this.entityBlock(grid, "Technologies", project.technologies);
 		this.entityBlock(grid, "Team", project.team);
 		this.entityBlock(grid, "Stakeholders", project.stakeholders);
-		this.entityBlock(grid, "Commesse", project.commesse);
+		this.entityBlock(grid, "Work orders", project.commesse);
 		if (project.parentProjectId) {
 			this.entityBlock(grid, "Parent project", [project.parentProjectId]);
 		}
