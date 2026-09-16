@@ -1,5 +1,11 @@
 # Release notes — Projects Engine
 
+## 1.0.0 — Visual parity + containment (§8–§10 overwrite)
+
+**IT / EN (summary):** Shared dotpm-like chrome; Overview task table; Gantt Day–Year + today marker; Kanban counts/due pills; project icon/color/parent/editable ID; `Projects/{ID} - {Name}/` + Entities under Projects root; scaffold + Delete project; task `due`/`scheduled` (optional time); Settings restructured (dotpm-inspired) with DD/MM/YYYY + 24h defaults; auto-refresh; English UI; lean file-based scaffold (folders only, PRINCE2 registers when needed).
+
+---
+
 ## 1.0.0 — Full product + UX rebase + Dotpm-parity overhaul (§7)
 
 ### Italiano
