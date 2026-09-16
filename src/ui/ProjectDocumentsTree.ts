@@ -1,7 +1,8 @@
 /**
  * Expandable documents tree for the project Overview home.
  *
- * Renders folders with chevron toggle and files as buttons that open the note
+ * Renders folders with chevron toggle and files as plain left-aligned labels
+ * (icon + text — not full-width pill buttons). Clicking a file opens the note
  * in Obsidian. Expand/collapse state is owned by the caller so vault-driven
  * refreshes do not reset the open branches.
  *
@@ -144,6 +145,12 @@ function renderFolder(
 	}
 }
 
+/**
+ * File row: icon + plain selectable text (no button chrome / wide pill).
+ *
+ * Using a span (not `<button>`) avoids theme button backgrounds that stretched
+ * across the row and centered the name — Luca’s Overview overlap screenshot.
+ */
 function renderFile(
 	parent: HTMLElement,
 	node: ProjectDocumentNode,
@@ -166,17 +173,25 @@ function renderFile(
 	setIcon(fileIcon, iconForFile(node.name));
 
 	const displayName = stripMarkdownExtension(node.name);
-	const button = inner.createEl("button", {
+	const label = inner.createSpan({
+		cls: "pe-docs-tree-label pe-docs-tree-file-label",
 		text: displayName,
-		cls: "pe-link-button pe-docs-tree-label pe-touch-target",
 		attr: {
-			type: "button",
+			role: "link",
+			tabindex: "0",
 			title: node.path,
 			"aria-label": `Open ${displayName}`,
 		},
 	});
-	button.addEventListener("click", () => {
+	const open = (event: Event): void => {
+		event.preventDefault();
 		void openVaultFile(props.app, node.path);
+	};
+	label.addEventListener("click", open);
+	label.addEventListener("keydown", (event: KeyboardEvent) => {
+		if (event.key === "Enter" || event.key === " ") {
+			open(event);
+		}
 	});
 }
 

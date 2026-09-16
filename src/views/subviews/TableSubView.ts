@@ -1,8 +1,12 @@
 /**
  * Nested task table SubView — dashboard-style columns matching dotpm task table.
+ *
+ * The “+ Add task” control lives in a block *below* the `<table>` (not in
+ * `<tfoot>`). Putting it in the footer previously allowed table/theme layout
+ * quirks to paint the label over the Documents section on Overview.
  */
 
-import { setIcon, type App } from "obsidian";
+import { Notice, setIcon, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
 import type { SemplificatoStatus, Task, TaskId, TaskPriority, TaskStatus } from "../../models/types";
 import { toWikiLink, wikiLinkTarget } from "../../models/types";
@@ -10,7 +14,15 @@ import { formatDisplayDateTime, formatDuePill, isOverdue, effectiveDue } from ".
 import {
 	SEMPLIFICATO_LABELS,
 } from "../../services/governance";
+import {
+	collectTaskSubtreeIds,
+	deleteTaskConfirmMessage,
+	deleteTaskSubtree,
+	notifyTaskDeleted,
+} from "../../services/taskDelete";
+import { loadAllTasks } from "../../services/taskIo";
 import { formatHours } from "../../services/timeLogs";
+import { ConfirmModal } from "../../ui/ConfirmModal";
 import { EmptyState } from "../../ui/EmptyState";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
@@ -85,6 +97,7 @@ export class TableSubView implements SubView {
 			"SCHEDULED",
 			"PROGRESS",
 			"TIME",
+			"",
 		]) {
 			head.createEl("th", { text: label });
 		}
@@ -95,11 +108,10 @@ export class TableSubView implements SubView {
 			this.renderRow(tbody, task, depth, hasChildren, dateFormat, timeFormat);
 		}
 
-		const tfoot = table.createEl("tfoot");
-		const footRow = tfoot.createEl("tr", { cls: "pe-task-footer-row" });
-		footRow.createEl("td");
-		const addCell = footRow.createEl("td", { attr: { colspan: "8" } });
-		const addBtn = addCell.createEl("button", {
+		// Sibling block under the table — keeps Add task in document flow so it
+		// cannot overlap the Documents section that follows on Overview.
+		const addRow = container.createDiv({ cls: "pe-task-add-row" });
+		const addBtn = addRow.createEl("button", {
 			cls: "pe-task-add pe-link-button pe-touch-target",
 			attr: { type: "button" },
 		});
@@ -251,6 +263,58 @@ export class TableSubView implements SubView {
 			cls: "pe-task-time-col",
 			attr: { "data-label": "Time" },
 		});
+
+		const actionsTd = tr.createEl("td", {
+			cls: "pe-task-row-actions",
+			attr: { "data-label": "Actions" },
+		});
+		const delBtn = actionsTd.createEl("button", {
+			cls: "pe-task-row-delete pe-link-button pe-touch-target",
+			attr: {
+				type: "button",
+				title: "Delete task",
+				"aria-label": `Delete ${task.title || task.id}`,
+			},
+		});
+		setIcon(delBtn, "trash-2");
+		delBtn.addEventListener("click", (event) => {
+			event.stopPropagation();
+			this.confirmDeleteTask(task);
+		});
+	}
+
+	/**
+	 * Confirm then delete the task note (+ nested subtasks). Reloads open PE views.
+	 */
+	private confirmDeleteTask(task: Task): void {
+		const { app, plugin, tasks } = this.props;
+		const subtreeCount = collectTaskSubtreeIds(task.id, tasks).length;
+		new ConfirmModal(app, {
+			title: "Delete task?",
+			message: deleteTaskConfirmMessage(task, subtreeCount),
+			confirmLabel: "Delete task",
+			dangerous: true,
+			onConfirm: async () => {
+				try {
+					const allTasks = await loadAllTasks(
+						app,
+						plugin.settings.tasksFolder,
+						plugin.settings.hoursPerManday,
+					);
+					const result = await deleteTaskSubtree({
+						app,
+						vault: app.vault,
+						root: task,
+						allTasks,
+					});
+					notifyTaskDeleted(task.title.trim() || task.id, result);
+					plugin.refreshOpenViews();
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					new Notice(`Could not delete task: ${message}`);
+				}
+			},
+		}).open();
 	}
 
 	private openNewTask(): void {
