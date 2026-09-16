@@ -41,6 +41,7 @@ import {
 	formatHoursAndGiornate,
 	giornateToHours,
 } from "../services/timeLogs";
+import { copyProjectObsidianUri } from "../services/obsidianUri";
 import { isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { EmptyState } from "../ui/EmptyState";
@@ -281,6 +282,9 @@ export class ProjectOverviewView extends ItemView {
 					onSaved: () => void this.refresh(),
 				});
 			},
+			onCopyObsidianUrl: () => {
+				void copyProjectObsidianUri(this.app, project, { view: "overview" });
+			},
 			onAllClick: () => {
 				this.filters = { text: this.filters.text, status: "all", priority: "all" };
 				this.showFilterPanel = false;
@@ -437,6 +441,9 @@ export class ProjectOverviewView extends ItemView {
 		});
 		this.cta(row, "Open note", false, () => {
 			void this.app.workspace.getLeaf(false).openFile(project.file);
+		});
+		this.cta(row, "Copy Obsidian URL", false, () => {
+			void copyProjectObsidianUri(this.app, project, { view: "overview" });
 		});
 		if (project.teamsChannelUrl) {
 			this.cta(row, "Teams channel", false, () => {
