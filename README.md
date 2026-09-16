@@ -10,6 +10,8 @@ Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.co
 
 ## Italiano
 
+> **Generato con Cursor** — questo repository è stato sviluppato con [Cursor](https://cursor.com).
+
 ### Panoramica e valore
 
 **Projects Engine** gestisce portafoglio, governance e delivery **dentro il vault**, senza database esterni. Ogni cliente, persona, stakeholder, tipo di progetto, tecnologia e task è una nota Markdown (**Entity-as-a-Note**). I collegamenti sono wikilink nativi `[[Nota]]`: Graph View raggruppa i lavori per cliente, stack tecnologico, team e stakeholder.
@@ -86,7 +88,7 @@ In Settings → **Project statuses** si aggiungono, rinomina, riordinano (drag) 
 
 ### Task, dipendenze e scheduling
 
-- Sotto-task ricorsivi a profondità arbitraria (`parent_id` / `child_ids`)
+- Sotto-task ricorsivi a profondità arbitraria (`parent_id` / `child_ids`); **Delete task** rimuove l’intero sottoalbero (con conferma)
 - Dipendenze intra- e cross-project: `blocked_by` / `blocking`
 - Cycle detection prima del salvataggio; Notice se si chiude un ciclo
 - Time log `[{ date, duration, member, note }]` con `duration` in **ore**; estimate in **ore** (`estimate_hours`) con mirror legacy `estimate_mandays`
@@ -97,7 +99,7 @@ In Settings → **Project statuses** si aggiungono, rinomina, riordinano (drag) 
 
 **Projects (Dashboard)** — elenco progetti con filtri combinabili **Governance** + **Customer**, ricerca, chip status, budget giorni·ore su una riga, menu contestuale (overview / workspace / **Edit project** / table / board / Gantt). Sotto i 720px: card/accordion. Toolbar `+ new project` e CRUD entità. Margini allineati a Overview / Workspace.
 
-**Overview** — home del progetto (stile dotpm): glyph, meta compact, metriche ore↔giorni su una riga, **status editabile**, CTA **Edit project** (leaf) / Open workspace / add task, entità, governance Semplificato o PRINCE2.
+**Overview** — home del progetto (stile dotpm): glyph, metriche, status editabile, poi le sezioni nell’ordine **Tasks → Governance → Documents → Linked Entities → Actions**. Albero documenti (esclusa `Tasks/`). Eliminazione task dall’editor (e dalla tabella) con conferma; i sotto-task annidati vengono eliminati insieme al padre.
 
 **Edit project** — leaf dedicata (parità obsidian-pm), non solo modale.
 
@@ -217,6 +219,8 @@ Dopo la sync del vault, abilita **Projects Engine anche sull’app mobile** (Imp
 
 ## English
 
+> **Generated with Cursor** — this repository was built with [Cursor](https://cursor.com).
+
 ### Overview and value
 
 **Projects Engine** manages portfolio, governance, and delivery **inside the vault** — no external database. Every customer, person, stakeholder, project type, technology, and task is a Markdown note (**Entity-as-a-Note**). Relationships are native `[[wikilinks]]`, so Graph View clusters work by customer, technology stack, team, and stakeholder.
@@ -293,7 +297,7 @@ Settings → **Project statuses**: add, rename, reorder (drag), and archive. Vis
 
 ### Tasks, dependencies, and scheduling
 
-- Recursively nested subtasks (`parent_id` / `child_ids`)
+- Recursively nested subtasks (`parent_id` / `child_ids`); **Delete task** removes the whole subtree (with confirmation)
 - Intra- and cross-project dependencies: `blocked_by` / `blocking`
 - Cycle detection before save; Notice if a loop would close
 - Time logs `[{ date, duration, member, note }]` with `duration` in **hours**; estimates in **hours** (`estimate_hours`) with legacy `estimate_mandays` mirror
@@ -304,7 +308,7 @@ Settings → **Project statuses**: add, rename, reorder (drag), and archive. Vis
 
 **Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, status chips, budget as days · hours on one line, context menu (overview / workspace / **Edit project** / table / board / Gantt). Below 720px: card/accordion. Toolbar: `+ new project` and entity CRUD. Pleasant left/right/top padding aligned with Overview / Workspace.
 
-**Overview** — project home (dotpm-like): glyph, compact meta, hours↔days metrics on one line, **editable status**, **Edit project** (leaf) / Open workspace / add task CTAs, entities, Semplificato or PRINCE2 governance.
+**Overview** — project home (dotpm-like): glyph, metrics, editable status, then sections in order **Tasks → Governance → Documents → Linked Entities → Actions**. Documents tree (excludes `Tasks/`). Delete task from the editor (and table row) with confirmation; nested subtasks are deleted with the parent.
 
 **Edit project** — dedicated leaf (obsidian-pm parity), not modal-only.
 

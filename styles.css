@@ -61,6 +61,31 @@
 	min-width: 44px;
 }
 
+/*
+ * Selectable copy-paste text across plugin views.
+ * Obsidian (and some theme buttons) default to user-select: none; Overview
+ * labels, task titles, and document names must remain selectable.
+ */
+.pe-view,
+.pe-view .view-content,
+.pe-root,
+.pe-root *:not(input):not(textarea):not(select),
+.projects-engine-modal,
+.projects-engine-modal *:not(input):not(textarea):not(select),
+.projects-engine-settings,
+.projects-engine-settings *:not(input):not(textarea):not(select) {
+	user-select: text;
+	-webkit-user-select: text;
+}
+
+/* Keep drag handles / purely decorative chrome non-selectable. */
+.pe-status-drag,
+.pe-gantt-bar,
+.pe-gantt-handle {
+	user-select: none;
+	-webkit-user-select: none;
+}
+
 .pe-input,
 .pe-readonly {
 	width: 100%;
@@ -280,16 +305,10 @@
 		border-bottom: none;
 	}
 
-	.pe-task-footer-row,
-	.pe-task-footer-row td {
+	.pe-task-add-row {
 		display: block;
-		border: none !important;
-		padding: 8px 4px 4px !important;
+		padding: 8px 4px 4px;
 		margin: 0;
-	}
-
-	.pe-task-footer-row {
-		background: transparent;
 	}
 
 	.pe-table td::before,
@@ -1057,6 +1076,19 @@
 .pe-overview {
 	overflow: auto;
 	--pe-overview-pad-x: 20px;
+	display: flex;
+	flex-direction: column;
+	/* Isolate stacking so no section (e.g. task Add control) can paint over another. */
+	isolation: isolate;
+}
+
+.pe-overview > * {
+	position: relative;
+	flex: 0 0 auto;
+	width: 100%;
+	box-sizing: border-box;
+	/* Clear any accidental floats from themes / table quirks. */
+	clear: both;
 }
 
 .pe-overview-hero {
@@ -1073,13 +1105,18 @@
 	flex-direction: column;
 	align-items: stretch;
 	gap: 8px;
-	padding: 8px 0 4px;
-	margin-top: 12px;
+	padding: 12px var(--pe-overview-pad-x, 20px) 28px;
+	margin-top: 8px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
 .pe-overview-actions .pe-section-title {
 	margin: 8px 0 4px;
+	font-size: 0.85rem;
+	font-weight: 650;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--text-muted);
 }
 
 .pe-overview-actions .pe-inline-row {
@@ -1089,6 +1126,29 @@
 	align-items: center;
 	padding: 0;
 	margin: 0;
+}
+
+.pe-overview-summary {
+	padding: 8px var(--pe-overview-pad-x, 20px) 4px;
+}
+
+.pe-overview-tasks,
+.pe-overview-governance,
+.pe-overview-entities {
+	padding: 4px var(--pe-overview-pad-x, 20px) 8px;
+	border-top: 1px solid var(--background-modifier-border);
+	margin-top: 4px;
+}
+
+.pe-overview-tasks .pe-section-title,
+.pe-overview-governance .pe-section-title,
+.pe-overview-entities .pe-section-title {
+	margin: 12px 0 10px;
+	font-size: 0.85rem;
+	font-weight: 650;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--text-muted);
 }
 
 .pe-metric-strip {
@@ -1965,12 +2025,20 @@
 	white-space: nowrap;
 }
 
-.pe-task-footer-row td {
-	border-bottom: none;
-	padding: 12px 12px 16px;
+/*
+ * Add-task control is a sibling under the table (not tfoot) so Overview
+ * Documents cannot be covered by a collapsing / abspos table footer.
+ */
+.pe-task-add-row {
+	display: block;
+	padding: 8px 4px 12px 12px;
+	position: relative;
+	z-index: 0;
 }
 
 .pe-task-add {
+	display: inline-flex;
+	align-items: center;
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	padding: 8px 12px !important;
@@ -1981,12 +2049,55 @@
 	background: transparent !important;
 	min-width: 0;
 	min-height: 36px;
+	width: auto;
+	max-width: max-content;
+	position: static;
 }
 
 .pe-task-add:hover {
 	color: var(--interactive-accent);
 	background: var(--background-modifier-hover) !important;
 	text-decoration: none;
+}
+
+.pe-task-row-actions {
+	width: 44px;
+	text-align: center;
+	padding-inline: 4px;
+	white-space: nowrap;
+}
+
+.pe-task-row-delete {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	min-width: 36px;
+	min-height: 36px;
+	padding: 0 !important;
+	margin: 0;
+	border: none !important;
+	box-shadow: none !important;
+	background: transparent !important;
+	border-radius: 6px;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.pe-task-row-delete:hover {
+	color: var(--text-error, #ef4444);
+	background: var(--background-modifier-hover) !important;
+	text-decoration: none;
+}
+
+.pe-te-actions {
+	justify-content: flex-end;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.pe-te-actions .pe-te-delete {
+	margin-right: auto;
 }
 
 .pe-status-chip--task::before {
@@ -2122,17 +2233,20 @@
 
 .pe-workspace .pe-content,
 .pe-overview .pe-overview-table {
-	padding: 8px var(--pe-overview-pad-x, 20px) 16px;
+	padding: 0 0 8px;
 }
 
 /**
- * Documents tree sits between the task table and the meta panel.
+ * Documents tree — section 3 on Overview (after Governance).
  * Matches Overview horizontal padding and section title rhythm.
  */
 .pe-overview-docs {
 	padding: 4px var(--pe-overview-pad-x, 20px) 8px;
 	border-top: 1px solid var(--background-modifier-border);
 	margin-top: 4px;
+	position: relative;
+	z-index: 0;
+	overflow: visible;
 }
 
 .pe-overview-docs .pe-section-title {
@@ -2217,27 +2331,34 @@
 	color: var(--text-muted);
 }
 
+/*
+ * Plain left-aligned name beside the icon — do not grow into a wide pill.
+ * File rows use a span (not button) so theme button backgrounds cannot apply.
+ */
 .pe-docs-tree-label {
-	flex: 1 1 auto;
+	flex: 0 1 auto;
 	min-width: 0;
+	max-width: 100%;
+	width: auto;
 	text-align: left;
+	justify-content: flex-start;
 	font-weight: 500;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	cursor: pointer;
 	color: var(--text-normal);
+	background: transparent !important;
+	border: none !important;
+	box-shadow: none !important;
+	padding: 2px 4px;
+	margin: 0;
+	border-radius: 0;
+	min-height: 0;
+	line-height: 1.35;
 }
 
-button.pe-docs-tree-label {
-	background: transparent;
-	border: none;
-	padding: 4px 2px;
-	font: inherit;
-	color: var(--text-normal);
-}
-
-button.pe-docs-tree-label:hover {
+.pe-docs-tree-file-label:hover {
 	color: var(--interactive-accent);
 	text-decoration: underline;
 }
@@ -2250,28 +2371,6 @@ button.pe-docs-tree-label:hover {
 	padding: 0 4px;
 	min-width: 1.25rem;
 	text-align: right;
-}
-
-.pe-overview-meta-panel {
-	padding: 12px var(--pe-overview-pad-x, 20px) 28px;
-	border-top: 1px solid var(--background-modifier-border);
-	margin-top: 8px;
-}
-
-.pe-overview-meta-panel > .pe-section,
-.pe-overview-meta-panel > .pe-overview-status-row,
-.pe-overview-meta-panel > .pe-metric-strip,
-.pe-overview-meta-panel > .pe-overview-actions {
-	margin-inline: 0;
-}
-
-.pe-overview-meta-panel .pe-section-title {
-	margin: 16px 0 10px;
-	font-size: 0.85rem;
-	font-weight: 650;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-	color: var(--text-muted);
 }
 
 .pe-overview-status-row .pe-label {

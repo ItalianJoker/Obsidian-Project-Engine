@@ -37,6 +37,12 @@ import {
 	type TaskDraft,
 } from "../services/taskIo";
 import {
+	collectTaskSubtreeIds,
+	deleteTaskConfirmMessage,
+	deleteTaskSubtree,
+	notifyTaskDeleted,
+} from "../services/taskDelete";
+import {
 	computeEffortRollup,
 	formatHours,
 	formatHoursAndGiornate,
@@ -50,6 +56,7 @@ import {
 	timeFormatPlaceholder,
 } from "../services/dateFormat";
 import { resolveProjectTasksFolder } from "../services/projectScaffold";
+import { ConfirmModal } from "../ui/ConfirmModal";
 import { findProjectRow, loadProjectRows } from "./projectRows";
 import { EntitySuggest } from "./suggest";
 import { mountDateTimeField } from "./dateTimeInputs";
@@ -736,7 +743,16 @@ export class TaskEditor {
 	}
 
 	private addActions(parent: HTMLElement = this.rootEl!): void {
-		const row = parent.createDiv({ cls: "pe-actions" });
+		const row = parent.createDiv({ cls: "pe-actions pe-te-actions" });
+		// Delete only in edit mode — create drafts have no vault file yet.
+		if (this.mode === "edit") {
+			const del = row.createEl("button", {
+				text: "Delete task…",
+				cls: "pe-danger pe-touch-target pe-te-delete",
+				attr: { type: "button" },
+			});
+			del.addEventListener("click", () => this.confirmDelete());
+		}
 		const cancel = row.createEl("button", {
 			text: "Cancel",
 			cls: "pe-secondary pe-touch-target",
@@ -751,6 +767,43 @@ export class TaskEditor {
 		save.addEventListener("click", () => {
 			void this.submit();
 		});
+	}
+
+	/**
+	 * Confirm then delete this task and its nested subtasks (subtree policy).
+	 * Children are removed with the parent — they are not reparented/orphaned —
+	 * so the confirm copy always states the nested count when > 0.
+	 */
+	private confirmDelete(): void {
+		const existing = this.allTasks.find((task) => task.id === this.draft.id);
+		if (!existing) {
+			new Notice("Task note not found on disk");
+			return;
+		}
+		const subtreeCount = collectTaskSubtreeIds(existing.id, this.allTasks).length;
+		new ConfirmModal(this.app, {
+			title: "Delete task?",
+			message: deleteTaskConfirmMessage(existing, subtreeCount),
+			confirmLabel: "Delete task",
+			dangerous: true,
+			onConfirm: async () => {
+				try {
+					const result = await deleteTaskSubtree({
+						app: this.app,
+						vault: this.app.vault,
+						root: existing,
+						allTasks: this.allTasks,
+					});
+					notifyTaskDeleted(existing.title.trim() || existing.id, result);
+					this.plugin.refreshOpenViews();
+					this.onSaved?.();
+					this.host.close();
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					new Notice(`Could not delete task: ${message}`);
+				}
+			},
+		}).open();
 	}
 
 	private async submit(): Promise<void> {

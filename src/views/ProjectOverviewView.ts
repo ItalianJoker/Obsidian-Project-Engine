@@ -1,9 +1,16 @@
 /**
  * Project overview — project home with screenshot-aligned chrome and task table.
  *
- * Primary surface shows the hierarchical task dashboard (task-table.png).
- * Documents tree (file-based, Tasks/ excluded), compact meta, governance,
- * then Edit / Delete actions at the bottom.
+ * Section order on the project home (required UX):
+ * 1. Tasks
+ * 2. Governance
+ * 3. Documents
+ * 4. Linked Entities
+ * 5. Actions
+ *
+ * A compact metrics/status strip sits above Tasks as project summary chrome
+ * (not one of the five numbered sections). Documents tree is file-based and
+ * excludes Tasks/. Edit / Delete project live under Actions.
  *
  * Layout inspiration from [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm)
  * (MIT © 2026 Stepan Kropachev and dotpm contributors).
@@ -59,7 +66,7 @@ interface OverviewState {
 }
 
 /**
- * Project home leaf: chrome + task table + secondary meta / governance.
+ * Project home leaf: chrome + Tasks → Governance → Documents → Entities → Actions.
  */
 export class ProjectOverviewView extends ItemView {
 	private filePath: string | null = null;
@@ -74,10 +81,19 @@ export class ProjectOverviewView extends ItemView {
 	private table: TableSubView | null = null;
 	private chromeEl!: HTMLElement;
 	private filterEl!: HTMLElement;
+	/** Metrics + status — summary chrome above the Tasks section. */
+	private summaryEl!: HTMLElement;
+	/** Tasks section mount (heading + table SubView). */
+	private tasksSectionEl!: HTMLElement;
 	private tableEl!: HTMLElement;
+	/** Governance section (Semplificato blurb or PRINCE2 stages). */
+	private governanceEl!: HTMLElement;
 	/** File-based documents tree (Documents /, Initiation /, … — not Tasks /). */
 	private docsEl!: HTMLElement;
-	private metaEl!: HTMLElement;
+	/** Linked entities grid. */
+	private entitiesEl!: HTMLElement;
+	/** Edit / Open note / Delete project actions. */
+	private actionsEl!: HTMLElement;
 	/**
 	 * Collapsed folder paths in the documents tree. Survives vault-driven
 	 * refreshes so expand/collapse is not reset on every Sync event.
@@ -144,6 +160,12 @@ export class ProjectOverviewView extends ItemView {
 		await this.loadProject();
 	}
 
+	/**
+	 * Build stable section mounts in the required Overview order.
+	 *
+	 * Separate elements (not one meta panel) so CSS stacking cannot pull the
+	 * task-table footer over Documents — each section is a normal block sibling.
+	 */
 	private ensureInitialized(): void {
 		if (this.initialized) return;
 		this.initialized = true;
@@ -154,9 +176,14 @@ export class ProjectOverviewView extends ItemView {
 		root.addClass("pe-overview");
 		this.chromeEl = root.createDiv({ cls: "pe-chrome-mount" });
 		this.filterEl = root.createDiv({ cls: "pe-chrome-filter-panel" });
-		this.tableEl = root.createDiv({ cls: "pe-overview-table" });
+		this.summaryEl = root.createDiv({ cls: "pe-overview-summary" });
+		this.tasksSectionEl = root.createDiv({ cls: "pe-overview-tasks" });
+		this.tasksSectionEl.createEl("h3", { text: "Tasks", cls: "pe-section-title" });
+		this.tableEl = this.tasksSectionEl.createDiv({ cls: "pe-overview-table" });
+		this.governanceEl = root.createDiv({ cls: "pe-overview-governance" });
 		this.docsEl = root.createDiv({ cls: "pe-overview-docs" });
-		this.metaEl = root.createDiv({ cls: "pe-overview-meta-panel" });
+		this.entitiesEl = root.createDiv({ cls: "pe-overview-entities" });
+		this.actionsEl = root.createDiv({ cls: "pe-overview-actions" });
 	}
 
 	private registerAutoRefresh(): void {
@@ -198,9 +225,12 @@ export class ProjectOverviewView extends ItemView {
 	private renderMissing(): void {
 		this.chromeEl?.empty();
 		this.filterEl?.empty();
+		this.summaryEl?.empty();
 		this.tableEl?.empty();
+		this.governanceEl?.empty();
 		this.docsEl?.empty();
-		this.metaEl?.empty();
+		this.entitiesEl?.empty();
+		this.actionsEl?.empty();
 		const root = this.contentEl;
 		root.empty();
 		root.addClass("pe-root");
@@ -273,9 +303,12 @@ export class ProjectOverviewView extends ItemView {
 			this.filterEl.removeClass("is-open");
 		}
 
+		this.renderSummary(project);
 		this.renderTable();
+		this.renderGovernance(project);
 		this.renderDocuments(project);
-		this.renderMeta(project);
+		this.renderEntities(project);
+		this.renderActions(project);
 	}
 
 	/**
@@ -325,8 +358,12 @@ export class ProjectOverviewView extends ItemView {
 		this.table.render();
 	}
 
-	private renderMeta(project: ProjectRow): void {
-		const root = this.metaEl;
+	/**
+	 * Budget / effort chips + status select — sits above Tasks, not between
+	 * the numbered home sections.
+	 */
+	private renderSummary(project: ProjectRow): void {
+		const root = this.summaryEl;
 		root.empty();
 
 		const hoursPer = this.plugin.settings.hoursPerManday;
@@ -383,18 +420,14 @@ export class ProjectOverviewView extends ItemView {
 				}
 			})();
 		});
-
-		this.renderEntities(root, project);
-		this.renderGovernance(root, project);
-		this.renderActions(root, project);
 	}
 
 	/**
-	 * Project edit / launch actions sit at the bottom of the meta panel so
-	 * primary content (metrics, status, entities) stays above the fold.
+	 * Project edit / launch actions — last section on the home surface.
 	 */
-	private renderActions(root: HTMLElement, project: ProjectRow): void {
-		const actions = root.createDiv({ cls: "pe-overview-actions" });
+	private renderActions(project: ProjectRow): void {
+		const actions = this.actionsEl;
+		actions.empty();
 		actions.createEl("h3", { text: "Actions", cls: "pe-section-title" });
 		const row = actions.createDiv({ cls: "pe-inline-row" });
 		this.cta(row, "Edit project", false, () => {
@@ -483,9 +516,10 @@ export class ProjectOverviewView extends ItemView {
 		button.addEventListener("click", onClick);
 	}
 
-	private renderEntities(root: HTMLElement, project: ProjectRow): void {
-		const section = root.createDiv({ cls: "pe-section pe-overview-entities" });
-		section.createEl("h3", { text: "Linked entities", cls: "pe-section-title" });
+	private renderEntities(project: ProjectRow): void {
+		const section = this.entitiesEl;
+		section.empty();
+		section.createEl("h3", { text: "Linked Entities", cls: "pe-section-title" });
 		const grid = section.createDiv({ cls: "pe-entity-grid" });
 		this.entityBlock(grid, "Customer", project.customer ? [project.customer] : []);
 		this.entityBlock(grid, "Project type", project.projectType ? [project.projectType] : []);
@@ -511,8 +545,9 @@ export class ProjectOverviewView extends ItemView {
 		}
 	}
 
-	private renderGovernance(root: HTMLElement, project: ProjectRow): void {
-		const section = root.createDiv({ cls: "pe-section" });
+	private renderGovernance(project: ProjectRow): void {
+		const section = this.governanceEl;
+		section.empty();
 		section.createEl("h3", { text: "Governance", cls: "pe-section-title" });
 
 		if (project.governance === "Semplificato") {
