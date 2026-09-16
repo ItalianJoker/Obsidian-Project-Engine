@@ -1,7 +1,8 @@
 /**
  * Mountable task editor: recursive nested subtasks, dependencies with cycle detection,
- * time logs, estimate vs actual / remaining effort, due/scheduled using Settings date/time
- * formats, and undo/redo via the Scheduler Command Pattern + vault.process persistence.
+ * time logs, estimate vs actual / remaining effort, start/end/due/scheduled with optional
+ * time via Settings-aware calendar/clock pickers, and undo/redo via the Scheduler
+ * Command Pattern + vault.process persistence.
  *
  * Hosted in a modal or as {@link TaskView} ItemView (obsidian-pm parity).
  */
@@ -9,7 +10,6 @@
 import { Notice, TFile, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import type {
-	IsoDate,
 	Task,
 	TaskId,
 	TaskPriority,
@@ -43,18 +43,16 @@ import {
 } from "../services/timeLogs";
 import { splitFrontmatter } from "../services/frontmatter";
 import {
+	calendarDatePart,
 	dateFormatPlaceholder,
 	formatDisplayDate,
-	formatDisplayTime,
-	joinDateTime,
 	parseDisplayDate,
-	parseDisplayTime,
-	splitDateTime,
 	timeFormatPlaceholder,
 } from "../services/dateFormat";
 import { resolveProjectTasksFolder } from "../services/projectScaffold";
 import { findProjectRow, loadProjectRows } from "./projectRows";
 import { EntitySuggest } from "./suggest";
+import { mountDateTimeField } from "./dateTimeInputs";
 
 /**
  * Host surface for {@link TaskEditor} — modal dialog or dedicated ItemView tab.
@@ -230,14 +228,18 @@ export class TaskEditor {
 			`Fractions OK (0.5, 1.25). 1 day = ${this.plugin.settings.hoursPerManday} h.`,
 		);
 
-		this.addDate("Start date", this.draft.startDate, (value) => {
+		this.addDateTimeField("Start date", this.draft.startDate, (value) => {
 			this.draft.startDate = value;
 		});
-		this.addDate("End date", this.draft.endDate, (value) => {
+		this.addDateTimeField("End date", this.draft.endDate, (value) => {
 			this.draft.endDate = value;
 		});
-		this.addDateTimeField("Due date", "due");
-		this.addDateTimeField("Scheduled", "scheduled");
+		this.addDateTimeField("Due date", this.draft.due, (value) => {
+			this.draft.due = value;
+		});
+		this.addDateTimeField("Scheduled", this.draft.scheduled, (value) => {
+			this.draft.scheduled = value;
+		});
 
 		this.addAssignee();
 		this.addFlags();
@@ -250,8 +252,9 @@ export class TaskEditor {
 		this.treeEl = contentEl.createDiv({ cls: "pe-task-tree" });
 		this.renderSubtree();
 
-		this.addScheduleActions();
-		this.addActions();
+		const footer = contentEl.createDiv({ cls: "pe-te-footer" });
+		this.addScheduleActions(footer);
+		this.addActions(footer);
 	}
 
 	private addText(label: string, value: string, onChange: (value: string) => void): void {
@@ -304,103 +307,25 @@ export class TaskEditor {
 	}
 
 	/**
-	 * Single calendar date field (start/end). Values shown and typed in Settings format;
-	 * stored as ISO `YYYY-MM-DD` in YAML.
+	 * Date + optional time using native calendar/clock pickers synced with
+	 * Settings-format text (default DD/MM/YYYY + 24h). YAML stays ISO.
 	 */
-	private addDate(
+	private addDateTimeField(
 		label: string,
-		value: IsoDate | null,
-		onChange: (value: IsoDate | null) => void,
+		value: string | null,
+		onChange: (value: string | null) => void,
 	): void {
 		const dateFormat = this.plugin.settings.dateFormat;
-		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
-		wrap.createEl("label", { text: label, cls: "pe-label" });
-		const input = wrap.createEl("input", {
-			cls: "pe-input pe-touch-target",
-			attr: {
-				type: "text",
-				placeholder: dateFormatPlaceholder(dateFormat),
-				spellcheck: "false",
-				"aria-label": label,
-			},
-		});
-		input.value = value ? formatDisplayDate(value, dateFormat) : "";
-		const commit = (): void => {
-			const trimmed = input.value.trim();
-			if (!trimmed) {
-				onChange(null);
-				return;
-			}
-			const iso = parseDisplayDate(trimmed, dateFormat);
-			if (iso) {
-				onChange(iso);
-				input.value = formatDisplayDate(iso, dateFormat);
-			}
-		};
-		input.addEventListener("change", commit);
-		input.addEventListener("blur", commit);
-	}
-
-	/**
-	 * Due date / Scheduled: calendar date + optional time, both using Settings formats.
-	 * YAML stays `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`.
-	 */
-	private addDateTimeField(label: string, key: "due" | "scheduled"): void {
-		const dateFormat = this.plugin.settings.dateFormat;
 		const timeFormat = this.plugin.settings.timeFormat;
-		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
-		wrap.createEl("label", { text: label, cls: "pe-label" });
-		wrap.createEl("p", {
-			cls: "pe-help",
-			text: `Optional time. Enter as ${dateFormatPlaceholder(dateFormat)} and ${timeFormatPlaceholder(timeFormat)}. Stored as ISO in frontmatter.`,
+		mountDateTimeField(this.rootEl!, {
+			label,
+			value,
+			dateFormat,
+			timeFormat,
+			includeTime: true,
+			onChange,
+			help: `Optional time. Type as ${dateFormatPlaceholder(dateFormat)} and ${timeFormatPlaceholder(timeFormat)}, or use the calendar / clock controls. Stored as ISO in frontmatter.`,
 		});
-		const row = wrap.createDiv({ cls: "pe-inline-row" });
-		const parts = splitDateTime(this.draft[key]);
-		const dateInput = row.createEl("input", {
-			cls: "pe-input pe-touch-target",
-			attr: {
-				type: "text",
-				placeholder: dateFormatPlaceholder(dateFormat),
-				spellcheck: "false",
-				"aria-label": `${label} date`,
-			},
-		});
-		dateInput.value = parts.date ? formatDisplayDate(parts.date, dateFormat) : "";
-		const timeInput = row.createEl("input", {
-			cls: "pe-input pe-touch-target",
-			attr: {
-				type: "text",
-				placeholder: timeFormatPlaceholder(timeFormat),
-				spellcheck: "false",
-				"aria-label": `${label} time (optional)`,
-			},
-		});
-		timeInput.value = parts.time ? formatDisplayTime(parts.time, timeFormat) : "";
-		const sync = (): void => {
-			const dateRaw = dateInput.value.trim();
-			const timeRaw = timeInput.value.trim();
-			if (!dateRaw) {
-				this.draft[key] = null;
-				return;
-			}
-			const isoDate = parseDisplayDate(dateRaw, dateFormat);
-			if (!isoDate) {
-				return;
-			}
-			const isoTime = timeRaw ? parseDisplayTime(timeRaw, timeFormat) : "";
-			if (timeRaw && isoTime === null) {
-				return;
-			}
-			this.draft[key] = joinDateTime(isoDate, isoTime || "");
-			dateInput.value = formatDisplayDate(isoDate, dateFormat);
-			if (isoTime) {
-				timeInput.value = formatDisplayTime(isoTime, timeFormat);
-			}
-		};
-		dateInput.addEventListener("change", sync);
-		dateInput.addEventListener("blur", sync);
-		timeInput.addEventListener("change", sync);
-		timeInput.addEventListener("blur", sync);
 	}
 
 	private addStatus(): void {
@@ -731,8 +656,8 @@ export class TaskEditor {
 		});
 	}
 
-	private addScheduleActions(): void {
-		const wrap = this.rootEl!.createDiv({ cls: "pe-inline-row pe-schedule-actions" });
+	private addScheduleActions(parent: HTMLElement = this.rootEl!): void {
+		const wrap = parent.createDiv({ cls: "pe-inline-row pe-schedule-actions" });
 		const auto = wrap.createEl("button", {
 			text: "Auto-schedule project",
 			cls: "pe-secondary pe-touch-target",
@@ -780,8 +705,8 @@ export class TaskEditor {
 			const projectTasks = this.allTasks.filter((task) => task.projectId === this.projectId);
 			const schedulable = projectTasks.map(toSchedulable);
 			const projectStart =
-				this.draft.startDate ??
-				projectTasks.find((task) => task.startDate)?.startDate ??
+				calendarDatePart(this.draft.startDate) ??
+				calendarDatePart(projectTasks.find((task) => task.startDate)?.startDate) ??
 				new Date().toISOString().slice(0, 10);
 			const result = this.plugin.scheduler.autoSchedule(schedulable, {
 				projectStart,
@@ -810,8 +735,8 @@ export class TaskEditor {
 		}
 	}
 
-	private addActions(): void {
-		const row = this.rootEl!.createDiv({ cls: "pe-actions" });
+	private addActions(parent: HTMLElement = this.rootEl!): void {
+		const row = parent.createDiv({ cls: "pe-actions" });
 		const cancel = row.createEl("button", {
 			text: "Cancel",
 			cls: "pe-secondary pe-touch-target",

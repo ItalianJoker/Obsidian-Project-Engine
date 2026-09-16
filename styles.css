@@ -16,7 +16,7 @@
 .pe-modal-body {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 14px;
 }
 
 .pe-modal-lead,
@@ -43,10 +43,12 @@
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
+	margin: 0;
 }
 
 .pe-label {
 	font-weight: 600;
+	line-height: 1.3;
 }
 
 .pe-touch-target,
@@ -151,15 +153,62 @@
 
 .pe-inline-row .pe-input {
 	flex: 1;
+	min-width: 0;
 }
 
 .pe-actions {
 	justify-content: flex-end;
-	margin-top: 8px;
+	margin-top: 0;
 	position: sticky;
 	bottom: 0;
-	padding-top: 8px;
+	padding-top: 4px;
 	background: var(--background-primary);
+}
+
+/* Date + optional time: Settings-format text synced with native pickers */
+.pe-datetime-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.pe-picker-combo {
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+	min-width: 0;
+}
+
+.pe-picker-combo .pe-date-text,
+.pe-picker-combo .pe-time-text {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.pe-native-date,
+.pe-native-time {
+	flex: 0 0 auto;
+	width: auto;
+	min-width: 8.5rem;
+	max-width: 11rem;
+	cursor: pointer;
+}
+
+.pe-native-time {
+	min-width: 7rem;
+	max-width: 9rem;
+}
+
+@media (max-width: 520px) {
+	.pe-picker-combo {
+		flex-wrap: wrap;
+	}
+
+	.pe-native-date,
+	.pe-native-time {
+		flex: 1 1 100%;
+		max-width: none;
+	}
 }
 
 .pe-primary,
@@ -473,6 +522,38 @@
 
 .pe-schedule-actions {
 	flex-wrap: wrap;
+}
+
+/* Task editor: keep schedule / save actions out of the Subtasks block */
+.pe-task-tree {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 4px 0 2px;
+}
+
+.pe-te-footer {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-top: 8px;
+	padding-top: 16px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.pe-te-surface {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.pe-te-surface > h2 {
+	margin: 0;
+}
+
+.pe-section-title {
+	margin: 0;
+	font-size: 1.05em;
 }
 
 /* ---- Empty states ---- */

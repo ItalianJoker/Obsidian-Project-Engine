@@ -12,7 +12,7 @@ import type { IsoDate, Task, TaskId } from "../../models/types";
 import { toWikiLink } from "../../models/types";
 import { addDays, endFromStart, formatIsoDate, parseIsoDate } from "../../engine/Scheduler";
 import { EmptyState } from "../../ui/EmptyState";
-import { formatDisplayDate, formatDisplayDateTime } from "../../services/dateFormat";
+import { calendarDatePart, formatDisplayDate, formatDisplayDateTime } from "../../services/dateFormat";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
@@ -549,17 +549,18 @@ function groupByParent(tasks: Task[]): Map<TaskId | null, Task[]> {
 }
 
 function resolveDates(task: Task): { start: IsoDate; end: IsoDate } | null {
-	if (task.startDate) {
+	const startDay = calendarDatePart(task.startDate);
+	const endDay = calendarDatePart(task.endDate);
+	if (startDay) {
 		const end =
-			task.endDate ??
-			endFromStart(task.startDate, Math.max(task.durationDays, task.isMilestone ? 0 : 1));
-		return { start: task.startDate, end };
+			endDay ??
+			endFromStart(startDay, Math.max(task.durationDays, task.isMilestone ? 0 : 1));
+		return { start: startDay, end };
 	}
-	if (task.endDate) {
+	if (endDay) {
 		const duration = Math.max(task.durationDays, 0);
-		const start =
-			duration <= 0 ? task.endDate : addDays(task.endDate, -(duration - 1));
-		return { start, end: task.endDate };
+		const start = duration <= 0 ? endDay : addDays(endDay, -(duration - 1));
+		return { start, end: endDay };
 	}
 	return null;
 }
