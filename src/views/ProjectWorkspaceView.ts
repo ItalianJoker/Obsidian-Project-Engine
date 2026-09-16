@@ -1,26 +1,26 @@
 /**
  * Project delivery workspace — one ItemView hosting Table / Gantt / Kanban SubViews.
  *
- * Chrome (toolbar left/center/right, ViewSwitcher, search header, in-leaf title
- * back to overview) adapted from [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm)
- * ProjectView (MIT © 2026 Stepan Kropachev and dotpm contributors).
- *
- * Domain: PE project frontmatter, governance-aware board, Teams URL, task I/O.
+ * Chrome (icon, name, “This project”, view switchers, + add task, Search tasks…)
+ * matches Luca’s dotpm screenshots; pattern adapted from
+ * [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) ProjectView
+ * (MIT © 2026 Stepan Kropachev and dotpm contributors).
  */
 
-import { ExtraButtonComponent, ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import type { Task, TaskPriority, TaskStatus } from "../models/types";
 import { toWikiLink } from "../models/types";
 import { loadAllTasks } from "../services/taskIo";
 import { EmptyState } from "../ui/EmptyState";
-import { ViewSwitcher } from "../ui/ViewSwitcher";
+import { renderProjectChrome } from "../ui/ProjectChrome";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
 import type { SubView } from "./SubView";
-import { GanttSubView } from "./subviews/GanttSubView";
+import { GanttSubView, type GanttZoomId } from "./subviews/GanttSubView";
 import { KanbanSubView } from "./subviews/KanbanSubView";
 import { TableSubView, type TaskDashboardFilters } from "./subviews/TableSubView";
-import { openTaskEditor } from "./TaskEditor";
+import { openProjectEditor } from "./ProjectEditView";
+import { TaskEditorModal } from "./TaskEditorModal";
 
 /** Registered ItemView type id. */
 export const WORKSPACE_VIEW_TYPE = "projects-engine-workspace";
@@ -56,7 +56,7 @@ const TASK_PRIORITY_FILTERS: Array<"all" | TaskPriority> = [
 ];
 
 /**
- * Host leaf: toolbar + search + filter chips + SubView body for one project.
+ * Host leaf: screenshot chrome + SubView body for one project.
  */
 export class ProjectWorkspaceView extends ItemView {
 	private filePath: string | null = null;
@@ -68,12 +68,14 @@ export class ProjectWorkspaceView extends ItemView {
 		status: "all",
 		priority: "all",
 	};
-	private zoomId: "day" | "week" | "month" = "week";
+	private showFilterPanel = false;
+	private zoomId: GanttZoomId = "week";
 	private subview: SubView | null = null;
-	private toolbarEl!: HTMLElement;
-	private headerEl!: HTMLElement;
+	private chromeEl!: HTMLElement;
+	private filterEl!: HTMLElement;
 	private bodyEl!: HTMLElement;
 	private initialized = false;
+	private reloadTimer: number | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -81,6 +83,7 @@ export class ProjectWorkspaceView extends ItemView {
 	) {
 		super(leaf);
 		this.mode = plugin.settings.defaultView;
+		this.zoomId = plugin.settings.ganttGranularity;
 		this.navigation = false;
 	}
 
@@ -128,20 +131,22 @@ export class ProjectWorkspaceView extends ItemView {
 
 	override async onOpen(): Promise<void> {
 		this.ensureInitialized();
+		this.registerAutoRefresh();
 		if (this.filePath && !this.project) {
 			await this.loadProject();
 		}
 	}
 
 	override async onClose(): Promise<void> {
+		if (this.reloadTimer !== null) {
+			window.clearTimeout(this.reloadTimer);
+			this.reloadTimer = null;
+		}
 		this.subview?.destroy?.();
 		this.subview = null;
 		this.contentEl.empty();
 	}
 
-	/**
-	 * One-time DOM scaffold (safe if setState runs before onOpen).
-	 */
 	private ensureInitialized(): void {
 		if (this.initialized) {
 			return;
@@ -151,9 +156,27 @@ export class ProjectWorkspaceView extends ItemView {
 		const root = this.contentEl;
 		root.empty();
 		root.addClass("pe-root");
-		this.toolbarEl = root.createDiv({ cls: "pe-toolbar" });
-		this.headerEl = root.createDiv({ cls: "pe-project-header-mount" });
+		root.addClass("pe-workspace");
+		this.chromeEl = root.createDiv({ cls: "pe-chrome-mount" });
+		this.filterEl = root.createDiv({ cls: "pe-chrome-filter-panel" });
 		this.bodyEl = root.createDiv({ cls: "pe-content" });
+	}
+
+	private registerAutoRefresh(): void {
+		const schedule = (): void => {
+			if (this.reloadTimer !== null) {
+				window.clearTimeout(this.reloadTimer);
+			}
+			this.reloadTimer = window.setTimeout(() => {
+				this.reloadTimer = null;
+				void this.refresh();
+			}, this.plugin.settings.indexerDebounceMs);
+		};
+		this.registerEvent(this.app.vault.on("modify", schedule));
+		this.registerEvent(this.app.vault.on("create", schedule));
+		this.registerEvent(this.app.vault.on("delete", schedule));
+		this.registerEvent(this.app.vault.on("rename", schedule));
+		this.registerEvent(this.app.metadataCache.on("resolved", schedule));
 	}
 
 	private async loadProject(): Promise<void> {
@@ -176,16 +199,14 @@ export class ProjectWorkspaceView extends ItemView {
 		this.renderCurrentView();
 	}
 
-	/**
-	 * Public refresh after task mutations (Kanban drop, modal save).
-	 */
+	/** Public refresh after task mutations (Kanban drop, modal save, status). */
 	public async refresh(): Promise<void> {
 		await this.loadProject();
 	}
 
 	private renderMissing(): void {
-		this.toolbarEl.empty();
-		this.headerEl.empty();
+		this.chromeEl.empty();
+		this.filterEl.empty();
 		this.bodyEl.empty();
 		new EmptyState(this.bodyEl)
 			.setTitle("Project not found")
@@ -195,136 +216,108 @@ export class ProjectWorkspaceView extends ItemView {
 			});
 	}
 
+	private openAddTask(): void {
+		const project = this.project;
+		if (!project) return;
+		new TaskEditorModal(
+			this.app,
+			this.plugin,
+			project.id,
+			toWikiLink(project.file.basename),
+		).open();
+	}
+
 	private renderChrome(): void {
 		const project = this.project;
-		if (!project) {
-			return;
-		}
+		if (!project) return;
 
-		const bar = this.toolbarEl;
-		bar.empty();
+		const filterActive =
+			this.filters.status !== "all" ||
+			this.filters.priority !== "all" ||
+			this.showFilterPanel;
 
-		const left = bar.createDiv({ cls: "pe-toolbar-left" });
-		const iconBtn = left.createEl("button", {
-			cls: "pe-toolbar-icon pe-touch-target",
-			attr: { type: "button", title: "Open overview", "aria-label": "Open overview" },
-		});
-		iconBtn.setText("◇");
-		iconBtn.addEventListener("click", () => {
-			void this.plugin.router.openOverview(project.file.path, this.leaf);
-		});
-		const title = left.createEl("button", {
-			text: project.name,
-			cls: "pe-toolbar-title pe-toolbar-title--link pe-touch-target",
-			attr: { type: "button", title: "Open overview" },
-		});
-		title.addEventListener("click", () => {
-			void this.plugin.router.openOverview(project.file.path, this.leaf);
-		});
-		left.createSpan({
-			text: project.governance,
-			cls: "pe-toolbar-chip",
-		});
-
-		const center = bar.createDiv({ cls: "pe-toolbar-center" });
-		new ViewSwitcher<WorkspaceViewMode>(center, {
-			options: [
-				{ id: "table", icon: "table", label: "Table" },
-				{ id: "gantt", icon: "git-fork", label: "Gantt" },
-				{ id: "kanban", icon: "layout-dashboard", label: "Board" },
-			],
-			active: this.mode,
-			onChange: (mode) => {
+		renderProjectChrome({
+			container: this.chromeEl,
+			project,
+			mode: this.mode,
+			searchText: this.filters.text,
+			filterAll: !filterActive,
+			onModeChange: (mode) => {
 				this.mode = mode;
 				void this.leaf.setViewState({
 					type: WORKSPACE_VIEW_TYPE,
 					state: this.getState(),
 				});
+				this.renderChrome();
 				this.renderCurrentView();
 			},
-		});
-
-		const right = bar.createDiv({ cls: "pe-toolbar-right" });
-		const add = right.createEl("button", {
-			text: "+ add task",
-			cls: "pe-primary pe-touch-target",
-			attr: { type: "button" },
-		});
-		add.addEventListener("click", () => {
-			void openTaskEditor(this.plugin, {
-				projectId: project.id,
-				projectLink: toWikiLink(project.file.basename),
-			});
-		});
-		new ExtraButtonComponent(right)
-			.setIcon("refresh-cw")
-			.setTooltip("Refresh")
-			.onClick(() => {
-				void this.refresh();
-			});
-		const refreshEl = right.querySelector(".clickable-icon:last-child");
-		refreshEl?.addClass("pe-touch-target");
-
-		this.headerEl.empty();
-		const header = this.headerEl.createDiv({ cls: "pe-project-header" });
-		const primary = header.createDiv({ cls: "pe-project-header-primary" });
-		const search = primary.createEl("input", {
-			cls: "pe-project-header-search pe-touch-target",
-			attr: {
-				type: "search",
-				placeholder: "Filter tasks…",
-				"aria-label": "Filter tasks",
+			onSearchChange: (text) => {
+				this.filters.text = text;
+				this.renderCurrentView();
 			},
-		});
-		search.value = this.filters.text;
-		search.addEventListener("input", () => {
-			this.filters.text = search.value;
-			this.renderCurrentView();
-		});
-
-		const status = primary.createEl("select", {
-			cls: "pe-input pe-touch-target pe-header-filter",
-			attr: { "aria-label": "Filter by status" },
-		});
-		for (const value of TASK_STATUS_FILTERS) {
-			status.createEl("option", {
-				text: value === "all" ? "All statuses" : value,
-				attr: { value },
-			});
-		}
-		status.value = this.filters.status;
-		status.addEventListener("change", () => {
-			this.filters.status = status.value as TaskDashboardFilters["status"];
-			this.renderCurrentView();
-		});
-
-		const priority = primary.createEl("select", {
-			cls: "pe-input pe-touch-target pe-header-filter",
-			attr: { "aria-label": "Filter by priority" },
-		});
-		for (const value of TASK_PRIORITY_FILTERS) {
-			priority.createEl("option", {
-				text: value === "all" ? "All priorities" : value,
-				attr: { value },
-			});
-		}
-		priority.value = this.filters.priority;
-		priority.addEventListener("change", () => {
-			this.filters.priority = priority.value as TaskDashboardFilters["priority"];
-			this.renderCurrentView();
+			onAddTask: () => this.openAddTask(),
+			onOpenSettings: () => {
+				void openProjectEditor(this.plugin, project, {
+					onSaved: () => void this.refresh(),
+				});
+			},
+			onAllClick: () => {
+				this.filters = { text: this.filters.text, status: "all", priority: "all" };
+				this.showFilterPanel = false;
+				this.renderChrome();
+				this.renderCurrentView();
+			},
+			onFilterClick: () => {
+				this.showFilterPanel = !this.showFilterPanel;
+				this.renderChrome();
+			},
+			extraToolbar:
+				this.mode === "gantt"
+					? (parent) => {
+							/* GanttSubView owns Day/Week/… and Today/Expand — leave mount empty */
+							parent.addClass("pe-chrome-extra--gantt-host");
+						}
+					: undefined,
 		});
 
-		if (this.filters.status !== "all" || this.filters.priority !== "all" || this.filters.text) {
-			const clear = primary.createEl("button", {
-				text: "Clear filters",
-				cls: "pe-secondary pe-touch-target",
-				attr: { type: "button" },
+		this.filterEl.empty();
+		if (this.showFilterPanel) {
+			this.filterEl.addClass("is-open");
+			const status = this.filterEl.createEl("select", {
+				cls: "pe-input pe-touch-target pe-header-filter",
+				attr: { "aria-label": "Filter by status" },
 			});
-			clear.addEventListener("click", () => {
-				this.filters = { text: "", status: "all", priority: "all" };
+			for (const value of TASK_STATUS_FILTERS) {
+				status.createEl("option", {
+					text: value === "all" ? "All statuses" : value,
+					attr: { value },
+				});
+			}
+			status.value = this.filters.status;
+			status.addEventListener("change", () => {
+				this.filters.status = status.value as TaskDashboardFilters["status"];
 				this.renderChrome();
 				this.renderCurrentView();
 			});
+
+			const priority = this.filterEl.createEl("select", {
+				cls: "pe-input pe-touch-target pe-header-filter",
+				attr: { "aria-label": "Filter by priority" },
+			});
+			for (const value of TASK_PRIORITY_FILTERS) {
+				priority.createEl("option", {
+					text: value === "all" ? "All priorities" : value,
+					attr: { value },
+				});
+			}
+			priority.value = this.filters.priority;
+			priority.addEventListener("change", () => {
+				this.filters.priority = priority.value as TaskDashboardFilters["priority"];
+				this.renderChrome();
+				this.renderCurrentView();
+			});
+		} else {
+			this.filterEl.removeClass("is-open");
 		}
 	}
 
@@ -340,6 +333,7 @@ export class ProjectWorkspaceView extends ItemView {
 
 		const onChanged = (): void => {
 			void this.refresh();
+			this.plugin.refreshOpenViews();
 		};
 
 		const scopedTasks = this.tasks.filter((task) => {

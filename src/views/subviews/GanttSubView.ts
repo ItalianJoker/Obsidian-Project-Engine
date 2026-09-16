@@ -371,7 +371,15 @@ export class GanttSubView implements SubView {
 				} else {
 					bar.setText("◆");
 				}
-				bar.title = `${row.task.title}\n${row.start} → ${row.end}\n${row.task.status}`;
+				bar.title = [
+					row.task.title,
+					`${row.start} → ${row.end}`,
+					row.task.status,
+					row.task.due ? `Due date: ${row.task.due}` : null,
+					row.task.scheduled ? `Scheduled: ${row.task.scheduled}` : null,
+				]
+					.filter(Boolean)
+					.join("\n");
 				bar.addEventListener("click", () => this.openTask(row.task));
 
 				lane.dataset.taskId = row.task.id;

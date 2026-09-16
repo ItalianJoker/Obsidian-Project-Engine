@@ -15,7 +15,7 @@ import { CommandStack, Scheduler } from "./engine/Scheduler";
 import { EntityIndexer } from "./engine/Indexer";
 import { DEFAULT_SETTINGS, type CustomFieldEntityKind, type ProjectsEngineSettings } from "./models/types";
 import { splitFrontmatter } from "./services/frontmatter";
-import { scaffoldGovernance } from "./services/governance";
+import { scaffoldProjectTree } from "./services/projectScaffold";
 import { isValidTeamsChannelUrl, openExternalUrl } from "./services/urls";
 import { ProjectsEngineSettingTab } from "./settings";
 import { openEntityModal } from "./views/EntityModal";
@@ -290,6 +290,45 @@ export default class ProjectsEnginePlugin extends Plugin {
 		if (!Number.isFinite(this.settings.hoursPerManday) || this.settings.hoursPerManday <= 0) {
 			this.settings.hoursPerManday = 8;
 		}
+		const dateFormats = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
+		if (!dateFormats.has(this.settings.dateFormat)) {
+			this.settings.dateFormat = "DD/MM/YYYY";
+		}
+		if (this.settings.timeFormat !== "12h") {
+			this.settings.timeFormat = "24h";
+		}
+		const zooms = new Set(["day", "week", "month", "quarter", "year"]);
+		if (!zooms.has(this.settings.ganttGranularity)) {
+			this.settings.ganttGranularity = "week";
+		}
+		if (
+			this.settings.ganttWeekLabel !== "dateRange" &&
+			this.settings.ganttWeekLabel !== "both"
+		) {
+			this.settings.ganttWeekLabel = "weekNumber";
+		}
+		if (
+			this.settings.lineBorders !== "none" &&
+			this.settings.lineBorders !== "vertical" &&
+			this.settings.lineBorders !== "both"
+		) {
+			this.settings.lineBorders = "horizontal";
+		}
+		this.settings.showSubtreeConnections = this.settings.showSubtreeConnections !== false;
+		this.settings.kanbanShowSubtasks = this.settings.kanbanShowSubtasks === true;
+		this.settings.kanbanShowDescriptionPreview =
+			this.settings.kanbanShowDescriptionPreview === true;
+		this.settings.autoSchedule = this.settings.autoSchedule !== false;
+		this.settings.pullForwardOnEarlyFinish = this.settings.pullForwardOnEarlyFinish === true;
+		this.settings.saveTaskOnClose = this.settings.saveTaskOnClose !== false;
+		this.settings.showReleaseNotes = this.settings.showReleaseNotes !== false;
+		this.settings.scaffoldTasksFolder = this.settings.scaffoldTasksFolder || "Tasks";
+		this.settings.scaffoldInitiationFolder =
+			this.settings.scaffoldInitiationFolder || "Initiation";
+		this.settings.scaffoldDocumentsFolder =
+			this.settings.scaffoldDocumentsFolder || "Documents";
+		this.settings.scaffoldRegistersFolder =
+			this.settings.scaffoldRegistersFolder || "Registers";
 	}
 
 	public async saveSettings(): Promise<void> {
@@ -297,8 +336,9 @@ export default class ProjectsEnginePlugin extends Plugin {
 	}
 
 	/**
-	 * Called by the creation modal after a project note is written so PRINCE2
-	 * registers can be scaffolded and the router can open the new project.
+	 * Called by the creation modal after a project note is written so the
+	 * containment tree (Tasks / Initiation / Documents / Registers) is
+	 * scaffolded and the router can open the new project.
 	 */
 	public async afterProjectCreated(
 		file: TFile,
@@ -306,16 +346,36 @@ export default class ProjectsEnginePlugin extends Plugin {
 		projectId: string,
 		name: string,
 	): Promise<void> {
-		if (governance === "PRINCE2") {
-			await scaffoldGovernance({
-				vault: this.app.vault,
-				governance: "PRINCE2",
-				projectFile: file,
-				projectId,
-				projectName: name,
-			});
-		}
+		await scaffoldProjectTree({
+			vault: this.app.vault,
+			projectFile: file,
+			projectId,
+			projectName: name,
+			governance: governance === "PRINCE2" ? "PRINCE2" : "Semplificato",
+			settings: this.settings,
+		});
 		await this.router.openProjectLink(file.path);
+	}
+
+	/**
+	 * Refresh every open Projects Engine leaf after a status / data mutation.
+	 */
+	public refreshOpenViews(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(DASHBOARD_VIEW_TYPE)) {
+			if (leaf.view instanceof DashboardView) {
+				leaf.view.refresh();
+			}
+		}
+		for (const leaf of this.app.workspace.getLeavesOfType(OVERVIEW_VIEW_TYPE)) {
+			if (leaf.view instanceof ProjectOverviewView) {
+				void leaf.view.refresh();
+			}
+		}
+		for (const leaf of this.app.workspace.getLeavesOfType(WORKSPACE_VIEW_TYPE)) {
+			if (leaf.view instanceof ProjectWorkspaceView) {
+				void leaf.view.refresh();
+			}
+		}
 	}
 
 	private registerEntityCommands(): void {

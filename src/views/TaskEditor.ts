@@ -42,6 +42,9 @@ import {
 	formatHoursAndGiornate,
 } from "../services/timeLogs";
 import { splitFrontmatter } from "../services/frontmatter";
+import { joinDateTime, splitDateTime } from "../services/dateFormat";
+import { resolveProjectTasksFolder } from "../services/projectScaffold";
+import { findProjectRow, loadProjectRows } from "./projectRows";
 import { EntitySuggest } from "./suggest";
 
 /**
@@ -165,10 +168,22 @@ export class TaskEditor {
 				this.allTasks.map((task) => task.id),
 			);
 			this.draft.id = id;
-			const preferred = taskNotePath(this.plugin.settings.tasksFolder, id, "New task");
+			const tasksFolder = this.resolveTasksFolder();
+			const preferred = taskNotePath(tasksFolder, id, "New task");
 			this.draft.filePath = uniqueTaskPath(this.app.vault, preferred);
 		}
 		this.render();
+	}
+
+	/**
+	 * Prefer the project’s Tasks/ subfolder (§9 containment).
+	 */
+	private resolveTasksFolder(): string {
+		const row = findProjectRow(loadProjectRows(this.app), this.projectId);
+		if (row) {
+			return resolveProjectTasksFolder(row.file, this.plugin.settings);
+		}
+		return this.plugin.settings.tasksFolder;
 	}
 
 	private render(): void {
@@ -212,6 +227,8 @@ export class TaskEditor {
 		this.addDate("End date", this.draft.endDate, (value) => {
 			this.draft.endDate = value;
 		});
+		this.addDateTimeField("Due date", "due");
+		this.addDateTimeField("Scheduled", "scheduled");
 
 		this.addAssignee();
 		this.addFlags();
@@ -292,6 +309,35 @@ export class TaskEditor {
 		input.addEventListener("input", () => {
 			onChange(input.value.trim() ? input.value : null);
 		});
+	}
+
+	/**
+	 * Date + optional time for Due date / Scheduled (Settings format is display-only).
+	 */
+	private addDateTimeField(label: string, key: "due" | "scheduled"): void {
+		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: label, cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Optional time. Stored in frontmatter; displayed using Settings date/time format.",
+		});
+		const row = wrap.createDiv({ cls: "pe-inline-row" });
+		const parts = splitDateTime(this.draft[key]);
+		const dateInput = row.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "date", "aria-label": `${label} date` },
+		});
+		dateInput.value = parts.date;
+		const timeInput = row.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "time", "aria-label": `${label} time (optional)` },
+		});
+		timeInput.value = parts.time;
+		const sync = (): void => {
+			this.draft[key] = joinDateTime(dateInput.value, timeInput.value);
+		};
+		dateInput.addEventListener("input", sync);
+		timeInput.addEventListener("input", sync);
 	}
 
 	private addStatus(): void {
@@ -718,6 +764,7 @@ export class TaskEditor {
 		try {
 			await this.persistDraft();
 			new Notice(`Saved task ${this.draft.id}`);
+			this.plugin.refreshOpenViews();
 			const file = this.app.vault.getAbstractFileByPath(this.draft.filePath);
 			this.closeAfterSave();
 			if (this.host.surface === "modal" && file instanceof TFile) {
@@ -739,17 +786,14 @@ export class TaskEditor {
 	 * Write the draft and maintain bidirectional blocked_by / blocking lists.
 	 */
 	private async persistDraft(): Promise<void> {
+		const tasksFolder = this.resolveTasksFolder();
 		if (!this.draft.filePath) {
-			const preferred = taskNotePath(
-				this.plugin.settings.tasksFolder,
-				this.draft.id,
-				this.draft.title,
-			);
+			const preferred = taskNotePath(tasksFolder, this.draft.id, this.draft.title);
 			this.draft.filePath = uniqueTaskPath(this.app.vault, preferred);
 		} else if (this.mode === "create") {
 			this.draft.filePath = uniqueTaskPath(
 				this.app.vault,
-				taskNotePath(this.plugin.settings.tasksFolder, this.draft.id, this.draft.title),
+				taskNotePath(tasksFolder, this.draft.id, this.draft.title),
 			);
 		}
 
@@ -868,6 +912,8 @@ function taskToDraft(task: Task): TaskDraft {
 		blocking: [...task.blocking],
 		startDate: task.startDate,
 		endDate: task.endDate,
+		due: task.due,
+		scheduled: task.scheduled,
 		durationDays: task.durationDays,
 		estimateHours: task.estimateHours,
 		timeLogs: task.timeLogs.map((log) => ({ ...log })),

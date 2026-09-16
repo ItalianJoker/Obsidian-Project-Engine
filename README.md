@@ -29,13 +29,13 @@ Il plugin include:
 
 | Entità | Frontmatter `pe_type` | Cartella predefinita |
 | --- | --- | --- |
-| Project | `project` | `Projects/` |
-| Customer | `customer` | `Entities/Customers/` |
-| Team Member | `team-member` | `Entities/Team Members/` |
-| Project Type | `project-type` | `Entities/Project Types/` |
-| Technology | `technology` | `Entities/Technologies/` |
-| Stakeholder | `stakeholder` | `Entities/Stakeholders/` |
-| Task | `task` | `Projects/Tasks/` |
+| Project | `project` | `Projects/{ID} - {Name}/` |
+| Customer | `customer` | `Projects/Entities/Customers/` |
+| Team Member | `team-member` | `Projects/Entities/Team Members/` |
+| Project Type | `project-type` | `Projects/Entities/Project Types/` |
+| Technology | `technology` | `Projects/Entities/Technologies/` |
+| Stakeholder | `stakeholder` | `Projects/Entities/Stakeholders/` |
+| Task | `task` | `Projects/{ID} - {Name}/Tasks/` |
 
 Nel YAML i riferimenti sono **wikilink tra virgolette** (`"[[Acme Corp]]"`). Uno **Stakeholder** può puntare a un Customer (`customer`) e essere referenziato da uno o più Project (`stakeholders`); l’associazione vale a livello progetto, cliente, o entrambi (wikilink nei due sensi). Il corpo della nota ripete i link in una sezione **Links**, così Graph View genera cluster anche quando l’indicizzazione YAML è limitata. Non servono plugin di terze parti per il grafo.
 
@@ -232,13 +232,13 @@ The plugin ships with:
 
 | Entity | Frontmatter `pe_type` | Default folder |
 | --- | --- | --- |
-| Project | `project` | `Projects/` |
-| Customer | `customer` | `Entities/Customers/` |
-| Team Member | `team-member` | `Entities/Team Members/` |
-| Project Type | `project-type` | `Entities/Project Types/` |
-| Technology | `technology` | `Entities/Technologies/` |
-| Stakeholder | `stakeholder` | `Entities/Stakeholders/` |
-| Task | `task` | `Projects/Tasks/` |
+| Project | `project` | `Projects/{ID} - {Name}/` |
+| Customer | `customer` | `Projects/Entities/Customers/` |
+| Team Member | `team-member` | `Projects/Entities/Team Members/` |
+| Project Type | `project-type` | `Projects/Entities/Project Types/` |
+| Technology | `technology` | `Projects/Entities/Technologies/` |
+| Stakeholder | `stakeholder` | `Projects/Entities/Stakeholders/` |
+| Task | `task` | `Projects/{ID} - {Name}/Tasks/` |
 
 YAML stores **quoted wikilinks** (`"[[Acme Corp]]"`). A **Stakeholder** may wikilink a Customer (`customer`) and be referenced from one or more Projects (`stakeholders`); association is valid at project level, customer level, or both. The note body repeats links in a **Links** section so Graph View still clusters when YAML property indexing is limited. No third-party graph plugin is required.
 

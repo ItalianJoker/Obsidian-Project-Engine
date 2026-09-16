@@ -421,6 +421,17 @@ export interface Task {
 	blocking: TaskId[];
 	startDate: IsoDate | null;
 	endDate: IsoDate | null;
+	/**
+	 * User-facing due date with optional time (`due` in YAML).
+	 * Stored as `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` (local wall clock).
+	 * Distinct from scheduler `end_date`.
+	 */
+	due: string | null;
+	/**
+	 * When the task is planned to be worked (`scheduled` in YAML).
+	 * Same storage form as {@link due}.
+	 */
+	scheduled: string | null;
 	/** Inclusive calendar-day duration; `0` means a zero-length milestone. */
 	durationDays: number;
 	/**
@@ -493,6 +504,21 @@ export interface Project {
 	/** Microsoft Teams channel URL or `msteams://` deep link. */
 	teamsChannelUrl: string;
 	status: ProjectStatus;
+	/**
+	 * Lucide / Obsidian icon id for the project chrome (example: `clipboard-list`).
+	 * @remarks YAML: `icon`
+	 */
+	icon: string;
+	/**
+	 * Accent colour (CSS hex) for the project glyph and portfolio chips.
+	 * @remarks YAML: `color`
+	 */
+	color: string;
+	/**
+	 * Optional parent project id for portfolio hierarchy.
+	 * @remarks YAML: `parent_project` (project id string, not a wikilink)
+	 */
+	parentProjectId: string | null;
 	stages: Prince2Stage[];
 	workPackages: WorkPackage[];
 	startDate?: IsoDate;
@@ -673,6 +699,26 @@ export type ProjectSurface = "overview" | "workspace";
 export type DefaultWorkspaceView = "table" | "gantt" | "kanban";
 
 /**
+ * Display pattern for calendar dates in the UI (ISO stored in YAML).
+ */
+export type DateDisplayFormat = "DD/MM/YYYY" | "MM/DD/YYYY" | "YYYY-MM-DD";
+
+/**
+ * Clock style for time-of-day display.
+ */
+export type TimeDisplayFormat = "24h" | "12h";
+
+/**
+ * Default Lucide icon when a project has no `icon` in frontmatter.
+ */
+export const DEFAULT_PROJECT_ICON = "clipboard-list";
+
+/**
+ * Default accent colour when a project has no `color` in frontmatter.
+ */
+export const DEFAULT_PROJECT_COLOR = "#f97316";
+
+/**
  * Persisted plugin settings (`data.json`).
  */
 export interface ProjectsEngineSettings {
@@ -683,13 +729,36 @@ export interface ProjectsEngineSettings {
 	projectIdPattern: string;
 	/** Next counter value interpolated into the `#` run. */
 	projectIdCounter: number;
+	/**
+	 * Vault-relative projects root (example: `Projects`).
+	 * Project folders and default Entity catalogues live under this root.
+	 */
 	projectsFolder: string;
 	customersFolder: string;
 	teamMembersFolder: string;
 	projectTypesFolder: string;
 	technologiesFolder: string;
 	stakeholdersFolder: string;
+	/**
+	 * Legacy / fallback global tasks folder. New tasks are written under each
+	 * project’s scaffolded Tasks subfolder; this path remains for older notes
+	 * and as a scan hint for {@link loadAllTasks}.
+	 */
 	tasksFolder: string;
+	/**
+	 * Relative name of the Tasks subfolder created inside each project folder.
+	 * @example `"Tasks"` → `Projects/PRJ-2026-001 - Name/Tasks/`
+	 */
+	scaffoldTasksFolder: string;
+	/** Relative Initiation / kickoff docs folder inside each project. */
+	scaffoldInitiationFolder: string;
+	/** Relative Documents folder inside each project. */
+	scaffoldDocumentsFolder: string;
+	/**
+	 * Relative Registers folder for PRINCE2 formal docs (under the project folder).
+	 * When empty, falls back to `PRINCE2`.
+	 */
+	scaffoldRegistersFolder: string;
 	/**
 	 * Hours that constitute one **giornata** (management day).
 	 * Default **8**. Used for budget days ↔ task hours conversion.
@@ -716,29 +785,74 @@ export interface ProjectsEngineSettings {
 	 * At least one non-archived entry should remain for new projects.
 	 */
 	projectStatuses: ProjectStatusOption[];
+	/** Calendar date display format (default Italian `DD/MM/YYYY`). */
+	dateFormat: DateDisplayFormat;
+	/** Clock display format (default `24h`). */
+	timeFormat: TimeDisplayFormat;
+	/** Default Gantt zoom when opening the timeline (dotpm `ganttGranularity`). */
+	ganttGranularity: "day" | "week" | "month" | "quarter" | "year";
+	/** Weekly header cell label style. */
+	ganttWeekLabel: "weekNumber" | "dateRange" | "both";
+	/** Draw tree lines between parent and child rows in the task table. */
+	showSubtreeConnections: boolean;
+	/** Table grid rules. */
+	lineBorders: "none" | "horizontal" | "vertical" | "both";
+	/** Show nested subtasks as cards on the Board (default: root tasks only). */
+	kanbanShowSubtasks: boolean;
+	/** Show a short description preview on Board cards. */
+	kanbanShowDescriptionPreview: boolean;
+	/** Cascade dependent dates when a task’s schedule changes. */
+	autoSchedule: boolean;
+	/** When auto-schedule is on, pull dependents earlier on early finish. */
+	pullForwardOnEarlyFinish: boolean;
+	/** Persist task editor changes when the leaf/modal closes. */
+	saveTaskOnClose: boolean;
+	/** Open release notes after plugin updates. */
+	showReleaseNotes: boolean;
 	/** Dynamic field schemas for the five configurable entity kinds. */
 	customFieldSchemas: CustomFieldSchema[];
 }
 
 /**
  * Default settings applied on first load and as Object.assign baseline.
+ *
+ * §9 path layout: catalogues default under the projects root
+ * (`Projects/Entities/…`), not at the vault root. Each project lives at
+ * `Projects/{ID} - {Name}/` with Tasks / Initiation / Documents (and Registers
+ * for PRINCE2) scaffolded inside.
  */
 export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	projectIdPattern: "PRJ-YYYY-###",
 	projectIdCounter: 1,
 	projectsFolder: "Projects",
-	customersFolder: "Entities/Customers",
-	teamMembersFolder: "Entities/Team Members",
-	projectTypesFolder: "Entities/Project Types",
-	technologiesFolder: "Entities/Technologies",
-	stakeholdersFolder: "Entities/Stakeholders",
+	customersFolder: "Projects/Entities/Customers",
+	teamMembersFolder: "Projects/Entities/Team Members",
+	projectTypesFolder: "Projects/Entities/Project Types",
+	technologiesFolder: "Projects/Entities/Technologies",
+	stakeholdersFolder: "Projects/Entities/Stakeholders",
 	tasksFolder: "Projects/Tasks",
+	scaffoldTasksFolder: "Tasks",
+	scaffoldInitiationFolder: "Initiation",
+	scaffoldDocumentsFolder: "Documents",
+	scaffoldRegistersFolder: "Registers",
 	hoursPerManday: 8,
 	indexerDebounceMs: 250,
 	projectSurface: "overview",
 	taskEditorSurface: "tab",
 	defaultView: "table",
 	projectStatuses: DEFAULT_PROJECT_STATUSES.map((item) => ({ ...item })),
+	dateFormat: "DD/MM/YYYY",
+	timeFormat: "24h",
+	ganttGranularity: "week",
+	ganttWeekLabel: "weekNumber",
+	showSubtreeConnections: true,
+	lineBorders: "horizontal",
+	kanbanShowSubtasks: false,
+	kanbanShowDescriptionPreview: false,
+	autoSchedule: true,
+	pullForwardOnEarlyFinish: false,
+	saveTaskOnClose: true,
+	showReleaseNotes: true,
 	customFieldSchemas: [],
 };
 

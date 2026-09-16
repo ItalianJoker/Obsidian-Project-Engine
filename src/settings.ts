@@ -1,6 +1,11 @@
 /**
- * Settings tab: project-id pattern/counter, folder map, indexer debounce,
- * and the custom-field schema configurator for the five entity kinds.
+ * Settings tab — structured like [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm)
+ * Options (MIT © 2026 Stepan Kropachev and dotpm contributors): General → Style/views →
+ * Table / Gantt / Board → Scheduling → Date & time → Paths → Scaffold → Statuses →
+ * Custom fields → Performance.
+ *
+ * PE adaptations: Projects root + Entities under it, project ID pattern, hours/giornate,
+ * governance-aware scaffold folder names. English UI. Lone buttons stay flat (no card).
  */
 
 import { type App, Notice, PluginSettingTab, Setting } from "obsidian";
@@ -9,6 +14,8 @@ import type {
 	CustomFieldEntityKind,
 	CustomFieldSchema,
 	CustomFieldType,
+	DateDisplayFormat,
+	TimeDisplayFormat,
 } from "./models/types";
 import { DEFAULT_PROJECT_STATUSES } from "./models/types";
 
@@ -48,26 +55,35 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		containerEl.addClass("projects-engine-settings");
 
 		containerEl.createEl("h2", { text: "Projects Engine" });
+		containerEl.createEl("p", {
+			cls: "setting-item-description pe-settings-lead",
+			text: "Project portfolio, governance, and delivery. Defaults keep catalogues under the Projects root.",
+		});
 
-		this.renderIdSection();
-		this.renderFolderSection();
-		this.renderNavigationSection();
-		this.renderProjectStatusesSection();
-		this.renderPerformanceSection();
-		this.renderCustomFieldsSection();
+		this.renderGeneral();
+		this.renderDateTime();
+		this.renderTable();
+		this.renderGantt();
+		this.renderBoard();
+		this.renderScheduling();
+		this.renderPaths();
+		this.renderScaffold();
+		this.renderIdentifiers();
+		this.renderTimeModel();
+		this.renderProjectStatuses();
+		this.renderPerformance();
+		this.renderCustomFields();
 	}
 
-	/**
-	 * Dashboard landing surface and default workspace mode (obsidian-pm-like IA).
-	 */
-	private renderNavigationSection(): void {
+	/** General — open surfaces, defaults, release notes (dotpm General). */
+	private renderGeneral(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Navigation & views" });
+		containerEl.createEl("h3", { text: "General" });
 
 		new Setting(containerEl)
 			.setName("Open projects in")
 			.setDesc(
-				"Where a project row opens from the Projects pane: Overview (governance home) or Workspace (Table / Gantt / Board).",
+				"Where a project opens from the Projects pane: Overview (home + task table) or Workspace (Table / Gantt / Board).",
 			)
 			.addDropdown((dropdown) => {
 				dropdown
@@ -78,13 +94,14 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 						this.plugin.settings.projectSurface =
 							value === "workspace" ? "workspace" : "overview";
 						await this.plugin.saveSettings();
+						this.plugin.refreshOpenViews();
 					});
 				dropdown.selectEl.addClass("pe-touch-target");
 			});
 
 		new Setting(containerEl)
-			.setName("Default workspace view")
-			.setDesc("Initial mode when opening the delivery workspace.")
+			.setName("Default tasks view")
+			.setDesc("Choose the view a project’s tasks open in.")
 			.addDropdown((dropdown) => {
 				dropdown
 					.addOption("table", "Table")
@@ -101,10 +118,8 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Open task editor in")
-			.setDesc(
-				"Modal dialog, or a dedicated tab (obsidian-pm TaskView equivalent). Default: Tab.",
-			)
+			.setName("Open tasks in")
+			.setDesc("Modal dialog, or a dedicated tab. Default: Tab.")
 			.addDropdown((dropdown) => {
 				dropdown
 					.addOption("tab", "Tab")
@@ -117,9 +132,270 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 					});
 				dropdown.selectEl.addClass("pe-touch-target");
 			});
+
+		new Setting(containerEl)
+			.setName("Save tasks on close")
+			.setDesc("Save changes when the task editor is closed.")
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.saveTaskOnClose).onChange(async (value) => {
+					this.plugin.settings.saveTaskOnClose = value;
+					await this.plugin.saveSettings();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Show release notes after updates")
+			.setDesc("Open a tab with the release notes after the plugin updates.")
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.showReleaseNotes).onChange(async (value) => {
+					this.plugin.settings.showReleaseNotes = value;
+					await this.plugin.saveSettings();
+				});
+			});
 	}
 
-	private renderIdSection(): void {
+	/** Date & time — PE default DD/MM/YYYY + 24h. */
+	private renderDateTime(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Date & time" });
+
+		new Setting(containerEl)
+			.setName("Date format")
+			.setDesc("How calendar dates appear in tables, boards, and Gantt. Stored as ISO in YAML.")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("DD/MM/YYYY", "DD/MM/YYYY")
+					.addOption("MM/DD/YYYY", "MM/DD/YYYY")
+					.addOption("YYYY-MM-DD", "YYYY-MM-DD")
+					.setValue(this.plugin.settings.dateFormat)
+					.onChange(async (value) => {
+						this.plugin.settings.dateFormat = value as DateDisplayFormat;
+						await this.plugin.saveSettings();
+						this.plugin.refreshOpenViews();
+					});
+				dropdown.selectEl.addClass("pe-touch-target");
+			});
+
+		new Setting(containerEl)
+			.setName("Time format")
+			.setDesc("Clock style for timestamps (default 24-hour).")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("24h", "24-hour")
+					.addOption("12h", "12-hour")
+					.setValue(this.plugin.settings.timeFormat)
+					.onChange(async (value) => {
+						this.plugin.settings.timeFormat = value as TimeDisplayFormat;
+						await this.plugin.saveSettings();
+						this.plugin.refreshOpenViews();
+					});
+				dropdown.selectEl.addClass("pe-touch-target");
+			});
+	}
+
+	/** Table — subtree lines + borders (dotpm Table). */
+	private renderTable(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Table" });
+
+		new Setting(containerEl)
+			.setName("Show subtree connections")
+			.setDesc("Draw lines tying a subtask row back to its parent.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.showSubtreeConnections)
+					.onChange(async (value) => {
+						this.plugin.settings.showSubtreeConnections = value;
+						await this.plugin.saveSettings();
+						this.plugin.refreshOpenViews();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Line borders")
+			.setDesc("Draw rules between rows, between columns, or both.")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("none", "None")
+					.addOption("horizontal", "Horizontal")
+					.addOption("vertical", "Vertical")
+					.addOption("both", "Both")
+					.setValue(this.plugin.settings.lineBorders)
+					.onChange(async (value) => {
+						if (
+							value === "none" ||
+							value === "horizontal" ||
+							value === "vertical" ||
+							value === "both"
+						) {
+							this.plugin.settings.lineBorders = value;
+							await this.plugin.saveSettings();
+							this.plugin.refreshOpenViews();
+						}
+					});
+				dropdown.selectEl.addClass("pe-touch-target");
+			});
+	}
+
+	/** Gantt — granularity + week labels (dotpm Gantt). */
+	private renderGantt(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Gantt" });
+
+		new Setting(containerEl)
+			.setName("Default granularity")
+			.setDesc("Choose the time unit for each column in the timeline.")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("day", "Day")
+					.addOption("week", "Week")
+					.addOption("month", "Month")
+					.addOption("quarter", "Quarter")
+					.addOption("year", "Year")
+					.setValue(this.plugin.settings.ganttGranularity)
+					.onChange(async (value) => {
+						if (
+							value === "day" ||
+							value === "week" ||
+							value === "month" ||
+							value === "quarter" ||
+							value === "year"
+						) {
+							this.plugin.settings.ganttGranularity = value;
+							await this.plugin.saveSettings();
+						}
+					});
+				dropdown.selectEl.addClass("pe-touch-target");
+			});
+
+		new Setting(containerEl)
+			.setName("Week label")
+			.setDesc("Choose the text shown in weekly header cells.")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("weekNumber", "Week number (W15)")
+					.addOption("dateRange", "Date range")
+					.addOption("both", "Both")
+					.setValue(this.plugin.settings.ganttWeekLabel)
+					.onChange(async (value) => {
+						if (value === "weekNumber" || value === "dateRange" || value === "both") {
+							this.plugin.settings.ganttWeekLabel = value;
+							await this.plugin.saveSettings();
+							this.plugin.refreshOpenViews();
+						}
+					});
+				dropdown.selectEl.addClass("pe-touch-target");
+			});
+	}
+
+	/** Board — subtasks + description preview (dotpm Board). */
+	private renderBoard(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Board" });
+
+		new Setting(containerEl)
+			.setName("Show subtasks")
+			.setDesc("Show subtasks as individual cards (otherwise only root tasks).")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.kanbanShowSubtasks)
+					.onChange(async (value) => {
+						this.plugin.settings.kanbanShowSubtasks = value;
+						await this.plugin.saveSettings();
+						this.plugin.refreshOpenViews();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Show description preview")
+			.setDesc("Show the first few lines of each task description on cards.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.kanbanShowDescriptionPreview)
+					.onChange(async (value) => {
+						this.plugin.settings.kanbanShowDescriptionPreview = value;
+						await this.plugin.saveSettings();
+						this.plugin.refreshOpenViews();
+					});
+			});
+	}
+
+	/** Scheduling — auto-schedule toggles (dotpm Scheduling). */
+	private renderScheduling(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Scheduling" });
+
+		new Setting(containerEl)
+			.setName("Auto-schedule")
+			.setDesc("Adjust dependent task dates when a task changes (DAG cascade).")
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.autoSchedule).onChange(async (value) => {
+					this.plugin.settings.autoSchedule = value;
+					await this.plugin.saveSettings();
+					this.display();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Pull dependents forward")
+			.setDesc("Move dependent tasks earlier when a task finishes before its due date.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.pullForwardOnEarlyFinish)
+					.setDisabled(!this.plugin.settings.autoSchedule)
+					.onChange(async (value) => {
+						this.plugin.settings.pullForwardOnEarlyFinish = value;
+						await this.plugin.saveSettings();
+					});
+			});
+	}
+
+	/**
+	 * Paths — Projects root + entity catalogues (default under Projects/Entities).
+	 */
+	private renderPaths(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Folders" });
+		containerEl.createEl("p", {
+			cls: "setting-item-description",
+			text: "Projects root holds project folders ({ID} - {Name}). Entity catalogues default under Projects/Entities/. Overrides are allowed.",
+		});
+
+		this.addFolderSetting("Projects root", "projectsFolder", "Projects");
+		this.addFolderSetting("Customers", "customersFolder", "Projects/Entities/Customers");
+		this.addFolderSetting("Team members", "teamMembersFolder", "Projects/Entities/Team Members");
+		this.addFolderSetting("Project types", "projectTypesFolder", "Projects/Entities/Project Types");
+		this.addFolderSetting("Technologies", "technologiesFolder", "Projects/Entities/Technologies");
+		this.addFolderSetting("Stakeholders", "stakeholdersFolder", "Projects/Entities/Stakeholders");
+		this.addFolderSetting(
+			"Legacy tasks folder",
+			"tasksFolder",
+			"Projects/Tasks",
+			"Fallback scan path for older task notes outside a project folder.",
+		);
+	}
+
+	/** Per-project scaffold subfolder names. */
+	private renderScaffold(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Project scaffold" });
+		containerEl.createEl("p", {
+			cls: "setting-item-description",
+			text: "Created inside each new project folder. PRINCE2 also gets the Registers folder with formal templates.",
+		});
+
+		this.addTextSetting("Tasks folder name", "scaffoldTasksFolder", "Tasks");
+		this.addTextSetting("Initiation folder name", "scaffoldInitiationFolder", "Initiation");
+		this.addTextSetting("Documents folder name", "scaffoldDocumentsFolder", "Documents");
+		this.addTextSetting(
+			"Registers folder name",
+			"scaffoldRegistersFolder",
+			"Registers",
+			"Used when governance is PRINCE2.",
+		);
+	}
+
+	private renderIdentifiers(): void {
 		const { containerEl } = this;
 		containerEl.createEl("h3", { text: "Project identifiers" });
 
@@ -128,7 +404,8 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			.setDesc("Tokens: YYYY, YY, MM, DD, and a run of # for the counter. Example: PRJ-YYYY-###")
 			.addText((text) => {
 				text.inputEl.addClass("pe-touch-target");
-				text.setPlaceholder("PRJ-YYYY-###")
+				text
+					.setPlaceholder("PRJ-YYYY-###")
 					.setValue(this.plugin.settings.projectIdPattern)
 					.onChange(async (value) => {
 						this.plugin.settings.projectIdPattern = value.trim() || "PRJ-YYYY-###";
@@ -138,7 +415,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Next counter")
-			.setDesc("Integer interpolated into the # run. Incremented after each successful project create.")
+			.setDesc("Integer interpolated into the # run. Incremented after each successful create.")
 			.addText((text) => {
 				text.inputEl.type = "number";
 				text.inputEl.min = "1";
@@ -153,46 +430,33 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			});
 	}
 
-	private renderFolderSection(): void {
+	private renderTimeModel(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Entity folders" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Entity-as-a-Note files are created under these vault-relative folders.",
-		});
+		containerEl.createEl("h3", { text: "Time model" });
 
-		this.addFolderSetting("Projects", "projectsFolder");
-		this.addFolderSetting("Customers", "customersFolder");
-		this.addFolderSetting("Team members", "teamMembersFolder");
-		this.addFolderSetting("Project types", "projectTypesFolder");
-		this.addFolderSetting("Technologies", "technologiesFolder");
-		this.addFolderSetting("Stakeholders", "stakeholdersFolder");
-		this.addFolderSetting("Tasks", "tasksFolder");
-	}
-
-	private addFolderSetting(
-		name: string,
-		key:
-			| "projectsFolder"
-			| "customersFolder"
-			| "teamMembersFolder"
-			| "projectTypesFolder"
-			| "technologiesFolder"
-			| "stakeholdersFolder"
-			| "tasksFolder",
-	): void {
-		new Setting(this.containerEl).setName(name).addText((text) => {
-			text.inputEl.addClass("pe-touch-target");
-			text.setValue(this.plugin.settings[key]).onChange(async (value) => {
-				this.plugin.settings[key] = value.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
-				await this.plugin.saveSettings();
+		new Setting(containerEl)
+			.setName("Hours per giornata")
+			.setDesc(
+				"Task estimates and time logs use hours; project budget uses giornate. Default 1 giornata = 8 hours.",
+			)
+			.addText((text) => {
+				text.inputEl.type = "number";
+				text.inputEl.min = "1";
+				text.inputEl.step = "0.25";
+				text.inputEl.addClass("pe-touch-target");
+				text.setValue(String(this.plugin.settings.hoursPerManday)).onChange(async (value) => {
+					const parsed = Number.parseFloat(value);
+					if (Number.isFinite(parsed) && parsed > 0) {
+						this.plugin.settings.hoursPerManday = parsed;
+						await this.plugin.saveSettings();
+					}
+				});
 			});
-		});
 	}
 
-	private renderPerformanceSection(): void {
+	private renderPerformance(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Performance (mobile)" });
+		containerEl.createEl("h3", { text: "Performance" });
 
 		new Setting(containerEl)
 			.setName("Indexer debounce (ms)")
@@ -210,70 +474,104 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 					}
 				});
 			});
-
-		new Setting(containerEl)
-			.setName("Hours per giornata")
-			.setDesc(
-				"Conversion rate for the §7 time model: task estimates and time logs use hours; project budget uses giornate (days). Default 1 giornata = 8 hours.",
-			)
-			.addText((text) => {
-				text.inputEl.type = "number";
-				text.inputEl.min = "1";
-				text.inputEl.step = "0.25";
-				text.inputEl.addClass("pe-touch-target");
-				text.setValue(String(this.plugin.settings.hoursPerManday)).onChange(async (value) => {
-					const parsed = Number.parseFloat(value);
-					if (Number.isFinite(parsed) && parsed > 0) {
-						this.plugin.settings.hoursPerManday = parsed;
-						await this.plugin.saveSettings();
-					}
-				});
-			});
 	}
 
-	/**
-	 * Configurable project lifecycle statuses (add / rename / reorder / archive).
-	 * Pattern adapted from obsidian-pm PaletteListEditor (MIT).
-	 */
-	private renderProjectStatusesSection(): void {
+	private addFolderSetting(
+		name: string,
+		key:
+			| "projectsFolder"
+			| "customersFolder"
+			| "teamMembersFolder"
+			| "projectTypesFolder"
+			| "technologiesFolder"
+			| "stakeholdersFolder"
+			| "tasksFolder",
+		placeholder: string,
+		desc?: string,
+	): void {
+		const setting = new Setting(this.containerEl).setName(name);
+		if (desc) {
+			setting.setDesc(desc);
+		}
+		setting.addText((text) => {
+			text.inputEl.addClass("pe-touch-target");
+			text.setPlaceholder(placeholder);
+			text.setValue(this.plugin.settings[key]).onChange(async (value) => {
+				this.plugin.settings[key] = value.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+				await this.plugin.saveSettings();
+			});
+		});
+	}
+
+	private addTextSetting(
+		name: string,
+		key:
+			| "scaffoldTasksFolder"
+			| "scaffoldInitiationFolder"
+			| "scaffoldDocumentsFolder"
+			| "scaffoldRegistersFolder",
+		placeholder: string,
+		desc?: string,
+	): void {
+		const setting = new Setting(this.containerEl).setName(name);
+		if (desc) {
+			setting.setDesc(desc);
+		}
+		setting.addText((text) => {
+			text.inputEl.addClass("pe-touch-target");
+			text.setPlaceholder(placeholder);
+			text.setValue(this.plugin.settings[key]).onChange(async (value) => {
+				this.plugin.settings[key] = value.trim() || placeholder;
+				await this.plugin.saveSettings();
+			});
+		});
+	}
+
+	private renderProjectStatuses(): void {
 		const { containerEl } = this;
 		containerEl.createEl("h3", { text: "Project statuses" });
 		containerEl.createEl("p", {
 			cls: "setting-item-description",
-			text: "Lifecycle statuses shown on the portfolio and project overview. Drag to reorder. Archive hides an option from new picks without remapping existing notes.",
+			text: "Lifecycle statuses on the portfolio and project overview. Drag to reorder. Archive hides an option from new picks without remapping existing notes.",
 		});
 
 		const list = containerEl.createDiv({ cls: "pe-status-list" });
 		this.renderStatusRows(list);
 
-		new Setting(containerEl)
-			.setName("Add status")
-			.addButton((button) => {
-				button.setButtonText("+ add status");
-				button.buttonEl.addClass("pe-touch-target");
-				button.onClick(async () => {
-					const id = `status-${Date.now().toString(36)}`;
-					this.plugin.settings.projectStatuses.push({
-						id,
-						label: "New status",
-						color: "#94a3b8",
-						archived: false,
-					});
-					await this.plugin.saveSettings();
-					this.display();
+		// Flat action row — no card/background behind lone buttons (§7).
+		const actions = containerEl.createDiv({ cls: "pe-settings-actions pe-settings-actions--flat" });
+		const add = actions.createEl("button", {
+			text: "+ add status",
+			cls: "pe-secondary pe-touch-target",
+			attr: { type: "button" },
+		});
+		add.addEventListener("click", () => {
+			void (async () => {
+				const id = `status-${Date.now().toString(36)}`;
+				this.plugin.settings.projectStatuses.push({
+					id,
+					label: "New status",
+					color: "#94a3b8",
+					archived: false,
 				});
-			})
-			.addButton((button) => {
-				button.setButtonText("Reset defaults");
-				button.buttonEl.addClass("pe-touch-target");
-				button.onClick(async () => {
-					this.plugin.settings.projectStatuses = DEFAULT_PROJECT_STATUSES.map((item) => ({
-						...item,
-					}));
-					await this.plugin.saveSettings();
-					this.display();
-				});
-			});
+				await this.plugin.saveSettings();
+				this.display();
+			})();
+		});
+		const reset = actions.createEl("button", {
+			text: "Reset defaults",
+			cls: "pe-secondary pe-touch-target",
+			attr: { type: "button" },
+		});
+		reset.addEventListener("click", () => {
+			void (async () => {
+				this.plugin.settings.projectStatuses = DEFAULT_PROJECT_STATUSES.map((item) => ({
+					...item,
+				}));
+				await this.plugin.saveSettings();
+				this.display();
+			})();
+		});
 	}
 
 	private renderStatusRows(list: HTMLElement): void {
@@ -368,7 +666,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		});
 	}
 
-	private renderCustomFieldsSection(): void {
+	private renderCustomFields(): void {
 		const { containerEl } = this;
 		containerEl.createEl("h3", { text: "Custom field schemas" });
 		containerEl.createEl("p", {
@@ -438,13 +736,11 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			});
 		});
 
-		new Setting(this.containerEl)
-			.setName("Required")
-			.addToggle((toggle) => {
-				toggle.setValue(required).onChange((value) => {
-					required = value;
-				});
+		new Setting(this.containerEl).setName("Required").addToggle((toggle) => {
+			toggle.setValue(required).onChange((value) => {
+				required = value;
 			});
+		});
 
 		new Setting(this.containerEl)
 			.setName("Select options")
@@ -456,11 +752,17 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 				});
 			});
 
-		new Setting(this.containerEl).addButton((button) => {
-			button.setButtonText("Add custom field");
-			button.setCta();
-			button.buttonEl.addClass("pe-touch-target");
-			button.onClick(async () => {
+		// Flat CTA — no Setting card wrapper for a lone button.
+		const actions = this.containerEl.createDiv({
+			cls: "pe-settings-actions pe-settings-actions--flat",
+		});
+		const add = actions.createEl("button", {
+			text: "Add custom field",
+			cls: "pe-primary pe-touch-target",
+			attr: { type: "button" },
+		});
+		add.addEventListener("click", () => {
+			void (async () => {
 				const trimmed = name.trim();
 				if (!trimmed) {
 					new Notice("Custom field name is required");
@@ -487,7 +789,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 				await this.plugin.saveSettings();
 				new Notice(`Added custom field “${trimmed}”`);
 				this.display();
-			});
+			})();
 		});
 	}
 }

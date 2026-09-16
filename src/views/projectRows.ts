@@ -24,6 +24,12 @@ export interface ProjectRow {
 	actualDays: number;
 	projectUrl: string;
 	teamsChannelUrl: string;
+	/** Lucide icon id (YAML `icon`). */
+	icon: string;
+	/** Accent colour hex (YAML `color`). */
+	color: string;
+	/** Optional parent project id (YAML `parent_project`). */
+	parentProjectId: string | null;
 }
 
 /**
@@ -52,6 +58,12 @@ export function loadProjectRows(app: App): ProjectRow[] {
 			actualDays: typeof fm.actual_days === "number" ? fm.actual_days : 0,
 			projectUrl: typeof fm.project_url === "string" ? fm.project_url : "",
 			teamsChannelUrl: typeof fm.teams_channel_url === "string" ? fm.teams_channel_url : "",
+			icon: typeof fm.icon === "string" ? fm.icon : "",
+			color: typeof fm.color === "string" ? fm.color : "",
+			parentProjectId:
+				typeof fm.parent_project === "string" && fm.parent_project.trim()
+					? fm.parent_project.trim()
+					: null,
 		});
 	}
 	return rows.sort((a, b) => a.id.localeCompare(b.id));

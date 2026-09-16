@@ -10,7 +10,7 @@ import { Notice, TFile, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
 import type { SemplificatoStatus, Task } from "../../models/types";
 import { toWikiLink } from "../../models/types";
-import { formatDuePill, isOverdue } from "../../services/dateFormat";
+import { formatDuePill, isOverdue, effectiveDue } from "../../services/dateFormat";
 import {
 	SEMPLIFICATO_LABELS,
 	SEMPLIFICATO_STATUSES,
@@ -108,14 +108,22 @@ export class KanbanSubView implements SubView {
 				});
 
 				const foot = card.createDiv({ cls: "pe-kanban-card-foot" });
-				const dueIso = task.endDate;
+				const dueIso = effectiveDue(task);
+				const timeFormat = plugin.settings.timeFormat;
 				if (dueIso) {
 					const overdue = isOverdue(dueIso);
 					const pill = foot.createSpan({
-						text: formatDuePill(dueIso, dateFormat),
+						text: formatDuePill(dueIso, dateFormat, timeFormat),
 						cls: `pe-due-pill${overdue ? " is-overdue" : ""}`,
 					});
 					pill.title = dueIso;
+				}
+				if (task.scheduled) {
+					foot.createSpan({
+						text: formatDuePill(task.scheduled, dateFormat, timeFormat),
+						cls: "pe-scheduled-pill",
+						attr: { title: `Scheduled: ${task.scheduled}` },
+					});
 				}
 
 				const actions = card.createDiv({ cls: "pe-kanban-card-actions" });

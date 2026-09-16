@@ -65,6 +65,13 @@ export class DashboardView extends ItemView {
 		this.reload();
 	}
 
+	/**
+	 * Public refresh for {@link ProjectsEnginePlugin.refreshOpenViews}.
+	 */
+	public refresh(): void {
+		this.reload();
+	}
+
 	override async onClose(): Promise<void> {
 		if (this.reloadTimer !== null) {
 			window.clearTimeout(this.reloadTimer);

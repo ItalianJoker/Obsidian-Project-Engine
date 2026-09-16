@@ -6,7 +6,7 @@ import { setIcon, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
 import type { SemplificatoStatus, Task, TaskId, TaskPriority, TaskStatus } from "../../models/types";
 import { toWikiLink, wikiLinkTarget } from "../../models/types";
-import { formatDisplayDate, formatDuePill, isOverdue } from "../../services/dateFormat";
+import { formatDisplayDateTime, formatDuePill, isOverdue, effectiveDue } from "../../services/dateFormat";
 import {
 	SEMPLIFICATO_LABELS,
 } from "../../services/governance";
@@ -82,6 +82,7 @@ export class TableSubView implements SubView {
 			"PRIORITY",
 			"ASSIGNEES",
 			"DUE",
+			"SCHEDULED",
 			"PROGRESS",
 			"TIME",
 		]) {
@@ -89,14 +90,15 @@ export class TableSubView implements SubView {
 		}
 
 		const tbody = table.createEl("tbody");
+		const timeFormat = plugin.settings.timeFormat;
 		for (const { task, depth, hasChildren } of visible) {
-			this.renderRow(tbody, task, depth, hasChildren, dateFormat);
+			this.renderRow(tbody, task, depth, hasChildren, dateFormat, timeFormat);
 		}
 
 		const tfoot = table.createEl("tfoot");
 		const footRow = tfoot.createEl("tr", { cls: "pe-task-footer-row" });
 		footRow.createEl("td");
-		const addCell = footRow.createEl("td", { attr: { colspan: "7" } });
+		const addCell = footRow.createEl("td", { attr: { colspan: "8" } });
 		const addBtn = addCell.createEl("button", {
 			cls: "pe-task-add pe-link-button pe-touch-target",
 			attr: { type: "button" },
@@ -140,6 +142,7 @@ export class TableSubView implements SubView {
 		depth: number,
 		hasChildren: boolean,
 		dateFormat: import("../../models/types").DateDisplayFormat,
+		timeFormat: import("../../models/types").TimeDisplayFormat,
 	): void {
 		const { plugin, project } = this.props;
 		const tr = tbody.createEl("tr", { cls: "pe-task-row" });
@@ -209,16 +212,28 @@ export class TableSubView implements SubView {
 			attr: { "data-label": "Assignees" },
 		});
 
-		const dueTd = tr.createEl("td", { attr: { "data-label": "Due" } });
-		if (task.endDate) {
-			const overdue = isOverdue(task.endDate);
+		const dueValue = effectiveDue(task);
+		const dueTd = tr.createEl("td", { attr: { "data-label": "Due date" } });
+		if (dueValue) {
+			const overdue = isOverdue(dueValue);
 			dueTd.createSpan({
-				text: formatDuePill(task.endDate, dateFormat),
+				text: formatDuePill(dueValue, dateFormat, timeFormat),
 				cls: `pe-due-pill${overdue ? " is-overdue" : ""}`,
-				attr: { title: formatDisplayDate(task.endDate, dateFormat) },
+				attr: { title: formatDisplayDateTime(dueValue, dateFormat, timeFormat) },
 			});
 		} else {
 			dueTd.setText("—");
+		}
+
+		const scheduledTd = tr.createEl("td", { attr: { "data-label": "Scheduled" } });
+		if (task.scheduled) {
+			scheduledTd.createSpan({
+				text: formatDuePill(task.scheduled, dateFormat, timeFormat),
+				cls: "pe-scheduled-pill",
+				attr: { title: formatDisplayDateTime(task.scheduled, dateFormat, timeFormat) },
+			});
+		} else {
+			scheduledTd.setText("—");
 		}
 
 		const progressTd = tr.createEl("td", { cls: "pe-task-progress-col", attr: { "data-label": "Progress" } });

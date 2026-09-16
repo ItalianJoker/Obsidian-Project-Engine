@@ -56,14 +56,20 @@ export const PRINCE2_REGISTERS: { kind: Prince2RegisterKind; title: string }[] =
 
 /**
  * Create the formal register notes for a PRINCE2 project (idempotent).
+ *
+ * @param registersFolderName - Subfolder under the project folder (default `Registers`).
  */
 export async function ensurePrince2Registers(
 	vault: Vault,
 	projectFolder: string,
 	projectLink: WikiLink,
 	projectName: string,
+	registersFolderName = "Registers",
 ): Promise<TFile[]> {
-	const registersFolder = joinVaultPath(projectFolder, "PRINCE2");
+	const registersFolder = joinVaultPath(
+		projectFolder,
+		registersFolderName.trim() || "Registers",
+	);
 	await ensureFolder(vault, registersFolder);
 	const created: TFile[] = [];
 	for (const register of PRINCE2_REGISTERS) {

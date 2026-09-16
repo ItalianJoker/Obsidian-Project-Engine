@@ -8,6 +8,8 @@
 import { Notice, TFile, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import {
+	DEFAULT_PROJECT_COLOR,
+	DEFAULT_PROJECT_ICON,
 	defaultProjectStatusId,
 	projectStatusLabel,
 	toWikiLink,
@@ -17,9 +19,14 @@ import {
 import { buildMarkdownNote } from "../services/frontmatter";
 import { appendEntityLink } from "../services/linkSync";
 import { patchProjectFrontmatter } from "../services/projectIo";
+import {
+	deleteProjectFolder,
+	notifyProjectDeleted,
+} from "../services/projectDelete";
 import { isValidHttpUrl, isValidTeamsChannelUrl } from "../services/urls";
 import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from "../services/vaultIo";
-import type { ProjectRow } from "./projectRows";
+import { ConfirmModal } from "../ui/ConfirmModal";
+import { loadProjectRows, type ProjectRow } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
 
 interface TeamChip {
@@ -33,6 +40,7 @@ interface StakeholderChip {
 }
 
 interface EditForm {
+	id: string;
 	name: string;
 	governance: GovernanceModel;
 	status: string;
@@ -45,6 +53,9 @@ interface EditForm {
 	assignedDays: string;
 	projectUrl: string;
 	teamsChannelUrl: string;
+	icon: string;
+	color: string;
+	parentProjectId: string;
 }
 
 /**
@@ -125,6 +136,7 @@ export class ProjectEditor {
 			row.status ||
 			defaultProjectStatusId(statuses);
 		return {
+			id: row.id,
 			name: row.name,
 			governance: row.governance,
 			status,
@@ -140,6 +152,9 @@ export class ProjectEditor {
 			assignedDays: String(row.assignedDays),
 			projectUrl: row.projectUrl,
 			teamsChannelUrl: row.teamsChannelUrl,
+			icon: row.icon || DEFAULT_PROJECT_ICON,
+			color: row.color || DEFAULT_PROJECT_COLOR,
+			parentProjectId: row.parentProjectId ?? "",
 		};
 	}
 
@@ -155,7 +170,6 @@ export class ProjectEditor {
 				attr: { type: "button" },
 			});
 			back.addEventListener("click", () => {
-				// ViewRouter replaces the leaf when ProjectEditView passes it via host.
 				this.closeHost();
 			});
 			crumbs.createSpan({ text: " / Edit", cls: "pe-help" });
@@ -163,16 +177,20 @@ export class ProjectEditor {
 		contentEl.createEl("h2", { text: "Edit project" });
 		contentEl.createEl("p", {
 			cls: "pe-modal-lead",
-			text: `${this.project.id} · budget in giornate · 1 giornata = ${this.plugin.settings.hoursPerManday} h`,
+			text: `Budget in giornate · 1 giornata = ${this.plugin.settings.hoursPerManday} h. Changing ID or name does not rename the project folder in this version.`,
 		});
 
 		this.errorEl = contentEl.createDiv({ cls: "pe-errors", attr: { role: "alert" } });
 		this.errorEl.hide();
 
-		this.addReadOnly("Project ID", this.project.id);
+		this.addText("Project ID *", this.form.id, (value) => {
+			this.form.id = value.trim();
+		});
 		this.addText("Project name *", this.form.name, (value) => {
 			this.form.name = value;
 		});
+		this.addIconColorFields();
+		this.addParentPicker();
 		this.addStatusPicker();
 		this.addGovernanceToggle();
 		this.addEntityPicker("Customer *", "customer", this.form.customer, (name) => {
@@ -223,12 +241,78 @@ export class ProjectEditor {
 		save.addEventListener("click", () => {
 			void this.save();
 		});
+		const del = actions.createEl("button", {
+			text: "Delete project…",
+			cls: "pe-danger pe-touch-target",
+			attr: { type: "button" },
+		});
+		del.addEventListener("click", () => this.confirmDelete());
 	}
 
-	private addReadOnly(label: string, value: string): void {
+	private addIconColorFields(): void {
+		const wrap = this.rootEl!.createDiv({ cls: "pe-field pe-field-row" });
+		const iconField = wrap.createDiv({ cls: "pe-field" });
+		iconField.createEl("label", { text: "Icon", cls: "pe-label" });
+		const iconInput = iconField.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "text", spellcheck: "false", placeholder: DEFAULT_PROJECT_ICON },
+		});
+		iconInput.value = this.form.icon;
+		iconInput.addEventListener("input", () => {
+			this.form.icon = iconInput.value.trim() || DEFAULT_PROJECT_ICON;
+		});
+		const colorField = wrap.createDiv({ cls: "pe-field" });
+		colorField.createEl("label", { text: "Color", cls: "pe-label" });
+		const colorInput = colorField.createEl("input", {
+			cls: "pe-touch-target",
+			attr: { type: "color", "aria-label": "Project colour" },
+		});
+		colorInput.value = this.form.color || DEFAULT_PROJECT_COLOR;
+		colorInput.addEventListener("input", () => {
+			this.form.color = colorInput.value;
+		});
+	}
+
+	private addParentPicker(): void {
 		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
-		wrap.createEl("label", { text: label, cls: "pe-label" });
-		wrap.createEl("div", { text: value, cls: "pe-readonly pe-touch-target" });
+		wrap.createEl("label", { text: "Parent project", cls: "pe-label" });
+		const select = wrap.createEl("select", {
+			cls: "pe-input pe-touch-target",
+			attr: { "aria-label": "Parent project" },
+		});
+		select.createEl("option", { text: "— None —", attr: { value: "" } });
+		for (const row of loadProjectRows(this.app)) {
+			if (row.id === this.project.id) continue;
+			select.createEl("option", {
+				text: `${row.id} — ${row.name}`,
+				attr: { value: row.id },
+			});
+		}
+		select.value = this.form.parentProjectId;
+		select.addEventListener("change", () => {
+			this.form.parentProjectId = select.value;
+		});
+	}
+
+	private confirmDelete(): void {
+		new ConfirmModal(this.app, {
+			title: "Delete project?",
+			message: `This will remove the project folder and all plugin-managed contents for “${this.project.name}”. This cannot be undone (unless vault trash can recover it).`,
+			confirmLabel: "Delete project",
+			dangerous: true,
+			onConfirm: async () => {
+				const result = await deleteProjectFolder({
+					app: this.app,
+					vault: this.app.vault,
+					projectFile: this.project.file,
+					projectsRoot: this.plugin.settings.projectsFolder,
+				});
+				notifyProjectDeleted(result.deletedPath, result.trashed);
+				this.plugin.refreshOpenViews();
+				this.closeHost();
+				await this.plugin.router.openDashboard();
+			},
+		}).open();
 	}
 
 	private addText(
@@ -521,9 +605,25 @@ export class ProjectEditor {
 
 	private validate(): string[] {
 		const errors: string[] = [];
+		const id = this.form.id.trim();
+		if (!id) {
+			errors.push("Project ID is required");
+		} else if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)) {
+			errors.push(
+				"Project ID may only contain letters, numbers, dots, underscores, and hyphens",
+			);
+		} else if (id !== this.project.id) {
+			this.plugin.indexer.rebuild();
+			if (this.plugin.indexer.hasProjectId(id)) {
+				errors.push(`Project ID “${id}” is already in use`);
+			}
+		}
 		if (!this.form.name.trim()) errors.push("Project name is required");
 		if (!this.form.customer.trim()) errors.push("Customer is required");
 		if (!this.form.projectType.trim()) errors.push("Project type is required");
+		if (this.form.parentProjectId && this.form.parentProjectId === id) {
+			errors.push("Parent project cannot be the same as this project");
+		}
 		const days = Number.parseFloat(this.form.assignedDays);
 		if (!Number.isFinite(days) || days < 0) {
 			errors.push("Budget (giornate) must be a number ≥ 0");
@@ -574,9 +674,13 @@ export class ProjectEditor {
 			const assignedDays = Number.parseFloat(this.form.assignedDays);
 
 			await patchProjectFrontmatter(this.app.vault, this.project.file, (data) => {
+				data.id = this.form.id.trim();
 				data.name = this.form.name.trim();
 				data.governance = this.form.governance;
 				data.status = this.form.status;
+				data.icon = this.form.icon.trim() || DEFAULT_PROJECT_ICON;
+				data.color = this.form.color.trim() || DEFAULT_PROJECT_COLOR;
+				data.parent_project = this.form.parentProjectId.trim() || null;
 				data.customer = customer;
 				data.project_type = projectType;
 				data.technologies = technologies;
@@ -593,6 +697,7 @@ export class ProjectEditor {
 			});
 
 			this.plugin.indexer.rebuild();
+			this.plugin.refreshOpenViews();
 			const projectLink = toWikiLink(this.project.file.basename);
 			for (const item of this.form.stakeholders) {
 				const stakeholderFile = this.resolveEntityFile(item.name);

@@ -45,6 +45,10 @@ export interface TaskDraft {
 	blocking: TaskId[];
 	startDate: IsoDate | null;
 	endDate: IsoDate | null;
+	/** Due date with optional time (`due`). */
+	due: string | null;
+	/** Scheduled date with optional time (`scheduled`). */
+	scheduled: string | null;
 	durationDays: number;
 	/** Planned effort in hours (fractions OK). */
 	estimateHours: number;
@@ -106,6 +110,8 @@ export function blankTaskDraft(args: {
 		blocking: [],
 		startDate: null,
 		endDate: null,
+		due: null,
+		scheduled: null,
 		durationDays: 1,
 		estimateHours: 0,
 		timeLogs: [],
@@ -157,6 +163,8 @@ export function parseTaskNote(
 		blocking: readStringArray(data.blocking),
 		startDate: typeof data.start_date === "string" ? data.start_date : null,
 		endDate: typeof data.end_date === "string" ? data.end_date : null,
+		due: readDateTimeField(data.due) ?? (typeof data.end_date === "string" ? data.end_date : null),
+		scheduled: readDateTimeField(data.scheduled),
 		durationDays:
 			typeof data.duration_days === "number"
 				? data.duration_days
@@ -200,6 +208,8 @@ export function buildTaskMarkdown(draft: TaskDraft, hoursPerManday: number): str
 		blocking: draft.blocking,
 		start_date: draft.startDate,
 		end_date: draft.endDate,
+		due: draft.due,
+		scheduled: draft.scheduled,
 		duration_days: draft.durationDays,
 		estimate_hours: draft.estimateHours,
 		// Legacy giornate mirror for older notes / external tools.
@@ -378,4 +388,22 @@ function readCustomFields(raw: unknown): CustomFieldMap {
 		}
 	}
 	return result;
+}
+
+/**
+ * Parse YAML `due` / `scheduled`: `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` (also space separator).
+ */
+function readDateTimeField(raw: unknown): string | null {
+	if (typeof raw !== "string" || !raw.trim()) {
+		return null;
+	}
+	const trimmed = raw.trim();
+	const match = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(trimmed);
+	if (!match) {
+		return trimmed;
+	}
+	if (match[2] != null && match[3] != null) {
+		return `${match[1]}T${match[2]}:${match[3]}`;
+	}
+	return match[1]!;
 }
