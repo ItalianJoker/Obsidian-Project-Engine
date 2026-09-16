@@ -112,7 +112,35 @@ In Settings → **Project statuses** si aggiungono, rinomina, riordinano (drag) 
 
 In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per day**, **Date format** / **Time format**. UI in inglese.
 
-### Modello dati (frontmatter)
+### Deep link Obsidian (URI del Dashboard / Overview)
+
+Il plugin registra l’azione protocollo `projects-engine`. Aprendo un URL `obsidian://…` si apre la **vista plugin corretta** (Overview o Workspace), **non** solo il file `.md` nell’editor Markdown.
+
+Formato:
+
+```text
+obsidian://projects-engine?vault=<NomeVault>&id=<ProjectID>&view=overview
+obsidian://projects-engine?vault=<NomeVault>&path=<percorso-relativo-vault>&view=overview
+obsidian://projects-engine?vault=<NomeVault>&id=<ProjectID>&view=workspace&mode=table
+```
+
+Parametri:
+
+| Parametro | Descrizione |
+| --- | --- |
+| `vault` | Nome del vault (gestito da Obsidian prima del plugin) |
+| `id` | Frontmatter `id` del progetto (es. `PRJ-2026-001`) |
+| `path` | Percorso relativo al vault della nota progetto |
+| `view` | `overview` (default) oppure `workspace` |
+| `mode` | Solo con `view=workspace`: `table` \| `gantt` \| `kanban` |
+
+Esempio Overview:
+
+```text
+obsidian://projects-engine?vault=Work&id=PRJ-2026-001&view=overview
+```
+
+Da Overview / Workspace: icona **link** sulla chrome del progetto (**Copy Obsidian URL**), oppure il pulsante **Copy Obsidian URL** nella sezione Actions.
 
 Esempio di nota progetto:
 
@@ -320,6 +348,36 @@ Settings → **Project statuses**: add, rename, reorder (drag), and archive. Vis
 **Task** — editor in a **tab** (default) or modal; date/time fields follow Settings. **Release notes** — dedicated command.
 
 Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per day**, **Date format** / **Time format**. English UI throughout.
+
+### Obsidian URL deep link (Dashboard / Overview)
+
+The plugin registers the protocol action `projects-engine`. Opening an `obsidian://…` URL lands on the **correct plugin view** (Overview or Workspace) — **not** only the raw project `.md` in the Markdown editor.
+
+Format:
+
+```text
+obsidian://projects-engine?vault=<VaultName>&id=<ProjectID>&view=overview
+obsidian://projects-engine?vault=<VaultName>&path=<vault-relative-path>&view=overview
+obsidian://projects-engine?vault=<VaultName>&id=<ProjectID>&view=workspace&mode=table
+```
+
+Parameters:
+
+| Parameter | Description |
+| --- | --- |
+| `vault` | Vault name (handled by Obsidian before the plugin) |
+| `id` | Project frontmatter `id` (e.g. `PRJ-2026-001`) |
+| `path` | Vault-relative path to the project note |
+| `view` | `overview` (default) or `workspace` |
+| `mode` | With `view=workspace` only: `table` \| `gantt` \| `kanban` |
+
+Example Overview URL:
+
+```text
+obsidian://projects-engine?vault=Work&id=PRJ-2026-001&view=overview
+```
+
+From Overview / Workspace chrome: use the **link** icon (**Copy Obsidian URL**), or the **Copy Obsidian URL** button under Actions.
 
 ### Frontmatter data model
 

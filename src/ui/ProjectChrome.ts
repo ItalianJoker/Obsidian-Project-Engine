@@ -30,6 +30,11 @@ export interface ProjectChromeProps {
 	onSearchChange: (text: string) => void;
 	onAddTask: () => void;
 	onOpenSettings: () => void;
+	/**
+	 * Copy an `obsidian://projects-engine?...` deep link for this project
+	 * (opens Overview / Dashboard leaf, not the raw Markdown editor).
+	 */
+	onCopyObsidianUrl?: () => void;
 	/** Optional: toggle filter panel / clear filters. */
 	onFilterClick?: () => void;
 	onAllClick?: () => void;
@@ -51,6 +56,7 @@ export function renderProjectChrome(props: ProjectChromeProps): void {
 		onSearchChange,
 		onAddTask,
 		onOpenSettings,
+		onCopyObsidianUrl,
 		onFilterClick,
 		onAllClick,
 		extraToolbar,
@@ -92,6 +98,14 @@ export function renderProjectChrome(props: ProjectChromeProps): void {
 		attr: { type: "button" },
 	});
 	add.addEventListener("click", onAddTask);
+
+	if (onCopyObsidianUrl) {
+		new ExtraButtonComponent(actions)
+			.setIcon("link")
+			.setTooltip("Copy Obsidian URL")
+			.onClick(onCopyObsidianUrl);
+		actions.querySelector(".clickable-icon:last-child")?.addClass("pe-touch-target");
+	}
 
 	new ExtraButtonComponent(actions)
 		.setIcon("settings")

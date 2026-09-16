@@ -12,6 +12,7 @@ import type ProjectsEnginePlugin from "../main";
 import type { Task, TaskPriority, TaskStatus } from "../models/types";
 import { toWikiLink } from "../models/types";
 import { loadAllTasks } from "../services/taskIo";
+import { copyProjectObsidianUri } from "../services/obsidianUri";
 import { EmptyState } from "../ui/EmptyState";
 import { renderProjectChrome } from "../ui/ProjectChrome";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
@@ -259,6 +260,12 @@ export class ProjectWorkspaceView extends ItemView {
 			onOpenSettings: () => {
 				void openProjectEditor(this.plugin, project, {
 					onSaved: () => void this.refresh(),
+				});
+			},
+			onCopyObsidianUrl: () => {
+				void copyProjectObsidianUri(this.app, project, {
+					view: "workspace",
+					mode: this.mode,
 				});
 			},
 			onAllClick: () => {

@@ -16,6 +16,10 @@ import { EntityIndexer } from "./engine/Indexer";
 import { DEFAULT_SETTINGS, type CustomFieldEntityKind, type ProjectsEngineSettings } from "./models/types";
 import { splitFrontmatter } from "./services/frontmatter";
 import { scaffoldProjectTree } from "./services/projectScaffold";
+import {
+	handleProjectDeepLink,
+	PROJECTS_ENGINE_URI_ACTION,
+} from "./services/obsidianUri";
 import { isValidTeamsChannelUrl, openExternalUrl } from "./services/urls";
 import { ProjectsEngineSettingTab } from "./settings";
 import { openEntityModal } from "./views/EntityModal";
@@ -84,6 +88,14 @@ export default class ProjectsEnginePlugin extends Plugin {
 		this.registerView(PROJECT_EDIT_VIEW_TYPE, (leaf) => new ProjectEditView(leaf, this));
 		this.registerView(TASK_VIEW_TYPE, (leaf) => new TaskView(leaf, this));
 		this.registerView(RELEASE_NOTES_VIEW_TYPE, (leaf) => new ReleaseNotesView(leaf, this));
+
+		/**
+		 * Deep link: `obsidian://projects-engine?vault=…&id=PRJ-…&view=overview`
+		 * Opens the Overview (or Workspace) ItemView — not the raw `.md` editor.
+		 */
+		this.registerObsidianProtocolHandler(PROJECTS_ENGINE_URI_ACTION, (params) => {
+			void handleProjectDeepLink(this, params);
+		});
 
 		this.app.workspace.onLayoutReady(() => {
 			this.indexer.rebuild();
