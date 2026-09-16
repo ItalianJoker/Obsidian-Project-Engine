@@ -21,6 +21,9 @@ import { appendEntityLink } from "../services/linkSync";
 import { nextAvailableProjectId } from "../services/projectId";
 import { isValidHttpUrl, isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
 import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from "../services/vaultIo";
+import { projectNotePath } from "../services/projectPaths";
+import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from "../models/types";
+import { loadProjectRows } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
 
 interface TeamChip {
@@ -51,6 +54,9 @@ interface CreationForm {
 	assignedDays: string;
 	projectUrl: string;
 	teamsChannelUrl: string;
+	icon: string;
+	color: string;
+	parentProjectId: string;
 }
 
 /**
@@ -101,6 +107,9 @@ export class ProjectCreationModal extends Modal {
 			assignedDays: "",
 			projectUrl: "",
 			teamsChannelUrl: "",
+			icon: DEFAULT_PROJECT_ICON,
+			color: DEFAULT_PROJECT_COLOR,
+			parentProjectId: "",
 		};
 	}
 
@@ -128,11 +137,14 @@ export class ProjectCreationModal extends Modal {
 		this.errorEl = contentEl.createDiv({ cls: "pe-errors", attr: { role: "alert" } });
 		this.errorEl.hide();
 
-		this.addReadOnly("Project ID", this.form.id);
+		this.addIdField();
 
 		this.addTextField("Project name *", "Identifying title", (value) => {
 			this.form.name = value;
 		});
+
+		this.addIconColorFields();
+		this.addParentProjectField();
 
 		this.addGovernanceToggle();
 
@@ -174,11 +186,87 @@ export class ProjectCreationModal extends Modal {
 		this.addActions();
 	}
 
-	private addReadOnly(label: string, value: string): HTMLElement {
+	/**
+	 * Editable project ID with uniqueness validation (pattern default still applied).
+	 */
+	private addIdField(): void {
 		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
-		wrap.createEl("label", { text: label, cls: "pe-label" });
-		const valueEl = wrap.createEl("div", { text: value, cls: "pe-readonly pe-touch-target" });
-		return valueEl;
+		wrap.createEl("label", { text: "Project ID *", cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Auto-generated from Settings pattern; editable. Must be unique.",
+		});
+		const row = wrap.createDiv({ cls: "pe-inline-row" });
+		const input = row.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "text", spellcheck: "false", "aria-label": "Project ID" },
+		});
+		input.value = this.form.id;
+		input.addEventListener("input", () => {
+			this.form.id = input.value.trim();
+		});
+		const regen = row.createEl("button", {
+			text: "Regenerate",
+			cls: "pe-secondary pe-touch-target",
+			attr: { type: "button" },
+		});
+		regen.addEventListener("click", () => {
+			this.allocateId();
+			input.value = this.form.id;
+		});
+	}
+
+	private addIconColorFields(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field pe-field-row" });
+		const iconField = wrap.createDiv({ cls: "pe-field" });
+		iconField.createEl("label", { text: "Icon", cls: "pe-label" });
+		iconField.createEl("p", {
+			cls: "pe-help",
+			text: "Obsidian / Lucide icon id (example: clipboard-list, folder, rocket).",
+		});
+		const iconInput = iconField.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "text", spellcheck: "false", placeholder: DEFAULT_PROJECT_ICON },
+		});
+		iconInput.value = this.form.icon;
+		iconInput.addEventListener("input", () => {
+			this.form.icon = iconInput.value.trim() || DEFAULT_PROJECT_ICON;
+		});
+
+		const colorField = wrap.createDiv({ cls: "pe-field" });
+		colorField.createEl("label", { text: "Color", cls: "pe-label" });
+		const colorInput = colorField.createEl("input", {
+			cls: "pe-touch-target",
+			attr: { type: "color", "aria-label": "Project colour" },
+		});
+		colorInput.value = this.form.color || DEFAULT_PROJECT_COLOR;
+		colorInput.addEventListener("input", () => {
+			this.form.color = colorInput.value;
+		});
+	}
+
+	private addParentProjectField(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: "Parent project", cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Optional. Leave empty for a top-level project.",
+		});
+		const select = wrap.createEl("select", {
+			cls: "pe-input pe-touch-target",
+			attr: { "aria-label": "Parent project" },
+		});
+		select.createEl("option", { text: "— None —", attr: { value: "" } });
+		for (const row of loadProjectRows(this.app)) {
+			select.createEl("option", {
+				text: `${row.id} — ${row.name}`,
+				attr: { value: row.id },
+			});
+		}
+		select.value = this.form.parentProjectId;
+		select.addEventListener("change", () => {
+			this.form.parentProjectId = select.value;
+		});
 	}
 
 	private addTextField(
@@ -563,24 +651,24 @@ export class ProjectCreationModal extends Modal {
 		try {
 			await this.ensureEntityNotes();
 			this.plugin.indexer.rebuild();
-			if (this.plugin.indexer.hasProjectId(this.form.id)) {
-				this.allocateId();
+			const id = this.form.id.trim();
+			if (this.plugin.indexer.hasProjectId(id)) {
+				throw new Error(`Project ID “${id}” is already in use`);
 			}
 			const file = await this.writeProjectNote();
 			await this.linkStakeholdersBothWays(file);
 			await this.plugin.afterProjectCreated(
 				file,
 				this.form.governance,
-				this.form.id,
+				id,
 				this.form.name.trim(),
 			);
 			this.plugin.settings.projectIdCounter = this.nextCounter;
 			await this.plugin.saveSettings();
 			this.plugin.indexer.rebuild();
-			new Notice(`Created project ${this.form.id}`);
+			new Notice(`Created project ${id}`);
 			this.close();
-			const leaf = this.app.workspace.getLeaf(false);
-			await leaf.openFile(file);
+			await this.plugin.router.openProjectLink(file.path);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			new Notice(`Could not create project: ${message}`);
@@ -593,6 +681,19 @@ export class ProjectCreationModal extends Modal {
 	 */
 	private validate(): string[] {
 		const errors: string[] = [];
+		const id = this.form.id.trim();
+		if (!id) {
+			errors.push("Project ID is required");
+		} else if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)) {
+			errors.push(
+				"Project ID may only contain letters, numbers, dots, underscores, and hyphens",
+			);
+		} else {
+			this.plugin.indexer.rebuild();
+			if (this.plugin.indexer.hasProjectId(id)) {
+				errors.push(`Project ID “${id}” is already in use`);
+			}
+		}
 		if (!this.form.name.trim()) {
 			errors.push("Project name is required");
 		}
@@ -615,8 +716,11 @@ export class ProjectCreationModal extends Modal {
 		if (this.form.teamsChannelUrl.trim() && !isValidTeamsChannelUrl(this.form.teamsChannelUrl)) {
 			errors.push("Teams channel must be a teams.microsoft.com / teams.live.com URL or an msteams:// deep link");
 		}
-		if (!this.form.id.trim()) {
-			errors.push("Project ID could not be generated");
+		if (
+			this.form.parentProjectId &&
+			this.form.parentProjectId === this.form.id.trim()
+		) {
+			errors.push("Parent project cannot be the same as this project");
 		}
 		return errors;
 	}
@@ -701,10 +805,13 @@ export class ProjectCreationModal extends Modal {
 
 		const frontmatter: Record<string, unknown> = {
 			pe_type: "project",
-			id: this.form.id,
+			id: this.form.id.trim(),
 			name: this.form.name.trim(),
 			governance: this.form.governance,
 			status: defaultProjectStatusId(this.plugin.settings.projectStatuses),
+			icon: this.form.icon.trim() || DEFAULT_PROJECT_ICON,
+			color: this.form.color.trim() || DEFAULT_PROJECT_COLOR,
+			parent_project: this.form.parentProjectId.trim() || null,
 			customer,
 			project_type: projectType,
 			technologies,
@@ -746,8 +853,11 @@ export class ProjectCreationModal extends Modal {
 		].join("\n");
 
 		const markdown = buildMarkdownNote(frontmatter, body);
-		const filename = `${sanitiseNoteBasename(`${this.form.id} ${this.form.name.trim()}`)}.md`;
-		const path = joinVaultPath(this.plugin.settings.projectsFolder, filename);
+		const path = projectNotePath(
+			this.plugin.settings.projectsFolder,
+			this.form.id.trim(),
+			this.form.name.trim(),
+		);
 		if (noteExists(this.app.vault, path)) {
 			throw new Error(`A note already exists at ${path}`);
 		}

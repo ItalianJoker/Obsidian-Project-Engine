@@ -1270,3 +1270,475 @@
 	display: inline-block;
 	margin-top: 16px;
 }
+
+/* =============================================================================
+ * Gantt SubView — dotpm visual parity (toolbar, tree labels, today marker)
+ * ============================================================================= */
+
+.pe-gantt-subview {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-height: 0;
+}
+
+.pe-gantt-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 4px;
+}
+
+.pe-gantt-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-left: auto;
+}
+
+.pe-gantt-axis--dual {
+	flex-direction: column;
+	height: auto !important;
+}
+
+.pe-gantt-ticks-wrap {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+}
+
+.pe-gantt-ticks--upper,
+.pe-gantt-ticks--lower {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+}
+
+.pe-gantt-ticks--upper .pe-gantt-tick {
+	font-size: 0.7em;
+	font-weight: 600;
+	color: var(--text-normal);
+	border-left-style: dashed;
+}
+
+.pe-gantt-ticks--lower .pe-gantt-tick {
+	font-size: 0.72em;
+	color: var(--text-muted);
+}
+
+.pe-gantt-chevron,
+.pe-gantt-chevron-spacer {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+	margin-right: 2px;
+	cursor: pointer;
+	color: var(--text-muted);
+}
+
+.pe-gantt-chevron-spacer {
+	visibility: hidden;
+	pointer-events: none;
+}
+
+.pe-gantt-tree-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--text-muted);
+	flex-shrink: 0;
+	margin-right: 8px;
+	opacity: 0.65;
+}
+
+.pe-gantt-label {
+	gap: 0;
+}
+
+.pe-gantt-label-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+	flex: 1;
+}
+
+.pe-gantt-grid {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+	z-index: 0;
+	padding-top: var(--pe-gantt-header-h, 36px);
+}
+
+.pe-gantt-grid-line {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 0;
+	border-left: 1px dashed var(--background-modifier-border);
+	opacity: 0.75;
+}
+
+.pe-gantt-today {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+	z-index: 4;
+}
+
+.pe-gantt-today-line {
+	position: absolute;
+	top: var(--pe-gantt-header-h, 36px);
+	bottom: 0;
+	left: var(--pe-gantt-today-x);
+	width: 0;
+	border-left: 2px dashed var(--text-error, #ef4444);
+	transform: translateX(-1px);
+}
+
+.pe-gantt-today-diamond {
+	position: absolute;
+	top: calc(var(--pe-gantt-header-h, 36px) - 6px);
+	left: var(--pe-gantt-today-x);
+	width: 10px;
+	height: 10px;
+	background: var(--text-error, #ef4444);
+	transform: translateX(-50%) rotate(45deg);
+	border-radius: 1px;
+}
+
+.pe-gantt-footer {
+	display: flex;
+	border-top: 1px solid var(--background-modifier-border);
+	min-height: 40px;
+	background: var(--background-primary);
+}
+
+.pe-gantt-footer-label {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	padding: 0 12px;
+	border-right: 1px solid var(--background-modifier-border);
+	position: sticky;
+	left: 0;
+	background: var(--background-primary);
+	z-index: 1;
+}
+
+.pe-gantt-add-task {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	padding: 8px 0;
+}
+
+.pe-gantt-add-task:hover {
+	color: var(--interactive-accent);
+}
+
+.pe-gantt-add-icon {
+	font-weight: 600;
+}
+
+.pe-gantt-body,
+.pe-gantt-axis {
+	position: relative;
+	z-index: 1;
+}
+
+/* =============================================================================
+ * Kanban SubView — column colors, count badges, due pills
+ * ============================================================================= */
+
+.pe-kanban-column-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin: 0 4px 10px;
+	padding-top: 4px;
+	border-top: 3px solid transparent;
+}
+
+.pe-kanban-column--backlog .pe-kanban-column-head {
+	border-top-color: var(--text-muted);
+}
+
+.pe-kanban-column--backlog .pe-kanban-title {
+	color: var(--text-normal);
+}
+
+.pe-kanban-column--in-progress .pe-kanban-column-head {
+	border-top-color: #a855f7;
+}
+
+.pe-kanban-column--in-progress .pe-kanban-title {
+	color: #a855f7;
+}
+
+.pe-kanban-column--review .pe-kanban-column-head {
+	border-top-color: #94a3b8;
+}
+
+.pe-kanban-column--review .pe-kanban-title {
+	color: #94a3b8;
+}
+
+.pe-kanban-column--done .pe-kanban-column-head {
+	border-top-color: #22c55e;
+}
+
+.pe-kanban-column--done .pe-kanban-title {
+	color: #22c55e;
+}
+
+.pe-kanban-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 22px;
+	height: 22px;
+	padding: 0 6px;
+	border-radius: 999px;
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.pe-kanban-title {
+	margin: 0;
+	font-size: 0.92em;
+	font-weight: 600;
+	flex: 1;
+}
+
+.pe-kanban-card {
+	cursor: grab;
+	gap: 6px;
+	padding: 10px 12px;
+}
+
+.pe-kanban-card:active {
+	cursor: grabbing;
+}
+
+.pe-kanban-card-foot {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 4px;
+}
+
+.pe-kanban-card-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 4px;
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+
+.pe-kanban-card:hover .pe-kanban-card-actions,
+.pe-kanban-card:focus-within .pe-kanban-card-actions {
+	opacity: 1;
+}
+
+.pe-kanban-edit {
+	font-size: var(--font-ui-smaller);
+	padding: 2px 8px;
+	min-height: 28px;
+}
+
+.pe-kanban-status-fallback {
+	font-size: var(--font-ui-smaller);
+	max-width: 120px;
+}
+
+.pe-due-pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: var(--font-ui-smaller);
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	border: 1px solid transparent;
+}
+
+.pe-due-pill.is-overdue {
+	background: color-mix(in srgb, var(--text-error, #ef4444) 18%, transparent);
+	color: var(--text-error, #ef4444);
+	border-color: color-mix(in srgb, var(--text-error, #ef4444) 40%, transparent);
+}
+
+@media (max-width: 719px) {
+	.pe-kanban-card-actions {
+		opacity: 1;
+	}
+}
+
+/* =============================================================================
+ * Task table SubView — tree, status pills, progress bar, due pills
+ * ============================================================================= */
+
+.pe-task-dashboard .pe-task-check-col {
+	width: 36px;
+	text-align: center;
+	padding-inline: 8px;
+}
+
+.pe-task-checkbox {
+	accent-color: var(--interactive-accent);
+	cursor: default;
+}
+
+.pe-task-tree-cell {
+	min-width: 180px;
+}
+
+.pe-task-tree-inner {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding-left: calc(var(--pe-tree-depth, 0) * 16px);
+	position: relative;
+}
+
+.pe-task-chevron,
+.pe-task-chevron-spacer {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.pe-task-chevron-spacer {
+	visibility: hidden;
+	pointer-events: none;
+}
+
+.pe-task-tree-inner::before {
+	content: "";
+	position: absolute;
+	left: calc(var(--pe-tree-depth, 0) * 16px + 8px);
+	top: -50%;
+	bottom: 50%;
+	width: 0;
+	border-left: 1px solid var(--background-modifier-border);
+	pointer-events: none;
+}
+
+.pe-task-row:first-child .pe-task-tree-inner::before {
+	display: none;
+}
+
+.pe-task-title {
+	text-align: left;
+	font-weight: 500;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pe-priority-label {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.pe-priority--high,
+.pe-priority--urgent {
+	color: var(--text-error, #ef4444);
+}
+
+.pe-task-assignees {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.pe-task-progress-col {
+	min-width: 120px;
+}
+
+.pe-progress-wrap {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pe-progress-bar {
+	flex: 1;
+	height: 6px;
+	border-radius: 999px;
+	background: var(--background-modifier-border);
+	overflow: hidden;
+	min-width: 48px;
+}
+
+.pe-progress-fill {
+	height: 100%;
+	border-radius: 999px;
+	background: var(--interactive-accent);
+	transition: width 0.2s ease;
+}
+
+.pe-progress-pct {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	min-width: 32px;
+	text-align: right;
+}
+
+.pe-task-time-col {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+}
+
+.pe-task-footer-row td {
+	border-bottom: none;
+	padding-top: 10px;
+}
+
+.pe-task-add {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	padding: 4px 0;
+}
+
+.pe-task-add:hover {
+	color: var(--interactive-accent);
+}
+
+.pe-status-chip--task::before {
+	content: "•";
+	width: auto;
+	height: auto;
+	border-radius: 0;
+	background: none;
+	color: var(--pe-status-color, var(--interactive-accent));
+	font-size: 1.1em;
+	line-height: 1;
+}

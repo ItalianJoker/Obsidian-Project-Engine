@@ -1,17 +1,20 @@
 /**
- * Nested task table SubView — dashboard-style columns (status, priority,
- * assignee, estimate hours) rather than a plain note dump.
+ * Nested task table SubView — dashboard-style columns matching dotpm task table.
  */
 
-import type { App } from "obsidian";
+import { setIcon, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
-import type { Task, TaskId, TaskPriority, TaskStatus } from "../../models/types";
+import type { SemplificatoStatus, Task, TaskId, TaskPriority, TaskStatus } from "../../models/types";
 import { toWikiLink, wikiLinkTarget } from "../../models/types";
-import { formatHours, formatHoursAndGiornate } from "../../services/timeLogs";
+import { formatDisplayDate, formatDuePill, isOverdue } from "../../services/dateFormat";
+import {
+	SEMPLIFICATO_LABELS,
+} from "../../services/governance";
+import { formatHours } from "../../services/timeLogs";
+import { EmptyState } from "../../ui/EmptyState";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
-import { EmptyState } from "../../ui/EmptyState";
 
 /**
  * Workspace task filters (combinable with free-text search).
@@ -35,9 +38,11 @@ export interface TableSubViewProps {
 }
 
 /**
- * Hierarchical task dashboard with indent, status chips, priority, hours.
+ * Hierarchical task dashboard with tree, status pills, progress, due dates.
  */
 export class TableSubView implements SubView {
+	private collapsedIds = new Set<TaskId>();
+
 	constructor(private readonly props: TableSubViewProps) {}
 
 	public render(): void {
@@ -47,7 +52,9 @@ export class TableSubView implements SubView {
 		container.addClass("pe-table-subview");
 
 		const filtered = filterTasks(tasks, filters);
-		if (filtered.length === 0) {
+		const projectFiltered = filtered.filter((t) => t.projectId === project.id);
+
+		if (projectFiltered.length === 0) {
 			new EmptyState(container)
 				.setTitle(tasks.length === 0 ? "No tasks yet" : "No matching tasks")
 				.setBody(
@@ -55,102 +62,47 @@ export class TableSubView implements SubView {
 						? "Add a task to plan delivery for this project."
 						: "Clear search or change status / priority filters.",
 				)
-				.setAction("+ add task", () => {
-					void openTaskEditor(plugin, {
-					projectId: project.id,
-					projectLink: toWikiLink(project.file.basename),
-				});
-				});
+				.setAction("+ Add task", () => this.openNewTask());
 			return;
 		}
 
-		const hoursPer = plugin.settings.hoursPerManday;
-		const table = container.createEl("table", { cls: "pe-table pe-task-table pe-task-dashboard" });
+		const dateFormat = plugin.settings.dateFormat;
+		const byParent = groupByParent(projectFiltered);
+		const visible = this.buildVisibleTasks(byParent);
+
+		const table = container.createEl("table", {
+			cls: "pe-table pe-task-table pe-task-dashboard",
+		});
 		const thead = table.createEl("thead");
 		const head = thead.createEl("tr");
 		for (const label of [
-			"Task",
-			"Status",
-			"Priority",
-			"Assignee",
-			"Estimate",
-			"Remaining",
-			"Dates",
 			"",
+			"TASK",
+			"STATUS",
+			"PRIORITY",
+			"ASSIGNEES",
+			"DUE",
+			"PROGRESS",
+			"TIME",
 		]) {
 			head.createEl("th", { text: label });
 		}
+
 		const tbody = table.createEl("tbody");
-		const depthById = buildDepthMap(filtered);
-		const ordered = orderTree(filtered);
-
-		for (const task of ordered) {
-			const depth = depthById.get(task.id) ?? 0;
-			const tr = tbody.createEl("tr", { cls: "pe-task-row pe-touch-target" });
-			const titleTd = tr.createEl("td", { attr: { "data-label": "Task" } });
-			titleTd.style.paddingLeft = `${8 + depth * 16}px`;
-			const titleBtn = titleTd.createEl("button", {
-				text: task.title || task.id,
-				cls: "pe-link-button pe-touch-target",
-				attr: { type: "button" },
-			});
-			if (task.isMilestone || task.isStageBoundary) {
-				titleTd.createSpan({
-					text: task.isStageBoundary ? " · stage boundary" : " · milestone",
-					cls: "pe-help",
-				});
-			}
-			titleBtn.addEventListener("click", () => {
-				void openTaskEditor(plugin, {
-					projectId: project.id,
-					projectLink: toWikiLink(project.file.basename),
-					existing: task,
-					parentId: task.parentId,
-				});
-			});
-
-			const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
-			statusTd.createSpan({
-				text: task.status,
-				cls: `pe-status-chip pe-status-chip--task pe-status--${task.status}`,
-			});
-
-			const priorityTd = tr.createEl("td", { attr: { "data-label": "Priority" } });
-			priorityTd.createSpan({
-				text: task.priority === "none" ? "—" : task.priority,
-				cls: `pe-priority-chip pe-priority--${task.priority}`,
-			});
-
-			tr.createEl("td", {
-				text: task.assignee ? wikiLinkTarget(task.assignee) : "—",
-				attr: { "data-label": "Assignee" },
-			});
-			tr.createEl("td", {
-				text: formatHoursAndGiornate(task.estimateHours, hoursPer),
-				attr: { "data-label": "Estimate" },
-			});
-			tr.createEl("td", {
-				text: formatHours(task.remainingHours),
-				attr: { "data-label": "Remaining" },
-			});
-			tr.createEl("td", {
-				text: `${task.startDate ?? "—"} → ${task.endDate ?? "—"}`,
-				attr: { "data-label": "Dates" },
-			});
-			const actions = tr.createEl("td", { attr: { "data-label": "Actions" } });
-			const sub = actions.createEl("button", {
-				text: "+ subtask",
-				cls: "pe-secondary pe-touch-target",
-				attr: { type: "button" },
-			});
-			sub.addEventListener("click", () => {
-				void openTaskEditor(plugin, {
-					projectId: project.id,
-					projectLink: toWikiLink(project.file.basename),
-					parentId: task.id,
-				});
-			});
+		for (const { task, depth, hasChildren } of visible) {
+			this.renderRow(tbody, task, depth, hasChildren, dateFormat);
 		}
+
+		const tfoot = table.createEl("tfoot");
+		const footRow = tfoot.createEl("tr", { cls: "pe-task-footer-row" });
+		footRow.createEl("td");
+		const addCell = footRow.createEl("td", { attr: { colspan: "7" } });
+		const addBtn = addCell.createEl("button", {
+			cls: "pe-task-add pe-link-button pe-touch-target",
+			attr: { type: "button" },
+		});
+		addBtn.createSpan({ text: "+ Add task" });
+		addBtn.addEventListener("click", () => this.openNewTask());
 	}
 
 	public refresh(): void {
@@ -159,6 +111,139 @@ export class TableSubView implements SubView {
 
 	public destroy(): void {
 		this.props.container.empty();
+	}
+
+	private buildVisibleTasks(
+		byParent: Map<TaskId | null, Task[]>,
+	): Array<{ task: Task; depth: number; hasChildren: boolean }> {
+		for (const list of byParent.values()) {
+			list.sort((a, b) => a.title.localeCompare(b.title));
+		}
+		const out: Array<{ task: Task; depth: number; hasChildren: boolean }> = [];
+		const visit = (parentId: TaskId | null, depth: number): void => {
+			for (const task of byParent.get(parentId) ?? []) {
+				const children = byParent.get(task.id) ?? [];
+				const hasChildren = children.length > 0;
+				out.push({ task, depth, hasChildren });
+				if (hasChildren && !this.collapsedIds.has(task.id)) {
+					visit(task.id, depth + 1);
+				}
+			}
+		};
+		visit(null, 0);
+		return out;
+	}
+
+	private renderRow(
+		tbody: HTMLElement,
+		task: Task,
+		depth: number,
+		hasChildren: boolean,
+		dateFormat: import("../../models/types").DateDisplayFormat,
+	): void {
+		const { plugin, project } = this.props;
+		const tr = tbody.createEl("tr", { cls: "pe-task-row" });
+
+		const checkTd = tr.createEl("td", { cls: "pe-task-check-col" });
+		const checkbox = checkTd.createEl("input", {
+			type: "checkbox",
+			cls: "pe-task-checkbox",
+			attr: { "aria-label": `Select ${task.title || task.id}` },
+		});
+		checkbox.checked = task.status === "done";
+		checkbox.disabled = true;
+
+		const titleTd = tr.createEl("td", { cls: "pe-task-tree-cell", attr: { "data-label": "Task" } });
+		titleTd.style.setProperty("--pe-tree-depth", String(depth));
+		const treeInner = titleTd.createDiv({ cls: "pe-task-tree-inner" });
+
+		if (hasChildren) {
+			const chevron = treeInner.createSpan({ cls: "pe-task-chevron pe-touch-target" });
+			const collapsed = this.collapsedIds.has(task.id);
+			setIcon(chevron, collapsed ? "chevron-right" : "chevron-down");
+			chevron.addEventListener("click", (event) => {
+				event.stopPropagation();
+				if (this.collapsedIds.has(task.id)) {
+					this.collapsedIds.delete(task.id);
+				} else {
+					this.collapsedIds.add(task.id);
+				}
+				this.render();
+			});
+		} else {
+			treeInner.createSpan({ cls: "pe-task-chevron-spacer" });
+		}
+
+		const titleBtn = treeInner.createEl("button", {
+			text: task.title || task.id,
+			cls: "pe-link-button pe-task-title pe-touch-target",
+			attr: { type: "button" },
+		});
+		titleBtn.addEventListener("click", () => {
+			void openTaskEditor(plugin, {
+				projectId: project.id,
+				projectLink: toWikiLink(project.file.basename),
+				existing: task,
+				parentId: task.parentId,
+			});
+		});
+
+		const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
+		const statusLabel = taskStatusLabel(task.status);
+		const statusColor = statusColorVar(task.status);
+		const statusChip = statusTd.createSpan({
+			text: statusLabel,
+			cls: `pe-status-chip pe-status-chip--task pe-status--${task.status}`,
+		});
+		statusChip.style.setProperty("--pe-status-color", statusColor);
+
+		const priorityTd = tr.createEl("td", { attr: { "data-label": "Priority" } });
+		priorityTd.createSpan({
+			text: priorityLabel(task.priority),
+			cls: `pe-priority-label pe-priority--${task.priority}`,
+		});
+
+		tr.createEl("td", {
+			text: task.assignee ? wikiLinkTarget(task.assignee) : "—",
+			cls: "pe-task-assignees",
+			attr: { "data-label": "Assignees" },
+		});
+
+		const dueTd = tr.createEl("td", { attr: { "data-label": "Due" } });
+		if (task.endDate) {
+			const overdue = isOverdue(task.endDate);
+			dueTd.createSpan({
+				text: formatDuePill(task.endDate, dateFormat),
+				cls: `pe-due-pill${overdue ? " is-overdue" : ""}`,
+				attr: { title: formatDisplayDate(task.endDate, dateFormat) },
+			});
+		} else {
+			dueTd.setText("—");
+		}
+
+		const progressTd = tr.createEl("td", { cls: "pe-task-progress-col", attr: { "data-label": "Progress" } });
+		const pct =
+			task.estimateHours > 0
+				? Math.min(100, Math.round((task.actualHours / task.estimateHours) * 100))
+				: 0;
+		const progressWrap = progressTd.createDiv({ cls: "pe-progress-wrap" });
+		const bar = progressWrap.createDiv({ cls: "pe-progress-bar" });
+		bar.createDiv({ cls: "pe-progress-fill", attr: { style: `width:${pct}%` } });
+		progressWrap.createSpan({ text: `${pct}%`, cls: "pe-progress-pct" });
+
+		tr.createEl("td", {
+			text: task.estimateHours > 0 ? formatHours(task.estimateHours) : "—",
+			cls: "pe-task-time-col",
+			attr: { "data-label": "Time" },
+		});
+	}
+
+	private openNewTask(): void {
+		const { plugin, project } = this.props;
+		void openTaskEditor(plugin, {
+			projectId: project.id,
+			projectLink: toWikiLink(project.file.basename),
+		});
 	}
 }
 
@@ -179,50 +264,59 @@ function filterTasks(tasks: Task[], filters: TaskDashboardFilters): Task[] {
 	});
 }
 
-function buildDepthMap(tasks: Task[]): Map<TaskId, number> {
-	const byId = new Map(tasks.map((task) => [task.id, task] as const));
-	const depth = new Map<TaskId, number>();
-	const visit = (id: TaskId, seen: Set<TaskId>): number => {
-		if (depth.has(id)) {
-			return depth.get(id)!;
-		}
-		if (seen.has(id)) {
-			return 0;
-		}
-		seen.add(id);
-		const task = byId.get(id);
-		if (!task?.parentId || !byId.has(task.parentId)) {
-			depth.set(id, 0);
-			return 0;
-		}
-		const d = visit(task.parentId, seen) + 1;
-		depth.set(id, d);
-		return d;
-	};
-	for (const task of tasks) {
-		visit(task.id, new Set());
-	}
-	return depth;
-}
-
-function orderTree(tasks: Task[]): Task[] {
+function groupByParent(tasks: Task[]): Map<TaskId | null, Task[]> {
 	const byParent = new Map<TaskId | null, Task[]>();
+	const ids = new Set(tasks.map((t) => t.id));
 	for (const task of tasks) {
-		const key = task.parentId && tasks.some((t) => t.id === task.parentId) ? task.parentId : null;
+		const key = task.parentId && ids.has(task.parentId) ? task.parentId : null;
 		const list = byParent.get(key) ?? [];
 		list.push(task);
 		byParent.set(key, list);
 	}
-	for (const list of byParent.values()) {
-		list.sort((a, b) => a.title.localeCompare(b.title));
+	return byParent;
+}
+
+function taskStatusLabel(status: TaskStatus): string {
+	if (status in SEMPLIFICATO_LABELS) {
+		return SEMPLIFICATO_LABELS[status as SemplificatoStatus];
 	}
-	const out: Task[] = [];
-	const walk = (parent: TaskId | null): void => {
-		for (const task of byParent.get(parent) ?? []) {
-			out.push(task);
-			walk(task.id);
-		}
-	};
-	walk(null);
-	return out;
+	if (status === "blocked") return "Blocked";
+	if (status === "cancelled") return "Cancelled";
+	return status;
+}
+
+function statusColorVar(status: TaskStatus): string {
+	switch (status) {
+		case "backlog":
+			return "var(--text-muted)";
+		case "in-progress":
+			return "#a855f7";
+		case "review":
+			return "#94a3b8";
+		case "done":
+			return "#22c55e";
+		case "blocked":
+			return "#ef4444";
+		case "cancelled":
+			return "#64748b";
+		default:
+			return "var(--interactive-accent)";
+	}
+}
+
+function priorityLabel(priority: TaskPriority): string {
+	switch (priority) {
+		case "none":
+			return "—";
+		case "low":
+			return "↓ Low";
+		case "medium":
+			return "= Medium";
+		case "high":
+			return "↑ High";
+		case "urgent":
+			return "!! Urgent";
+		default:
+			return priority;
+	}
 }

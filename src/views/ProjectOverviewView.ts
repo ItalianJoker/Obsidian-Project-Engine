@@ -96,6 +96,11 @@ export class ProjectOverviewView extends ItemView {
 		this.contentEl.empty();
 	}
 
+	/** Reload project data and re-render (called from {@link ProjectsEnginePlugin.refreshOpenViews}). */
+	public async refresh(): Promise<void> {
+		await this.loadProject();
+	}
+
 	private async loadProject(): Promise<void> {
 		const rows = loadProjectRows(this.app);
 		this.project = this.filePath ? findProjectRow(rows, this.filePath) ?? null : null;

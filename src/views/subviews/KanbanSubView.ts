@@ -10,6 +10,7 @@ import { Notice, TFile, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
 import type { SemplificatoStatus, Task } from "../../models/types";
 import { toWikiLink } from "../../models/types";
+import { formatDuePill, isOverdue } from "../../services/dateFormat";
 import {
 	SEMPLIFICATO_LABELS,
 	SEMPLIFICATO_STATUSES,
@@ -32,7 +33,7 @@ export interface KanbanSubViewProps {
 }
 
 /**
- * One column per Semplificato status with DnD + button fallback.
+ * One column per Semplificato status with DnD + compact edit affordance.
  */
 export class KanbanSubView implements SubView {
 	constructor(private readonly props: KanbanSubViewProps) {}
@@ -55,19 +56,21 @@ export class KanbanSubView implements SubView {
 		if (tasks.filter((t) => t.projectId === project.id).length === 0) {
 			new EmptyState(container)
 				.setTitle("Board is empty")
-				.setBody("Add tasks, then drag cards between columns (or use status buttons).")
-				.setAction("+ add task", () => {
+				.setBody("Add tasks, then drag cards between columns.")
+				.setAction("+ Add task", () => {
 					void openTaskEditor(plugin, {
-					projectId: project.id,
-					projectLink: toWikiLink(project.file.basename),
-				});
+						projectId: project.id,
+						projectLink: toWikiLink(project.file.basename),
+					});
 				});
 			return;
 		}
 
 		const board = container.createDiv({ cls: "pe-kanban" });
 		const enableHtml5 = typeof window !== "undefined" && window.innerWidth >= 720;
+		const isMobile = typeof window !== "undefined" && window.innerWidth < 720;
 		const byId = new Map(projectTasks.map((task) => [task.id, task] as const));
+		const dateFormat = plugin.settings.dateFormat;
 
 		const onDrop = (taskId: string, toStatus: SemplificatoStatus): void => {
 			const task = byId.get(taskId);
@@ -78,84 +81,93 @@ export class KanbanSubView implements SubView {
 			if (normaliseStatus(task.status) === toStatus) {
 				return;
 			}
-			void this.moveTaskStatus(task, toStatus).then(onChanged);
+			void this.moveTaskStatus(task, toStatus).then(() => {
+				onChanged();
+				plugin.refreshOpenViews();
+			});
 		};
 
 		for (const status of SEMPLIFICATO_STATUSES) {
-			const column = board.createDiv({ cls: "pe-kanban-column" });
+			const column = board.createDiv({
+				cls: `pe-kanban-column pe-kanban-column--${status}`,
+			});
 			wireKanbanColumnDrop(column, status, onDrop);
-			column.createEl("h4", { text: SEMPLIFICATO_LABELS[status], cls: "pe-kanban-title" });
-			const cards = column.createDiv({ cls: "pe-kanban-cards" });
+
+			const head = column.createDiv({ cls: "pe-kanban-column-head" });
+			head.createEl("h4", { text: SEMPLIFICATO_LABELS[status], cls: "pe-kanban-title" });
 			const inColumn = projectTasks.filter((task) => normaliseStatus(task.status) === status);
+			head.createSpan({ text: String(inColumn.length), cls: "pe-kanban-count" });
+
+			const cards = column.createDiv({ cls: "pe-kanban-cards" });
 			for (const task of inColumn) {
 				const card = cards.createDiv({ cls: "pe-kanban-card pe-touch-target" });
-				const head = card.createDiv({ cls: "pe-kanban-card-head" });
-				const handle = head.createEl("button", {
-					text: "⠿",
-					cls: "pe-kanban-handle pe-touch-target",
-					attr: {
-						type: "button",
-						"aria-label": "Drag to change status",
-						title: "Drag to another column",
-					},
-				});
-				head.createEl("div", {
+
+				card.createEl("div", {
 					text: task.title || task.id,
 					cls: "pe-kanban-card-title",
 				});
-				card.createEl("div", {
-					text: `${task.remainingMandays.toFixed(1)} md left`,
-					cls: "pe-help",
+
+				const foot = card.createDiv({ cls: "pe-kanban-card-foot" });
+				const dueIso = task.endDate;
+				if (dueIso) {
+					const overdue = isOverdue(dueIso);
+					const pill = foot.createSpan({
+						text: formatDuePill(dueIso, dateFormat),
+						cls: `pe-due-pill${overdue ? " is-overdue" : ""}`,
+					});
+					pill.title = dueIso;
+				}
+
+				const actions = card.createDiv({ cls: "pe-kanban-card-actions" });
+				const edit = actions.createEl("button", {
+					text: "Edit",
+					cls: "pe-kanban-edit pe-secondary pe-touch-target",
+					attr: { type: "button" },
 				});
-				wireKanbanCardDnD(card, column, handle, {
+				edit.addEventListener("click", (event) => {
+					event.stopPropagation();
+					void openTaskEditor(plugin, {
+						projectId: project.id,
+						projectLink: toWikiLink(project.file.basename),
+						existing: task,
+						parentId: task.parentId,
+					});
+				});
+
+				if (isMobile) {
+					const select = actions.createEl("select", {
+						cls: "pe-kanban-status-fallback pe-input pe-touch-target",
+						attr: { "aria-label": "Move to column" },
+					});
+					for (const target of SEMPLIFICATO_STATUSES) {
+						select.createEl("option", {
+							text: SEMPLIFICATO_LABELS[target],
+							attr: { value: target },
+						});
+					}
+					select.value = status;
+					select.addEventListener("change", () => {
+						const next = select.value as SemplificatoStatus;
+						if (next !== status) {
+							void this.moveTaskStatus(task, next).then(() => {
+								onChanged();
+								plugin.refreshOpenViews();
+							});
+						}
+					});
+				}
+
+				wireKanbanCardDnD(card, column, null, {
 					taskId: task.id,
 					fromStatus: status,
 					onDrop,
 					enableHtml5,
 				});
-
-				const row = card.createDiv({ cls: "pe-inline-row" });
-				const edit = row.createEl("button", {
-					text: "Edit",
-					cls: "pe-secondary pe-touch-target",
-					attr: { type: "button" },
-				});
-				edit.addEventListener("click", () => {
-					void openTaskEditor(plugin, {
-					projectId: project.id,
-					projectLink: toWikiLink(project.file.basename),
-					existing: task,
-					parentId: task.parentId,
-				});
-				});
-				for (const target of SEMPLIFICATO_STATUSES) {
-					if (target === status) continue;
-					const move = row.createEl("button", {
-						text: SEMPLIFICATO_LABELS[target],
-						cls: "pe-secondary pe-touch-target pe-kanban-move",
-						attr: { type: "button", title: `Move to ${SEMPLIFICATO_LABELS[target]}` },
-					});
-					move.addEventListener("click", () => {
-						void this.moveTaskStatus(task, target).then(onChanged);
-					});
-				}
 			}
+
 			if (inColumn.length === 0) {
 				cards.createEl("p", { text: "Drop tasks here", cls: "pe-help pe-kanban-empty" });
 			}
-		}
-
-		const projectStatus = container.createDiv({ cls: "pe-inline-row pe-project-status-row" });
-		projectStatus.createEl("span", { text: "Project status:", cls: "pe-label" });
-		for (const status of SEMPLIFICATO_STATUSES) {
-			const button = projectStatus.createEl("button", {
-				text: SEMPLIFICATO_LABELS[status],
-				cls: `pe-segment pe-touch-target${project.status === status ? " is-active" : ""}`,
-				attr: { type: "button" },
-			});
-			button.addEventListener("click", () => {
-				void this.setProjectStatus(status).then(onChanged);
-			});
 		}
 	}
 
@@ -177,18 +189,6 @@ export class KanbanSubView implements SubView {
 			new PersistStatusCommand(this.props.app.vault, file, task.status, status),
 		);
 		new Notice(`Moved to ${SEMPLIFICATO_LABELS[status]}`);
-	}
-
-	private async setProjectStatus(status: SemplificatoStatus): Promise<void> {
-		this.props.plugin.commandStack.execute(
-			new PersistStatusCommand(
-				this.props.app.vault,
-				this.props.project.file,
-				this.props.project.status,
-				status,
-			),
-		);
-		new Notice(`Project status → ${SEMPLIFICATO_LABELS[status]}`);
 	}
 }
 
