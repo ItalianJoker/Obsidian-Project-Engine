@@ -704,6 +704,11 @@ export interface ProjectsEngineSettings {
 	 * Dashboard click landing: project overview (governance home) or delivery workspace.
 	 */
 	projectSurface: ProjectSurface;
+	/**
+	 * Where the task editor opens — modal dialog or dedicated ItemView tab.
+	 * Mirrors obsidian-pm `taskEditorSurface`.
+	 */
+	taskEditorSurface: "modal" | "tab";
 	/** Initial Table / Gantt / Board mode when opening the workspace. */
 	defaultView: DefaultWorkspaceView;
 	/**
@@ -731,6 +736,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	hoursPerManday: 8,
 	indexerDebounceMs: 250,
 	projectSurface: "overview",
+	taskEditorSurface: "tab",
 	defaultView: "table",
 	projectStatuses: DEFAULT_PROJECT_STATUSES.map((item) => ({ ...item })),
 	customFieldSchemas: [],

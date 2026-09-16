@@ -14,7 +14,7 @@ Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.co
 
 **Projects Engine** gestisce portafoglio, governance e delivery **dentro il vault**, senza database esterni. Ogni cliente, persona, stakeholder, tipo di progetto, tecnologia e task è una nota Markdown (**Entity-as-a-Note**). I collegamenti sono wikilink nativi `[[Nota]]`: Graph View raggruppa i lavori per cliente, stack tecnologico, team e stakeholder.
 
-La navigazione segue un funnel coerente: **Projects (lista) → Overview (home governance) → Workspace (Table / Gantt / Board)** nello stesso spirito di [obsidian-pm](https://github.com/dotpm/obsidian-pm), senza copiarne branding o Local API.
+La navigazione segue un funnel coerente: **Projects (lista) → Overview (home governance) → Edit (leaf) → Workspace (Table / Gantt / Board)**, più **Task** (modale o tab) e **Release notes**, nello stesso spirito di [obsidian-pm](https://github.com/dotpm/obsidian-pm), senza copiarne branding o Local API.
 
 Il plugin include:
 
@@ -22,7 +22,7 @@ Il plugin include:
 - campi personalizzati configurabili sulle cinque entità catalogo
 - editor task (sotto-task annidati, dipendenze, time log, Undo/Redo)
 - governance **Semplificato** e **PRINCE2**
-- Dashboard progetti, Overview, Workspace unificato (Table / Kanban / Gantt)
+- Dashboard progetti, Overview, Edit progetto (leaf), Workspace unificato (Table / Kanban / Gantt), editor Task (modale o tab), Release notes
 - scheduling DAG con cycle detection e cascade delle date
 
 ### Architettura delle entità e Graph View
@@ -89,18 +89,22 @@ In Settings → **Project statuses** si aggiungono, rinomina, riordinano (drag) 
 - Auto-schedule e cascade: se un blocker slitta, i dipendenti vengono ripianificati conservando la durata
 - Undo/Redo (Command Pattern) su date, dipendenze e status board; persistenza via `vault.process`
 
-### Viste: Projects → Overview → Workspace
+### Viste: Projects → Overview → Edit → Workspace (+ Task / Release notes)
 
 **Projects (Dashboard)** — elenco progetti con filtri combinabili **Governance** + **Customer**, ricerca, chip status, budget giornate/ore, menu contestuale (overview / workspace / **Edit project** / table / board / Gantt). Sotto i 720px: card/accordion. Toolbar `+ new project` e CRUD entità.
 
-**Overview** — home del progetto (stile dotpm): glyph, meta compact, metriche ore↔giornate, **status editabile**, CTA **Edit project** / Open workspace / add task, entità, governance Semplificato o PRINCE2.
+**Overview** — home del progetto (stile dotpm): glyph, meta compact, metriche ore↔giornate, **status editabile**, CTA **Edit project** (leaf) / Open workspace / add task, entità, governance Semplificato o PRINCE2.
+
+**Edit project** — leaf dedicata (parità obsidian-pm), non solo modale.
 
 **Workspace** — un’unica leaf con switcher **Table | Gantt | Board**:
 - **Table (task dashboard)** — gerarchia, status, priority, assignee, estimate/remaining ore, filtri status/priority
 - **Board (Kanban)** — colonne Backlog / In Progress / Review / Done; DnD HTML5 + pointer-capture; pulsanti status come fallback
 - **Gantt** — barre, zoom Day/Week/Month, curve SVG dipendenze; click apre l’editor
 
-In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Project statuses**, **Hours per giornata**.
+**Task** — editor in **tab** (default) o modale. **Release notes** — comando dedicato.
+
+In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per giornata**.
 
 ### Modello dati (frontmatter)
 
@@ -213,7 +217,7 @@ Dopo la sync del vault, abilita **Projects Engine anche sull’app mobile** (Imp
 
 **Projects Engine** manages portfolio, governance, and delivery **inside the vault** — no external database. Every customer, person, stakeholder, project type, technology, and task is a Markdown note (**Entity-as-a-Note**). Relationships are native `[[wikilinks]]`, so Graph View clusters work by customer, technology stack, team, and stakeholder.
 
-Navigation follows a coherent funnel: **Projects (list) → Overview (governance home) → Workspace (Table / Gantt / Board)**, inspired by [obsidian-pm](https://github.com/dotpm/obsidian-pm), without copying its branding or Local API. See `NOTICE`.
+Navigation follows a coherent funnel: **Projects (list) → Overview (governance home) → Edit (leaf) → Workspace (Table / Gantt / Board)**, plus **Task** (modal or tab) and **Release notes**, inspired by [obsidian-pm](https://github.com/dotpm/obsidian-pm), without copying its branding or Local API. See `NOTICE`.
 
 The plugin ships with:
 
@@ -221,7 +225,7 @@ The plugin ships with:
 - configurable custom fields on the five catalogue entities
 - a task editor (nested subtasks, dependencies, time logs, Undo/Redo)
 - **Semplificato** and **PRINCE2** governance
-- Projects dashboard, Overview, and a unified Workspace (Table / Kanban / Gantt)
+- Projects dashboard, Overview, Project Edit (leaf), unified Workspace (Table / Kanban / Gantt), Task editor (modal or tab), Release notes
 - DAG scheduling with cycle detection and date cascade
 
 ### Entity architecture and Graph View
@@ -288,18 +292,22 @@ Settings → **Project statuses**: add, rename, reorder (drag), and archive. Vis
 - Auto-schedule and cascade: when a blocker slips, dependents are replaned with duration preserved
 - Undo/Redo (Command Pattern) for dates, dependencies, and board status; persisted via `vault.process`
 
-### Views: Projects → Overview → Workspace
+### Views: Projects → Overview → Edit → Workspace (+ Task / Release notes)
 
 **Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, status chips, budget as giornate/hours, context menu (overview / workspace / **Edit project** / table / board / Gantt). Below 720px: card/accordion. Toolbar: `+ new project` and entity CRUD.
 
-**Overview** — project home (dotpm-like): glyph, compact meta, hours↔giornate metrics, **editable status**, **Edit project** / Open workspace / add task CTAs, entities, Semplificato or PRINCE2 governance.
+**Overview** — project home (dotpm-like): glyph, compact meta, hours↔giornate metrics, **editable status**, **Edit project** (leaf) / Open workspace / add task CTAs, entities, Semplificato or PRINCE2 governance.
+
+**Edit project** — dedicated leaf (obsidian-pm parity), not modal-only.
 
 **Workspace** — one leaf with **Table | Gantt | Board** switcher:
 - **Table (task dashboard)** — hierarchy, status, priority, assignee, estimate/remaining hours, status/priority filters
 - **Board (Kanban)** — Backlog / In Progress / Review / Done; HTML5 + pointer-capture DnD; status buttons as fallback
 - **Gantt** — bars, Day/Week/Month zoom, SVG dependency curves; click opens the editor
 
-Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Project statuses**, **Hours per giornata**.
+**Task** — editor in a **tab** (default) or modal. **Release notes** — dedicated command.
+
+Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per giornata**.
 
 ### Frontmatter data model
 

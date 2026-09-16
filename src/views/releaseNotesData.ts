@@ -1,0 +1,21 @@
+/**
+ * Bundled release-notes body for {@link ReleaseNotesView}.
+ *
+ * Kept as a TS module so the browser build does not need Node `fs` to read
+ * RELEASE_NOTES.md at runtime. Update alongside RELEASE_NOTES.md for releases.
+ */
+
+/** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
+export const RELEASE_NOTES_MARKDOWN = `
+## 1.0.0
+
+### Features
+
+- **Full view set** aligned with [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm): Projects Dashboard, Project Overview, Project Edit (leaf), Workspace (Table / Gantt / Board), Task editor (modal or tab), Release notes.
+- **Navigation**: ribbon + commands + in-leaf \`ViewRouter\` (Overview ↔ Workspace ↔ Edit).
+- Entity-as-a-Note (Customer, Team, Type, Technology, **Stakeholder**), custom fields, Semplificato / PRINCE2, Teams URL, hours↔giornate (1 g = 8 h), \`vault.process\`.
+
+### Attribution
+
+UI architecture adapted from obsidian-pm (MIT). Branding and domain remain **Projects Engine**.
+`;

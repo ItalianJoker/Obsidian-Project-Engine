@@ -12,7 +12,10 @@
 import { type TFile, type WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import { DASHBOARD_VIEW_TYPE } from "./DashboardView";
+import { PROJECT_EDIT_VIEW_TYPE } from "./ProjectEditView";
 import { OVERVIEW_VIEW_TYPE } from "./ProjectOverviewView";
+import { RELEASE_NOTES_VIEW_TYPE } from "./ReleaseNotesView";
+import { TASK_VIEW_TYPE, type TaskViewState } from "./TaskView";
 import { WORKSPACE_VIEW_TYPE, type WorkspaceViewMode } from "./ProjectWorkspaceView";
 
 /**
@@ -71,6 +74,25 @@ export class ViewRouter {
 			{ filePath: path, mode: mode ?? this.plugin.settings.defaultView },
 			leaf,
 		);
+	}
+
+	/**
+	 * In-leaf project edit (obsidian-pm `ProjectEditView` equivalent).
+	 */
+	public async openProjectEdit(path: string, leaf?: WorkspaceLeaf): Promise<void> {
+		await this.open(PROJECT_EDIT_VIEW_TYPE, { filePath: path }, leaf);
+	}
+
+	/**
+	 * Task editor as a dedicated tab (when `taskEditorSurface` is `tab`).
+	 */
+	public async openTask(state: TaskViewState, leaf?: WorkspaceLeaf): Promise<void> {
+		await this.open(TASK_VIEW_TYPE, { ...state }, leaf);
+	}
+
+	/** What's-new leaf for the running plugin version. */
+	public async openReleaseNotes(since?: string): Promise<void> {
+		await this.open(RELEASE_NOTES_VIEW_TYPE, since ? { since } : {});
 	}
 
 	/**

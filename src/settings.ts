@@ -99,6 +99,24 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 					});
 				dropdown.selectEl.addClass("pe-touch-target");
 			});
+
+		new Setting(containerEl)
+			.setName("Open task editor in")
+			.setDesc(
+				"Modal dialog, or a dedicated tab (obsidian-pm TaskView equivalent). Default: Tab.",
+			)
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("tab", "Tab")
+					.addOption("modal", "Modal")
+					.setValue(this.plugin.settings.taskEditorSurface)
+					.onChange(async (value) => {
+						this.plugin.settings.taskEditorSurface =
+							value === "modal" ? "modal" : "tab";
+						await this.plugin.saveSettings();
+					});
+				dropdown.selectEl.addClass("pe-touch-target");
+			});
 	}
 
 	private renderIdSection(): void {
