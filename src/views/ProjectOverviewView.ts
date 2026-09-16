@@ -2,7 +2,7 @@
  * Project overview — project home with screenshot-aligned chrome and task table.
  *
  * Primary surface shows the hierarchical task dashboard (task-table.png).
- * Compact meta, Edit / Delete, and governance actions sit below.
+ * Compact meta, governance, then Edit / Delete actions at the bottom.
  *
  * Layout inspiration from [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm)
  * (MIT © 2026 Stepan Kropachev and dotpm contributors).
@@ -290,7 +290,11 @@ export class ProjectOverviewView extends ItemView {
 
 		const metrics = root.createDiv({ cls: "pe-metric-strip" });
 		this.metric(metrics, "Tasks", String(this.tasks.length));
-		this.metric(metrics, "Budget", `${formatGiornate(project.assignedDays)}\n${formatHours(budgetHours)}`);
+		this.metric(
+			metrics,
+			"Budget (giornate)",
+			`${formatGiornate(project.assignedDays)}\n${formatHours(budgetHours)}`,
+		);
 		this.metric(metrics, "Logged", formatHoursAndGiornate(loggedHours, hoursPer));
 		this.metric(metrics, "Remaining", formatHoursAndGiornate(remainingHours, hoursPer));
 		this.metric(metrics, "Est. tasks", formatHours(estimateHours));
@@ -333,17 +337,29 @@ export class ProjectOverviewView extends ItemView {
 			})();
 		});
 
-		const actions = root.createDiv({ cls: "pe-overview-actions pe-inline-row" });
-		this.cta(actions, "Edit project", false, () => {
+		this.renderEntities(root, project);
+		this.renderGovernance(root, project);
+		this.renderActions(root, project);
+	}
+
+	/**
+	 * Project edit / launch actions sit at the bottom of the meta panel so
+	 * primary content (metrics, status, entities) stays above the fold.
+	 */
+	private renderActions(root: HTMLElement, project: ProjectRow): void {
+		const actions = root.createDiv({ cls: "pe-overview-actions" });
+		actions.createEl("h3", { text: "Actions", cls: "pe-section-title" });
+		const row = actions.createDiv({ cls: "pe-inline-row" });
+		this.cta(row, "Edit project", false, () => {
 			void openProjectEditor(this.plugin, project, {
 				onSaved: () => void this.refresh(),
 			});
 		});
-		this.cta(actions, "Open note", false, () => {
+		this.cta(row, "Open note", false, () => {
 			void this.app.workspace.getLeaf(false).openFile(project.file);
 		});
 		if (project.teamsChannelUrl) {
-			this.cta(actions, "Teams channel", false, () => {
+			this.cta(row, "Teams channel", false, () => {
 				if (!isValidTeamsChannelUrl(project.teamsChannelUrl)) {
 					new Notice("teams_channel_url is not a valid Teams link");
 					return;
@@ -352,16 +368,13 @@ export class ProjectOverviewView extends ItemView {
 			});
 		}
 		if (project.projectUrl) {
-			this.cta(actions, "Project URL", false, () => {
+			this.cta(row, "Project URL", false, () => {
 				openExternalUrl(project.projectUrl);
 			});
 		}
-		this.cta(actions, "Delete project…", false, () => {
+		this.cta(row, "Delete project…", false, () => {
 			this.confirmDelete(project);
 		});
-
-		this.renderEntities(root, project);
-		this.renderGovernance(root, project);
 	}
 
 	private confirmDelete(project: ProjectRow): void {
@@ -402,11 +415,11 @@ export class ProjectOverviewView extends ItemView {
 
 	private metric(parent: HTMLElement, label: string, value: string): void {
 		const cell = parent.createDiv({ cls: "pe-metric" });
+		cell.createDiv({ text: label, cls: "pe-metric-label" });
 		const valueEl = cell.createDiv({ cls: "pe-metric-value" });
 		for (const line of value.split("\n")) {
 			valueEl.createDiv({ text: line });
 		}
-		cell.createDiv({ text: label, cls: "pe-metric-label" });
 	}
 
 	private cta(

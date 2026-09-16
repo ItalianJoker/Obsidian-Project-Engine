@@ -30,7 +30,7 @@ const ZOOM_PRESETS: { id: GanttZoomId; label: string; pxPerDay: number }[] = [
 const ROW_HEIGHT = 40;
 const LABEL_WIDTH = 220;
 const HEADER_HEIGHT_SINGLE = 36;
-const HEADER_HEIGHT_DUAL = 52;
+const HEADER_HEIGHT_DUAL = 56;
 
 interface GanttRow {
 	task: Task;
@@ -88,7 +88,7 @@ export class GanttSubView implements SubView {
 		const dayCount = daysBetween(this.rangeStart, this.rangeEnd) + 1;
 		const px = ZOOM_PRESETS.find((z) => z.id === zoomId)?.pxPerDay ?? 12;
 		const chartWidth = Math.max(dayCount * px, 320);
-		const headerHeight = zoomId === "week" ? HEADER_HEIGHT_DUAL : HEADER_HEIGHT_SINGLE;
+		const headerHeight = usesDualHeader(zoomId) ? HEADER_HEIGHT_DUAL : HEADER_HEIGHT_SINGLE;
 
 		this.scrollEl = container.createDiv({ cls: "pe-gantt-scroll" });
 		const chart = this.scrollEl.createDiv({ cls: "pe-gantt-chart" });
@@ -251,7 +251,7 @@ export class GanttSubView implements SubView {
 	): void {
 		const axis = chart.createDiv({ cls: "pe-gantt-axis" });
 		axis.style.height = `${headerHeight}px`;
-		if (zoomId === "week") {
+		if (usesDualHeader(zoomId)) {
 			axis.addClass("pe-gantt-axis--dual");
 		}
 
@@ -263,30 +263,8 @@ export class GanttSubView implements SubView {
 		ticksWrap.style.width = `${chartWidth}px`;
 
 		const step = tickStepDays(zoomId);
-		if (zoomId === "week") {
-			const upper = ticksWrap.createDiv({ cls: "pe-gantt-ticks pe-gantt-ticks--upper" });
-			const lower = ticksWrap.createDiv({ cls: "pe-gantt-ticks pe-gantt-ticks--lower" });
-			for (let i = 0; i < dayCount; i += step) {
-				const date = addDays(this.rangeStart, i);
-				const tick = lower.createDiv({ cls: "pe-gantt-tick" });
-				tick.style.left = `${i * px}px`;
-				tick.style.width = `${step * px}px`;
-				tick.setText(isoWeekLabel(date));
-			}
-			let spanStart = 0;
-			let spanLabel = "";
-			for (let i = 0; i <= dayCount; i += step) {
-				const date = i < dayCount ? addDays(this.rangeStart, i) : null;
-				const label = date ? monthYearLabel(date) : "";
-				if (label !== spanLabel && spanLabel) {
-					const tick = upper.createDiv({ cls: "pe-gantt-tick pe-gantt-tick--span" });
-					tick.style.left = `${spanStart * px}px`;
-					tick.style.width = `${(i - spanStart) * px}px`;
-					tick.setText(spanLabel);
-					spanStart = i;
-				}
-				if (date) spanLabel = label;
-			}
+		if (usesDualHeader(zoomId)) {
+			this.renderDualTicks(ticksWrap, dayCount, px, step, zoomId);
 		} else {
 			const ticks = ticksWrap.createDiv({ cls: "pe-gantt-ticks" });
 			for (let i = 0; i < dayCount; i += step) {
@@ -299,6 +277,48 @@ export class GanttSubView implements SubView {
 		}
 
 		this.renderGridLines(chart, dayCount, px, chartWidth, step, headerHeight);
+	}
+
+	/**
+	 * Two-band timeline header: a spanning upper label (month / year) over
+	 * lower column ticks (days / weeks / months) so labels stay aligned and
+	 * do not wrap or clip against neighbouring columns.
+	 */
+	private renderDualTicks(
+		ticksWrap: HTMLElement,
+		dayCount: number,
+		px: number,
+		step: number,
+		zoomId: GanttZoomId,
+	): void {
+		const upper = ticksWrap.createDiv({ cls: "pe-gantt-ticks pe-gantt-ticks--upper" });
+		const lower = ticksWrap.createDiv({ cls: "pe-gantt-ticks pe-gantt-ticks--lower" });
+
+		for (let i = 0; i < dayCount; i += step) {
+			const date = addDays(this.rangeStart, i);
+			const tick = lower.createDiv({ cls: "pe-gantt-tick" });
+			tick.style.left = `${i * px}px`;
+			tick.style.width = `${Math.max(step * px, 1)}px`;
+			tick.setText(formatLowerTickLabel(date, zoomId));
+			tick.title = formatLowerTickLabel(date, zoomId);
+		}
+
+		let spanStart = 0;
+		let spanLabel = "";
+		for (let i = 0; i <= dayCount; i += step) {
+			const date = i < dayCount ? addDays(this.rangeStart, i) : null;
+			const label = date ? formatUpperTickLabel(date, zoomId) : "";
+			if (label !== spanLabel && spanLabel) {
+				const widthPx = (i - spanStart) * px;
+				const tick = upper.createDiv({ cls: "pe-gantt-tick pe-gantt-tick--span" });
+				tick.style.left = `${spanStart * px}px`;
+				tick.style.width = `${Math.max(widthPx, 1)}px`;
+				tick.setText(spanLabel);
+				tick.title = spanLabel;
+				spanStart = i;
+			}
+			if (date) spanLabel = label;
+		}
 	}
 
 	private renderGridLines(
@@ -334,7 +354,7 @@ export class GanttSubView implements SubView {
 
 			const label = lane.createDiv({ cls: "pe-gantt-label" });
 			label.style.width = `${LABEL_WIDTH}px`;
-			label.style.paddingLeft = `${8 + row.depth * 16}px`;
+			label.style.paddingLeft = `${12 + row.depth * 16}px`;
 
 			if (row.hasChildren) {
 				const chevron = label.createSpan({ cls: "pe-gantt-chevron pe-touch-target" });
@@ -570,6 +590,33 @@ function formatTickLabel(iso: IsoDate, zoomId: GanttZoomId): string {
 			return String(date.getUTCFullYear());
 		default:
 			return iso;
+	}
+}
+
+/** Day / Week / Month use a dual header band; coarser zooms stay single-row. */
+function usesDualHeader(zoomId: GanttZoomId): boolean {
+	return zoomId === "day" || zoomId === "week" || zoomId === "month";
+}
+
+function formatUpperTickLabel(iso: IsoDate, zoomId: GanttZoomId): string {
+	const date = parseIsoDate(iso);
+	if (zoomId === "month") {
+		return String(date.getUTCFullYear());
+	}
+	return monthYearLabel(iso);
+}
+
+function formatLowerTickLabel(iso: IsoDate, zoomId: GanttZoomId): string {
+	const date = parseIsoDate(iso);
+	switch (zoomId) {
+		case "day":
+			return String(date.getUTCDate());
+		case "week":
+			return isoWeekLabel(iso);
+		case "month":
+			return date.toLocaleString("en-GB", { month: "short", timeZone: "UTC" });
+		default:
+			return formatTickLabel(iso, zoomId);
 	}
 }
 

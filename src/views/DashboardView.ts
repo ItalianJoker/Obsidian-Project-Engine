@@ -147,6 +147,26 @@ export class DashboardView extends ItemView {
 
 		this.renderTable(visible);
 		this.renderCards(visible);
+		this.renderEntityActions();
+	}
+
+	/**
+	 * Entity create shortcuts sit under the project list so the toolbar stays
+	 * aligned with the title / filters and left margins match the table.
+	 */
+	private renderEntityActions(): void {
+		const section = this.bodyEl.createDiv({ cls: "pe-section pe-dashboard-actions" });
+		section.createEl("h3", { text: "Create entity", cls: "pe-section-title" });
+		const row = section.createDiv({ cls: "pe-inline-row" });
+		this.toolButton(row, "Customer", false, () => openEntityModal(this.plugin, "customer"));
+		this.toolButton(row, "Stakeholder", false, () =>
+			openEntityModal(this.plugin, "stakeholder"),
+		);
+		this.toolButton(row, "Team", false, () => openEntityModal(this.plugin, "team-member"));
+		this.toolButton(row, "Type", false, () => openEntityModal(this.plugin, "project-type"));
+		this.toolButton(row, "Tech", false, () =>
+			openEntityModal(this.plugin, "project-technology"),
+		);
 	}
 
 	private renderToolbar(): void {
@@ -180,6 +200,7 @@ export class DashboardView extends ItemView {
 			}
 			this.renderTable(visible);
 			this.renderCards(visible);
+			this.renderEntityActions();
 		});
 
 		const gov = center.createEl("select", {
@@ -216,15 +237,6 @@ export class DashboardView extends ItemView {
 
 		const right = bar.createDiv({ cls: "pe-toolbar-right" });
 		this.toolButton(right, "+ new project", true, () => this.plugin.openCreationModal());
-		this.toolButton(right, "Customer", false, () => openEntityModal(this.plugin, "customer"));
-		this.toolButton(right, "Stakeholder", false, () =>
-			openEntityModal(this.plugin, "stakeholder"),
-		);
-		this.toolButton(right, "Team", false, () => openEntityModal(this.plugin, "team-member"));
-		this.toolButton(right, "Type", false, () => openEntityModal(this.plugin, "project-type"));
-		this.toolButton(right, "Tech", false, () =>
-			openEntityModal(this.plugin, "project-technology"),
-		);
 	}
 
 	private toolButton(
