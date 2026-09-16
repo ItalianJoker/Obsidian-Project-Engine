@@ -44,6 +44,14 @@ export const SEMPLIFICATO_LABELS: Record<SemplificatoStatus, string> = {
 };
 
 /**
+ * English UI label for a governance model.
+ * Stored YAML value stays `Semplificato` / `PRINCE2`; only the chrome is localised.
+ */
+export function governanceDisplayLabel(model: GovernanceModel): string {
+	return model === "Semplificato" ? "Simplified" : model;
+}
+
+/**
  * Formal PRINCE2 register kinds with display titles.
  */
 export const PRINCE2_REGISTERS: { kind: Prince2RegisterKind; title: string }[] = [

@@ -1015,6 +1015,9 @@ function taskToDraft(task: Task): TaskDraft {
 
 /**
  * Open task editor in modal or tab per {@link ProjectsEngineSettings.taskEditorSurface}.
+ *
+ * Default is **modal** so Cancel only dismisses the overlay and leaves
+ * Dashboard / Overview / Workspace unchanged (no history.back / leaf replace).
  */
 export async function openTaskEditor(
 	plugin: ProjectsEnginePlugin,
@@ -1029,6 +1032,7 @@ export async function openTaskEditor(
 ): Promise<void> {
 	const existing = opts.existing ?? null;
 	const parentId = opts.parentId ?? null;
+	// Prefer modal overlay unless the user explicitly chose the tab surface.
 	if (plugin.settings.taskEditorSurface === "tab") {
 		await plugin.router.openTask(
 			{

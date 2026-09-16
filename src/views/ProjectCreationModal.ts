@@ -17,6 +17,7 @@ import {
 	type ProjectTeamAssignment,
 } from "../models/types";
 import { buildGraphLinksSection, buildMarkdownNote } from "../services/frontmatter";
+import { governanceDisplayLabel } from "../services/governance";
 import { appendEntityLink } from "../services/linkSync";
 import { nextAvailableProjectId } from "../services/projectId";
 import { isValidHttpUrl, isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
@@ -292,7 +293,7 @@ export class ProjectCreationModal extends Modal {
 
 		const makeButton = (model: GovernanceModel): void => {
 			const button = group.createEl("button", {
-				text: model,
+				text: governanceDisplayLabel(model),
 				cls: "pe-segment pe-touch-target",
 				attr: { type: "button", "aria-pressed": String(this.form.governance === model) },
 			});

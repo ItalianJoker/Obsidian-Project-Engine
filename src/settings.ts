@@ -120,15 +120,17 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Open tasks in")
-			.setDesc("Modal dialog, or a dedicated tab. Default: Tab.")
+			.setDesc(
+				"Modal overlay (Cancel closes only the dialog and stays on the current page), or a dedicated tab. Default: Modal.",
+			)
 			.addDropdown((dropdown) => {
 				dropdown
-					.addOption("tab", "Tab")
 					.addOption("modal", "Modal")
+					.addOption("tab", "Tab")
 					.setValue(this.plugin.settings.taskEditorSurface)
 					.onChange(async (value) => {
 						this.plugin.settings.taskEditorSurface =
-							value === "modal" ? "modal" : "tab";
+							value === "tab" ? "tab" : "modal";
 						await this.plugin.saveSettings();
 					});
 				dropdown.selectEl.addClass("pe-touch-target");
