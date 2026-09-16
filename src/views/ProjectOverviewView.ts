@@ -2,7 +2,8 @@
  * Project overview — project home with screenshot-aligned chrome and task table.
  *
  * Primary surface shows the hierarchical task dashboard (task-table.png).
- * Compact meta, governance, then Edit / Delete actions at the bottom.
+ * Documents tree (file-based, Tasks/ excluded), compact meta, governance,
+ * then Edit / Delete actions at the bottom.
  *
  * Layout inspiration from [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm)
  * (MIT © 2026 Stepan Kropachev and dotpm contributors).
@@ -17,6 +18,10 @@ import {
 	ensurePrince2Registers,
 	readProjectStages,
 } from "../services/governance";
+import {
+	buildProjectDocumentsTree,
+	tasksFolderBasename,
+} from "../services/projectDocuments";
 import { setProjectStatus } from "../services/projectIo";
 import {
 	deleteProjectFolder,
@@ -33,6 +38,7 @@ import { isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { EmptyState } from "../ui/EmptyState";
 import { renderProjectChrome } from "../ui/ProjectChrome";
+import { renderProjectDocumentsTree } from "../ui/ProjectDocumentsTree";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
 import { loadAllTasks } from "../services/taskIo";
 import { openProjectEditor } from "./ProjectEditView";
@@ -69,7 +75,14 @@ export class ProjectOverviewView extends ItemView {
 	private chromeEl!: HTMLElement;
 	private filterEl!: HTMLElement;
 	private tableEl!: HTMLElement;
+	/** File-based documents tree (Documents /, Initiation /, … — not Tasks /). */
+	private docsEl!: HTMLElement;
 	private metaEl!: HTMLElement;
+	/**
+	 * Collapsed folder paths in the documents tree. Survives vault-driven
+	 * refreshes so expand/collapse is not reset on every Sync event.
+	 */
+	private docsCollapsedPaths = new Set<string>();
 	private initialized = false;
 	private reloadTimer: number | null = null;
 
@@ -142,6 +155,7 @@ export class ProjectOverviewView extends ItemView {
 		this.chromeEl = root.createDiv({ cls: "pe-chrome-mount" });
 		this.filterEl = root.createDiv({ cls: "pe-chrome-filter-panel" });
 		this.tableEl = root.createDiv({ cls: "pe-overview-table" });
+		this.docsEl = root.createDiv({ cls: "pe-overview-docs" });
 		this.metaEl = root.createDiv({ cls: "pe-overview-meta-panel" });
 	}
 
@@ -185,6 +199,7 @@ export class ProjectOverviewView extends ItemView {
 		this.chromeEl?.empty();
 		this.filterEl?.empty();
 		this.tableEl?.empty();
+		this.docsEl?.empty();
 		this.metaEl?.empty();
 		const root = this.contentEl;
 		root.empty();
@@ -259,7 +274,39 @@ export class ProjectOverviewView extends ItemView {
 		}
 
 		this.renderTable();
+		this.renderDocuments(project);
 		this.renderMeta(project);
+	}
+
+	/**
+	 * Scan the project folder and render quick links (excludes Tasks/).
+	 * Reuses the Overview vault event debounce for auto-refresh.
+	 */
+	private renderDocuments(project: ProjectRow): void {
+		const folder = containingProjectFolder(project.file.path);
+		const nodes = folder
+			? buildProjectDocumentsTree(this.app.vault, folder, {
+					excludeRootFolderName: tasksFolderBasename(
+						this.plugin.settings.scaffoldTasksFolder,
+					),
+					excludeFilePaths: [project.file.path],
+				})
+			: [];
+
+		renderProjectDocumentsTree({
+			app: this.app,
+			container: this.docsEl,
+			nodes,
+			collapsedPaths: this.docsCollapsedPaths,
+			onToggleFolder: (folderPath) => {
+				if (this.docsCollapsedPaths.has(folderPath)) {
+					this.docsCollapsedPaths.delete(folderPath);
+				} else {
+					this.docsCollapsedPaths.add(folderPath);
+				}
+				this.renderDocuments(project);
+			},
+		});
 	}
 
 	private renderTable(): void {
