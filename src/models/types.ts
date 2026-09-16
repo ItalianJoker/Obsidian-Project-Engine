@@ -420,8 +420,16 @@ export interface Task {
 	blockedBy: TaskId[];
 	/** Reverse index of dependents. @remarks YAML: `blocking` */
 	blocking: TaskId[];
-	startDate: IsoDate | null;
-	endDate: IsoDate | null;
+	/**
+	 * Planned start (`start_date` in YAML).
+	 * Stored as `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` (optional wall-clock time).
+	 * Scheduler / Gantt use the calendar-day portion only.
+	 */
+	startDate: string | null;
+	/**
+	 * Planned end (`end_date` in YAML). Same storage form as {@link startDate}.
+	 */
+	endDate: string | null;
 	/**
 	 * User-facing due date with optional time (`due` in YAML).
 	 * Stored as `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` (local wall clock).

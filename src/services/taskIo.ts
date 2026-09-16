@@ -9,7 +9,6 @@
 import { TFile, type App, type Vault } from "obsidian";
 import type {
 	CustomFieldMap,
-	IsoDate,
 	SchedulableTask,
 	Task,
 	TaskId,
@@ -27,6 +26,7 @@ import {
 	resolveEstimateHours,
 	serialiseTimeLogs,
 } from "./timeLogs";
+import { calendarDatePart } from "./dateFormat";
 import { joinVaultPath, noteExists, processNote, sanitiseNoteBasename, writeNoteAtomic } from "./vaultIo";
 
 const TASK_PRIORITIES: TaskPriority[] = ["none", "low", "medium", "high", "urgent"];
@@ -43,8 +43,10 @@ export interface TaskDraft {
 	childIds: TaskId[];
 	blockedBy: TaskId[];
 	blocking: TaskId[];
-	startDate: IsoDate | null;
-	endDate: IsoDate | null;
+	/** Start date with optional time (`start_date`): `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`. */
+	startDate: string | null;
+	/** End date with optional time (`end_date`): same form as {@link startDate}. */
+	endDate: string | null;
 	/** Due date with optional time (`due`). */
 	due: string | null;
 	/** Scheduled date with optional time (`scheduled`). */
@@ -161,9 +163,9 @@ export function parseTaskNote(
 		childIds: readStringArray(data.child_ids),
 		blockedBy: readStringArray(data.blocked_by),
 		blocking: readStringArray(data.blocking),
-		startDate: typeof data.start_date === "string" ? data.start_date : null,
-		endDate: typeof data.end_date === "string" ? data.end_date : null,
-		due: readDateTimeField(data.due) ?? (typeof data.end_date === "string" ? data.end_date : null),
+		startDate: readDateTimeField(data.start_date),
+		endDate: readDateTimeField(data.end_date),
+		due: readDateTimeField(data.due) ?? readDateTimeField(data.end_date),
 		scheduled: readDateTimeField(data.scheduled),
 		durationDays:
 			typeof data.duration_days === "number"
@@ -313,8 +315,9 @@ export function toSchedulable(task: Task | TaskDraft): SchedulableTask {
 	return {
 		id: task.id,
 		durationDays: task.durationDays,
-		startDate: task.startDate,
-		endDate: task.endDate,
+		// Scheduler is day-granular; strip optional wall-clock times from start/end.
+		startDate: calendarDatePart(task.startDate),
+		endDate: calendarDatePart(task.endDate),
 		blockedBy: [...task.blockedBy],
 		stageSequence: task.stageSequence,
 		isStageBoundary: task.isStageBoundary,
@@ -391,7 +394,8 @@ function readCustomFields(raw: unknown): CustomFieldMap {
 }
 
 /**
- * Parse YAML `due` / `scheduled`: `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` (also space separator).
+ * Parse YAML date-time fields (`start_date`, `end_date`, `due`, `scheduled`):
+ * `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` (also space separator).
  */
 function readDateTimeField(raw: unknown): string | null {
 	if (typeof raw !== "string" || !raw.trim()) {

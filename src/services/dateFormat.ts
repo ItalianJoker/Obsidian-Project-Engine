@@ -29,6 +29,18 @@ export function splitDateTime(value: string | null | undefined): {
 }
 
 /**
+ * Extract the calendar-day portion (`YYYY-MM-DD`) from a date or date-time string.
+ * Used by the scheduler / Gantt so optional wall-clock times do not break day math.
+ */
+export function calendarDatePart(value: string | null | undefined): IsoDate | null {
+	if (!value?.trim()) {
+		return null;
+	}
+	const { date } = splitDateTime(value);
+	return isValidYmd(date) ? date : null;
+}
+
+/**
  * Compose a YAML date-time from an ISO calendar date and optional `HH:mm` (24h).
  */
 export function joinDateTime(date: string, time: string): string | null {
