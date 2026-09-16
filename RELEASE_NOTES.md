@@ -2,7 +2,7 @@
 
 ## 1.0.0 — Visual parity + containment (§8–§10 overwrite)
 
-**IT / EN (summary):** Shared dotpm-like chrome; Overview task table; Gantt Day–Year + today marker; Kanban counts/due pills; project icon/color/parent/editable ID; `Projects/{ID} - {Name}/` + Entities under Projects root; scaffold + Delete project; task `due`/`scheduled` (optional time); Settings restructured (dotpm-inspired) with DD/MM/YYYY + 24h defaults; auto-refresh; English UI; lean file-based scaffold (folders only, PRINCE2 registers when needed).
+**IT / EN (summary):** Shared dotpm-like chrome; Overview task table; Gantt Day–Year + today marker; Kanban counts/due pills; project icon/color/parent/editable ID; `Projects/{ID} - {Name}/` + Entities under Projects root; scaffold + Delete project; task `due`/`scheduled` (optional time); Settings date/time format (default DD/MM/YYYY + 24h) wired through editors and views; budget days · hours on one line; auto-refresh; **English UI**; lean file-based scaffold (folders only, PRINCE2 registers when needed).
 
 ---
 
@@ -13,7 +13,8 @@
 #### Usabilità (§7) — Dotpm-parity
 
 - **Spacing / chrome** — densità toolbar/header/content allineata a obsidian-pm; meta/tag compacti (chip) che non dominano la vista.
-- **Modello tempo** — stime task e time log in **ore** (anche frazionarie); budget progetto in **giornate**; conversione **1 g = 8 h** (Settings); UI duale ore↔giornate.
+- **Modello tempo** — stime task e time log in **ore** (anche frazionarie); budget progetto in **giorni**; conversione **1 g = 8 h** (Settings → Hours per day); chip duali su una riga (es. `5 d · 40 h`).
+- **Formato data/ora** — Settings applicato a editor task, campi custom, tabelle, Kanban e Gantt (default DD/MM/YYYY + 24h). UI in inglese.
 - **Filtri portfolio** — **Governance** e **Customer** combinabili, touch-friendly.
 - **Status progetto** — palette configurabile in Settings (add/rename/reorder/archive); visibile in portfolio; editabile in Overview e Edit project.
 - **Overview stile dotpm** — glyph, meta compact, metriche, CTA **Edit project** / Open workspace.
@@ -66,7 +67,8 @@
 #### Usability (§7) — Dotpm-parity
 
 - **Spacing / chrome** — toolbar/header/content density closer to obsidian-pm; compact meta/tag chips that do not dominate the view.
-- **Time model** — task estimates and time logs in **hours** (fractions OK); project budget in **giornate**; conversion **1 day = 8 h** (Settings); dual-unit UI.
+- **Time model** — task estimates and time logs in **hours** (fractions OK); project budget in **days**; conversion **1 day = 8 h** (Settings → Hours per day); dual-unit chips on one line (e.g. `5 d · 40 h`).
+- **Date/time format** — Settings formats apply to task create/edit, custom fields, tables, Kanban, and Gantt (default DD/MM/YYYY + 24h).
 - **Portfolio filters** — combinable **Governance** and **Customer**, touch-friendly.
 - **Project status** — configurable palette in Settings (add/rename/reorder/archive); shown on portfolio; editable on Overview and Edit project.
 - **Dotpm-like Overview** — glyph, compact meta, metrics, **Edit project** / Open workspace CTAs.

@@ -13,7 +13,9 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 - **Full view set** aligned with [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm): Projects Dashboard, Project Overview, Project Edit (leaf), Workspace (Table / Gantt / Board), Task editor (modal or tab), Release notes.
 - **Navigation**: ribbon + commands + in-leaf \`ViewRouter\` (Overview ↔ Workspace ↔ Edit).
-- Entity-as-a-Note (Customer, Team, Type, Technology, **Stakeholder**), custom fields, Semplificato / PRINCE2, Teams URL, hours↔giornate (1 g = 8 h), \`vault.process\`.
+- Entity-as-a-Note (Customer, Team, Type, Technology, **Stakeholder**), custom fields, Semplificato / PRINCE2, Teams URL, hours↔days (1 day = 8 h), \`vault.process\`.
+- English UI; Settings date/time format (default DD/MM/YYYY + 24h) applies to task editor, tables, board, and Gantt.
+- Project budget shown as days and hours on one line (1 day = 8 h).
 
 ### Attribution
 

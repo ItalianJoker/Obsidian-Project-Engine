@@ -1,15 +1,16 @@
 /**
- * Date / time display helpers (ISO stored in YAML; formatted for English UI).
+ * Date / time display and input helpers.
  *
- * Task `due` / `scheduled` store `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`.
- * Defaults: Italian calendar layout `DD/MM/YYYY` with 24-hour clock.
+ * Storage stays ISO in YAML (`YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`).
+ * Settings control how dates appear and how users type them in editors.
+ * Defaults: `DD/MM/YYYY` calendar layout with a 24-hour clock.
  */
 
 import type { DateDisplayFormat, IsoDate, TimeDisplayFormat } from "../models/types";
 import { parseIsoDate } from "../engine/Scheduler";
 
 /**
- * Split a stored date-time into calendar date and optional `HH:mm`.
+ * Split a stored date-time into calendar date and optional `HH:mm` (24h).
  */
 export function splitDateTime(value: string | null | undefined): {
 	date: string;
@@ -28,7 +29,7 @@ export function splitDateTime(value: string | null | undefined): {
 }
 
 /**
- * Compose YAML value from date input + optional time (`HH:mm`).
+ * Compose a YAML date-time from an ISO calendar date and optional `HH:mm` (24h).
  */
 export function joinDateTime(date: string, time: string): string | null {
 	const d = date.trim();
@@ -48,6 +49,99 @@ export function joinDateTime(date: string, time: string): string | null {
 	return `${d}T${hh}:${mm}`;
 }
 
+/** Placeholder text matching the active date format (e.g. `DD/MM/YYYY`). */
+export function dateFormatPlaceholder(format: DateDisplayFormat): string {
+	return format;
+}
+
+/** Placeholder text matching the active time format. */
+export function timeFormatPlaceholder(timeFormat: TimeDisplayFormat): string {
+	return timeFormat === "12h" ? "h:mm AM/PM" : "HH:mm";
+}
+
+/**
+ * Parse a settings-shaped calendar date into ISO `YYYY-MM-DD`.
+ * Also accepts raw ISO. Returns `null` when empty or invalid.
+ */
+export function parseDisplayDate(
+	text: string | null | undefined,
+	format: DateDisplayFormat = "DD/MM/YYYY",
+): IsoDate | null {
+	const raw = text?.trim() ?? "";
+	if (!raw) {
+		return null;
+	}
+	if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+		return isValidYmd(raw) ? raw : null;
+	}
+	const slash = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(raw);
+	if (slash) {
+		const a = Number.parseInt(slash[1]!, 10);
+		const b = Number.parseInt(slash[2]!, 10);
+		const y = slash[3]!;
+		let month: number;
+		let day: number;
+		if (format === "MM/DD/YYYY") {
+			month = a;
+			day = b;
+		} else {
+			// DD/MM/YYYY (default) and YYYY-MM-DD fallback when slash-separated
+			day = a;
+			month = b;
+		}
+		const iso = `${y}-${pad2(month)}-${pad2(day)}`;
+		return isValidYmd(iso) ? iso : null;
+	}
+	const ymdSlash = /^(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})$/.exec(raw);
+	if (ymdSlash) {
+		const iso = `${ymdSlash[1]}-${pad2(Number.parseInt(ymdSlash[2]!, 10))}-${pad2(Number.parseInt(ymdSlash[3]!, 10))}`;
+		return isValidYmd(iso) ? iso : null;
+	}
+	return null;
+}
+
+/**
+ * Parse a settings-shaped time into 24h `HH:mm`.
+ * Accepts `HH:mm`, `H:mm`, and 12h forms (`2:30 PM`). Empty → `""`.
+ * Invalid → `null`.
+ */
+export function parseDisplayTime(
+	text: string | null | undefined,
+	timeFormat: TimeDisplayFormat = "24h",
+): string | null {
+	const raw = text?.trim() ?? "";
+	if (!raw) {
+		return "";
+	}
+	const twelve = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(raw);
+	if (twelve) {
+		let hours = Number.parseInt(twelve[1]!, 10);
+		const minutes = Number.parseInt(twelve[2]!, 10);
+		const period = twelve[3]!.toUpperCase();
+		if (hours < 1 || hours > 12 || minutes > 59) {
+			return null;
+		}
+		if (period === "AM") {
+			hours = hours === 12 ? 0 : hours;
+		} else {
+			hours = hours === 12 ? 12 : hours + 12;
+		}
+		return `${pad2(hours)}:${pad2(minutes)}`;
+	}
+	const twentyFour = /^(\d{1,2}):(\d{2})$/.exec(raw);
+	if (twentyFour) {
+		const hours = Number.parseInt(twentyFour[1]!, 10);
+		const minutes = Number.parseInt(twentyFour[2]!, 10);
+		if (hours > 23 || minutes > 59) {
+			return null;
+		}
+		// When Settings are 12h, bare HH:mm is still accepted (typed or pasted).
+		void timeFormat;
+		return `${pad2(hours)}:${pad2(minutes)}`;
+	}
+	return null;
+}
+
 /**
  * Format an ISO date or date-time for display (respects date + time settings).
  */
@@ -64,15 +158,7 @@ export function formatDisplayDateTime(
 	if (!time) {
 		return datePart;
 	}
-	const [hh, mm] = time.split(":");
-	const hours = Number.parseInt(hh ?? "0", 10);
-	const minutes = (mm ?? "00").padStart(2, "0");
-	if (timeFormat === "12h") {
-		const period = hours >= 12 ? "PM" : "AM";
-		const h12 = hours % 12 || 12;
-		return `${datePart} ${h12}:${minutes} ${period}`;
-	}
-	return `${datePart} ${hours.toString().padStart(2, "0")}:${minutes}`;
+	return `${datePart} ${formatDisplayTime(time, timeFormat)}`;
 }
 
 /**
@@ -127,16 +213,7 @@ export function formatDuePill(
 			label = `${day} ${month}, ${year}`;
 		}
 		if (time) {
-			const [hh, mm] = time.split(":");
-			const hours = Number.parseInt(hh ?? "0", 10);
-			const minutes = (mm ?? "00").padStart(2, "0");
-			if (timeFormat === "12h") {
-				const period = hours >= 12 ? "PM" : "AM";
-				const h12 = hours % 12 || 12;
-				label += ` ${h12}:${minutes}${period}`;
-			} else {
-				label += ` ${hours.toString().padStart(2, "0")}:${minutes}`;
-			}
+			label += ` ${formatDisplayTime(time, timeFormat).replace(" ", "")}`;
 		}
 		return label;
 	} catch {
@@ -145,7 +222,7 @@ export function formatDuePill(
 }
 
 /**
- * Format a Date (or ISO datetime) time-of-day per settings.
+ * Format a Date (or ISO datetime / `HH:mm`) time-of-day per settings.
  */
 export function formatDisplayTime(
 	value: Date | string,
@@ -197,4 +274,24 @@ export function isOverdue(iso: string | null | undefined, today: Date = new Date
  */
 export function effectiveDue(task: { due?: string | null; endDate?: string | null }): string | null {
 	return task.due ?? task.endDate ?? null;
+}
+
+function pad2(n: number): string {
+	return n.toString().padStart(2, "0");
+}
+
+/** Calendar validity check for an ISO `YYYY-MM-DD` string. */
+function isValidYmd(iso: string): boolean {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+	if (!match) {
+		return false;
+	}
+	const y = Number.parseInt(match[1]!, 10);
+	const m = Number.parseInt(match[2]!, 10);
+	const d = Number.parseInt(match[3]!, 10);
+	if (m < 1 || m > 12 || d < 1 || d > 31) {
+		return false;
+	}
+	const dt = new Date(Date.UTC(y, m - 1, d));
+	return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
 }

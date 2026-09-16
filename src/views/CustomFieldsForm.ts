@@ -12,9 +12,15 @@ import type {
 	CustomFieldMap,
 	CustomFieldSchema,
 	CustomFieldValue,
+	DateDisplayFormat,
 	WikiLink,
 } from "../models/types";
 import { toWikiLink } from "../models/types";
+import {
+	dateFormatPlaceholder,
+	formatDisplayDate,
+	parseDisplayDate,
+} from "../services/dateFormat";
 import { isValidHttpUrl } from "../services/urls";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
 import type { IndexedEntity } from "../engine/Indexer";
@@ -31,6 +37,8 @@ export interface CustomFieldsFormOptions {
 	initial: CustomFieldMap;
 	/** Team-member catalogue for `person` fields. */
 	listPeople: () => IndexedEntity[];
+	/** Calendar display/input format from Settings (default DD/MM/YYYY). */
+	dateFormat?: DateDisplayFormat;
 	/** Register a suggest instance so the parent modal can close it. */
 	registerSuggest?: (suggest: EntitySuggest) => void;
 }
@@ -127,8 +135,11 @@ export function validateCustomFields(
 		if (schema.type === "url" && typeof value === "string" && value.trim() && !isValidHttpUrl(value)) {
 			errors.push(`${schema.name} must be a valid http(s) URL`);
 		}
-		if (schema.type === "date" && typeof value === "string" && value.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-			errors.push(`${schema.name} must be YYYY-MM-DD`);
+		if (schema.type === "date" && typeof value === "string" && value.trim()) {
+			const iso = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+			if (!iso) {
+				errors.push(`${schema.name} must be a valid date`);
+			}
 		}
 	}
 	return errors;
@@ -158,7 +169,7 @@ function renderField(
 			mountNumber(wrap, schema, values);
 			break;
 		case "date":
-			mountText(wrap, schema, values, "date");
+			mountDate(wrap, schema, values, options.dateFormat ?? "DD/MM/YYYY");
 			break;
 		case "checkbox":
 			mountCheckbox(wrap, schema, values);
@@ -192,6 +203,43 @@ function mountText(
 	input.addEventListener("input", () => {
 		values[schema.id] = input.value;
 	});
+}
+
+/**
+ * Custom-field date: Settings-shaped text input; YAML value remains ISO `YYYY-MM-DD`.
+ */
+function mountDate(
+	wrap: HTMLElement,
+	schema: CustomFieldSchema,
+	values: CustomFieldMap,
+	dateFormat: DateDisplayFormat,
+): void {
+	const input = wrap.createEl("input", {
+		cls: "pe-input pe-touch-target",
+		attr: {
+			type: "text",
+			placeholder: dateFormatPlaceholder(dateFormat),
+			spellcheck: "false",
+		},
+	});
+	const current = values[schema.id];
+	const iso =
+		typeof current === "string" && /^\d{4}-\d{2}-\d{2}$/.test(current) ? current : "";
+	input.value = iso ? formatDisplayDate(iso, dateFormat) : typeof current === "string" ? current : "";
+	const commit = (): void => {
+		const trimmed = input.value.trim();
+		if (!trimmed) {
+			values[schema.id] = null;
+			return;
+		}
+		const parsed = parseDisplayDate(trimmed, dateFormat);
+		if (parsed) {
+			values[schema.id] = parsed;
+			input.value = formatDisplayDate(parsed, dateFormat);
+		}
+	};
+	input.addEventListener("change", commit);
+	input.addEventListener("blur", commit);
 }
 
 function mountNumber(wrap: HTMLElement, schema: CustomFieldSchema, values: CustomFieldMap): void {

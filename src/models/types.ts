@@ -222,8 +222,9 @@ export interface CustomField {
  *
  * Effort model (§7):
  * - Task estimates and time-log `duration` are in **hours** (fractions OK).
- * - Management budget (`assigned_days`) is in **giornate** (days).
- * - Conversion: **1 giornata = {@link ProjectsEngineSettings.hoursPerManday} hours** (default 8).
+ * - Management budget (`assigned_days`) is in **days** (management days / giornate).
+ * - Conversion: **1 day = {@link ProjectsEngineSettings.hoursPerManday} hours** (default 8).
+ * - UI shows days and hours together where useful (e.g. `5 d · 40 h`).
  */
 export interface TimeLog {
 	/** Day the work was performed. @remarks YAML: `date` */
@@ -493,12 +494,12 @@ export interface Project {
 	/** Work-order / commessa codes (example: `COM-2026-01`). @remarks YAML: `work_orders` */
 	workOrders: string[];
 	/**
-	 * Budgeted management effort in **giornate** (days).
-	 * UI may also show the hour equivalent (`assignedDays * hoursPerManday`).
+	 * Budgeted management effort in **days**.
+	 * UI shows the hour equivalent on the same line (`assignedDays * hoursPerManday`).
 	 * @remarks YAML: `assigned_days`
 	 */
 	assignedDays: number;
-	/** Actual giornate rolled up from task time logs. @remarks YAML: `actual_days` */
+	/** Actual days rolled up from task time logs. @remarks YAML: `actual_days` */
 	actualDays: number;
 	projectUrl: string;
 	/** Microsoft Teams channel URL or `msteams://` deep link. */
@@ -760,7 +761,7 @@ export interface ProjectsEngineSettings {
 	 */
 	scaffoldRegistersFolder: string;
 	/**
-	 * Hours that constitute one **giornata** (management day).
+	 * Hours that constitute one **management day**.
 	 * Default **8**. Used for budget days ↔ task hours conversion.
 	 */
 	hoursPerManday: number;

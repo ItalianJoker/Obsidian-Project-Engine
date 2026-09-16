@@ -17,7 +17,10 @@ import { EmptyState } from "../ui/EmptyState";
 import { openEntityModal } from "./EntityModal";
 import { openProjectEditor } from "./ProjectEditView";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
-import { giornateToHours, formatGiornate, formatHours } from "../services/timeLogs";
+import {
+	formatBudgetDaysAndHours,
+	formatGiornate,
+} from "../services/timeLogs";
 
 /** Registered ItemView type id. */
 export const DASHBOARD_VIEW_TYPE = "projects-engine-dashboard";
@@ -59,6 +62,7 @@ export class DashboardView extends ItemView {
 		const root = this.contentEl;
 		root.empty();
 		root.addClass("pe-root");
+		root.addClass("pe-dashboard");
 		this.toolbarEl = root.createDiv({ cls: "pe-toolbar" });
 		this.bodyEl = root.createDiv({ cls: "pe-content" });
 		this.registerVaultListeners();
@@ -285,12 +289,7 @@ export class DashboardView extends ItemView {
 				chip.style.setProperty("--pe-status-color", meta.color);
 			}
 			this.td(tr, "Customer", stripWiki(row.customer));
-			const budgetHours = giornateToHours(row.assignedDays, hoursPer);
-			this.td(
-				tr,
-				"Budget",
-				`${formatGiornate(row.assignedDays)} · ${formatHours(budgetHours)}`,
-			);
+			this.td(tr, "Budget", formatBudgetDaysAndHours(row.assignedDays, hoursPer));
 			const actions = tr.createEl("td", { attr: { "data-label": "Actions" } });
 			const open = actions.createEl("button", {
 				text: "Open",
@@ -322,7 +321,7 @@ export class DashboardView extends ItemView {
 			});
 			body.createEl("p", { text: `Customer: ${stripWiki(row.customer)}` });
 			body.createEl("p", {
-				text: `Budget: ${formatGiornate(row.assignedDays)} (${formatHours(giornateToHours(row.assignedDays, hoursPer))}) · Actual ${formatGiornate(row.actualDays)}`,
+				text: `Budget: ${formatBudgetDaysAndHours(row.assignedDays, hoursPer)} · Actual ${formatGiornate(row.actualDays)}`,
 			});
 			const actions = body.createDiv({ cls: "pe-inline-row" });
 			const open = actions.createEl("button", {

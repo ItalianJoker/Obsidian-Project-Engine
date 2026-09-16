@@ -772,7 +772,7 @@
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	padding: 10px 16px;
+	padding: 12px 20px;
 	background: var(--background-secondary);
 	flex-shrink: 0;
 	flex-wrap: wrap;
@@ -872,7 +872,7 @@
 .pe-content {
 	flex: 1;
 	overflow: auto;
-	padding: 12px 16px 24px;
+	padding: 12px 20px 32px;
 }
 
 .pe-project-header-mount {
@@ -975,7 +975,7 @@
 
 .pe-overview {
 	overflow: auto;
-	--pe-overview-pad-x: 16px;
+	--pe-overview-pad-x: 20px;
 }
 
 .pe-overview-hero {
@@ -1046,7 +1046,7 @@
 	font-weight: 700;
 	line-height: 1.3;
 	color: var(--text-normal);
-	white-space: pre-line;
+	white-space: normal;
 }
 
 .pe-entity-grid {
@@ -1264,8 +1264,13 @@
 	font-weight: 600;
 }
 
-.pe-content {
-	padding: 10px 16px 24px;
+/* Projects Dashboard: match Overview / Workspace inset (avoid near-zero edges). */
+.pe-dashboard .pe-content {
+	padding: 12px 20px 32px;
+}
+
+.pe-dashboard .pe-project-list-container {
+	padding: 0;
 }
 
 .pe-dashboard-actions {
@@ -1288,13 +1293,13 @@
 }
 
 .pe-project-header-primary {
-	padding: 6px 14px;
+	padding: 8px 20px;
 }
 
 .pe-metric-value {
 	font-size: 1.15rem;
 	line-height: 1.35;
-	white-space: pre-line;
+	white-space: normal;
 }
 
 @media (max-width: 720px) {
@@ -2022,11 +2027,11 @@
 
 .pe-workspace .pe-content,
 .pe-overview .pe-overview-table {
-	padding: 8px var(--pe-overview-pad-x, 16px) 16px;
+	padding: 8px var(--pe-overview-pad-x, 20px) 16px;
 }
 
 .pe-overview-meta-panel {
-	padding: 12px var(--pe-overview-pad-x, 16px) 28px;
+	padding: 12px var(--pe-overview-pad-x, 20px) 28px;
 	border-top: 1px solid var(--background-modifier-border);
 	margin-top: 8px;
 }

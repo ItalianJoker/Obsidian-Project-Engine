@@ -10,7 +10,7 @@ import { Notice, TFile, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
 import type { SemplificatoStatus, Task } from "../../models/types";
 import { toWikiLink } from "../../models/types";
-import { formatDuePill, isOverdue, effectiveDue } from "../../services/dateFormat";
+import { formatDuePill, formatDisplayDateTime, isOverdue, effectiveDue } from "../../services/dateFormat";
 import {
 	SEMPLIFICATO_LABELS,
 	SEMPLIFICATO_STATUSES,
@@ -116,13 +116,15 @@ export class KanbanSubView implements SubView {
 						text: formatDuePill(dueIso, dateFormat, timeFormat),
 						cls: `pe-due-pill${overdue ? " is-overdue" : ""}`,
 					});
-					pill.title = dueIso;
+					pill.title = formatDisplayDateTime(dueIso, dateFormat, timeFormat);
 				}
 				if (task.scheduled) {
 					foot.createSpan({
 						text: formatDuePill(task.scheduled, dateFormat, timeFormat),
 						cls: "pe-scheduled-pill",
-						attr: { title: `Scheduled: ${task.scheduled}` },
+						attr: {
+							title: `Scheduled: ${formatDisplayDateTime(task.scheduled, dateFormat, timeFormat)}`,
+						},
 					});
 				}
 

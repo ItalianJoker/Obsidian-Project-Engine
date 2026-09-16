@@ -59,16 +59,20 @@ Modale mobile-ready che raccoglie e valida:
 - **Nome**, **governance** (`Semplificato` | `PRINCE2`)
 - **Customer** e **Project type** — autocomplete fuzzy (crea nota se manca)
 - **Technologies**, **Team** (ruolo opzionale), **Stakeholders** (progetto e/o cliente)
-- **Commesse** (chip multipli), **budget in giornate**, **Project URL**
+- **Commesse** (chip multipli), **budget in giorni (giornate)**, **Project URL**
 - **`teams_channel_url`** — URL Teams / deep link `msteams://`, con pulsante di avvio rapido
 
 Le scritture usano solo `vault.process` (sicure con Obsidian Sync / iCloud).
 
-### Modello tempo (ore ↔ giornate)
+### Modello tempo (ore ↔ giorni)
 
-- **Budget di progetto** (`assigned_days`): **giornate** (giorni gestione).
+- **Budget di progetto** (`assigned_days`): **giorni / giornate** di gestione. In UI: giorni e ore sulla stessa riga (es. `5 d · 40 h`).
 - **Stime task e time log** (`estimate_hours`, `duration` nei log): **ore** (anche frazionarie, es. `0.5`, `1.25`).
-- Conversione: **1 giornata = 8 ore** (impostabile in Settings → Hours per giornata). L’UI mostra entrambe le unità dove utile.
+- Conversione: **1 giorno = 8 ore** (impostabile in Settings → Hours per day). L’interfaccia utente è in **inglese**.
+
+### Formato data e ora
+
+In Settings → **Date format** / **Time format** il formato vale per editor task (due / scheduled / start / end / time log), campi custom date, tabelle, Kanban e Gantt. Default: **DD/MM/YYYY** + **24 ore**. In YAML resta ISO.
 
 ### Status progetto configurabili
 
@@ -91,20 +95,20 @@ In Settings → **Project statuses** si aggiungono, rinomina, riordinano (drag) 
 
 ### Viste: Projects → Overview → Edit → Workspace (+ Task / Release notes)
 
-**Projects (Dashboard)** — elenco progetti con filtri combinabili **Governance** + **Customer**, ricerca, chip status, budget giornate/ore, menu contestuale (overview / workspace / **Edit project** / table / board / Gantt). Sotto i 720px: card/accordion. Toolbar `+ new project` e CRUD entità.
+**Projects (Dashboard)** — elenco progetti con filtri combinabili **Governance** + **Customer**, ricerca, chip status, budget giorni·ore su una riga, menu contestuale (overview / workspace / **Edit project** / table / board / Gantt). Sotto i 720px: card/accordion. Toolbar `+ new project` e CRUD entità. Margini allineati a Overview / Workspace.
 
-**Overview** — home del progetto (stile dotpm): glyph, meta compact, metriche ore↔giornate, **status editabile**, CTA **Edit project** (leaf) / Open workspace / add task, entità, governance Semplificato o PRINCE2.
+**Overview** — home del progetto (stile dotpm): glyph, meta compact, metriche ore↔giorni su una riga, **status editabile**, CTA **Edit project** (leaf) / Open workspace / add task, entità, governance Semplificato o PRINCE2.
 
 **Edit project** — leaf dedicata (parità obsidian-pm), non solo modale.
 
 **Workspace** — un’unica leaf con switcher **Table | Gantt | Board**:
-- **Table (task dashboard)** — gerarchia, status, priority, assignee, estimate/remaining ore, filtri status/priority
+- **Table (task dashboard)** — gerarchia, status, priority, assignee, due/scheduled (formato Settings), estimate/remaining ore, filtri status/priority
 - **Board (Kanban)** — colonne Backlog / In Progress / Review / Done; DnD HTML5 + pointer-capture; pulsanti status come fallback
-- **Gantt** — barre, zoom Day/Week/Month, curve SVG dipendenze; click apre l’editor
+- **Gantt** — barre, zoom Day/Week/Month, curve SVG dipendenze; date nel formato Settings; click apre l’editor
 
-**Task** — editor in **tab** (default) o modale. **Release notes** — comando dedicato.
+**Task** — editor in **tab** (default) o modale; date/ora seguono Settings. **Release notes** — comando dedicato.
 
-In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per giornata**.
+In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per day**, **Date format** / **Time format**. UI in inglese.
 
 ### Modello dati (frontmatter)
 
@@ -262,16 +266,20 @@ Mobile-ready modal that collects and validates:
 - **Name**, **governance** (`Semplificato` | `PRINCE2`)
 - **Customer** and **Project type** — fuzzy autocomplete (creates the note if missing)
 - **Technologies**, **Team** (optional role), **Stakeholders** (project and/or customer)
-- **Work orders** (multi chips), **budget in giornate**, **Project URL**
+- **Work orders** (multi chips), **budget in days**, **Project URL**
 - **`teams_channel_url`** — Teams URL / `msteams://` deep link with quick-launch button
 
 All content writes go through `vault.process` only (safe with Obsidian Sync / iCloud).
 
-### Time model (hours ↔ giornate)
+### Time model (hours ↔ days)
 
-- **Project budget** (`assigned_days`): **giornate** (management days).
+- **Project budget** (`assigned_days`): **days** (management days). Shown with hours on one line (e.g. `5 d · 40 h`).
 - **Task estimates and time logs** (`estimate_hours`, log `duration`): **hours** (fractions OK, e.g. `0.5`, `1.25`).
-- Conversion: **1 giornata = 8 hours** (configurable in Settings → Hours per giornata). UI shows both units where useful.
+- Conversion: **1 day = 8 hours** (configurable in Settings → Hours per day).
+
+### Date & time format
+
+Settings → **Date format** / **Time format** apply to the task editor (due / scheduled / start / end / time logs), custom-field dates, tables, Kanban, and Gantt. Defaults: **DD/MM/YYYY** + **24-hour**. YAML still stores ISO.
 
 ### Configurable project statuses
 
@@ -294,20 +302,20 @@ Settings → **Project statuses**: add, rename, reorder (drag), and archive. Vis
 
 ### Views: Projects → Overview → Edit → Workspace (+ Task / Release notes)
 
-**Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, status chips, budget as giornate/hours, context menu (overview / workspace / **Edit project** / table / board / Gantt). Below 720px: card/accordion. Toolbar: `+ new project` and entity CRUD.
+**Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, status chips, budget as days · hours on one line, context menu (overview / workspace / **Edit project** / table / board / Gantt). Below 720px: card/accordion. Toolbar: `+ new project` and entity CRUD. Pleasant left/right/top padding aligned with Overview / Workspace.
 
-**Overview** — project home (dotpm-like): glyph, compact meta, hours↔giornate metrics, **editable status**, **Edit project** (leaf) / Open workspace / add task CTAs, entities, Semplificato or PRINCE2 governance.
+**Overview** — project home (dotpm-like): glyph, compact meta, hours↔days metrics on one line, **editable status**, **Edit project** (leaf) / Open workspace / add task CTAs, entities, Semplificato or PRINCE2 governance.
 
 **Edit project** — dedicated leaf (obsidian-pm parity), not modal-only.
 
 **Workspace** — one leaf with **Table | Gantt | Board** switcher:
-- **Table (task dashboard)** — hierarchy, status, priority, assignee, estimate/remaining hours, status/priority filters
+- **Table (task dashboard)** — hierarchy, status, priority, assignee, due/scheduled (Settings format), estimate/remaining hours, status/priority filters
 - **Board (Kanban)** — Backlog / In Progress / Review / Done; HTML5 + pointer-capture DnD; status buttons as fallback
-- **Gantt** — bars, Day/Week/Month zoom, SVG dependency curves; click opens the editor
+- **Gantt** — bars, Day/Week/Month zoom, SVG dependency curves; dates use Settings format; click opens the editor
 
-**Task** — editor in a **tab** (default) or modal. **Release notes** — dedicated command.
+**Task** — editor in a **tab** (default) or modal; date/time fields follow Settings. **Release notes** — dedicated command.
 
-Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per giornata**.
+Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per day**, **Date format** / **Time format**. English UI throughout.
 
 ### Frontmatter data model
 
