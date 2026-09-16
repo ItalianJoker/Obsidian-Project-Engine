@@ -7,6 +7,13 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.0.1
+
+### Features
+
+- **Obsidian URL deep links** (\`obsidian://projects-engine?...\`) open the project Overview or Workspace leaf (not the raw Markdown editor).
+- **Copy Obsidian URL** on project chrome for sharing / bookmarks.
+
 ## 1.0.0
 
 ### Features

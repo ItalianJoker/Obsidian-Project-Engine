@@ -1,5 +1,13 @@
 # Release notes — Projects Engine
 
+## 1.0.1 — Obsidian URL deep links
+
+**IT:** Deep link Obsidian (`obsidian://projects-engine?...`) apre Overview/Workspace del progetto; **Copy Obsidian URL** nella chrome di progetto.
+
+**EN:** Obsidian deep links (`obsidian://projects-engine?...`) open the project Overview/Workspace leaf; **Copy Obsidian URL** on project chrome.
+
+---
+
 ## 1.0.0 — Visual parity + containment (§8–§10 overwrite)
 
 **IT / EN (summary):** Shared dotpm-like chrome; Overview task table; Gantt Day–Year + today marker; Kanban counts/due pills; project icon/color/parent/editable ID; `Projects/{ID} - {Name}/` + Entities under Projects root; scaffold + Delete project; task `due`/`scheduled` (optional time); Settings date/time format (default DD/MM/YYYY + 24h) wired through editors and views; budget days · hours on one line; auto-refresh; **English UI**; lean file-based scaffold (folders only, PRINCE2 registers when needed).
