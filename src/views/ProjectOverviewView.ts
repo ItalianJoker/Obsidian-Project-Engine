@@ -4,14 +4,15 @@
  * Bound to the chrome switcher’s **Dashboard** tab (left of Table). Table /
  * Gantt / Board navigate to the Workspace leaf (task-only SubViews).
  *
- * Section order on Dashboard (v1.0.3, Luca):
+ * Section order on Dashboard:
  * 1. Governance
- * 2. Status (project status)
- * 3. Task summary / metrics
- * 4. Task search bar + task list
- * 5. Documents
- * 6. Linked Entities
- * 7. Actions
+ * 2. Registers (PRINCE2 only — Risk / Issue & Change / Quality widgets)
+ * 3. Status (project status)
+ * 4. Task summary / metrics
+ * 5. Task search bar + task list
+ * 6. Documents
+ * 7. Linked Entities
+ * 8. Actions
  *
  * Documents tree is file-based and excludes Tasks/. Edit / Delete project live
  * under Actions.
@@ -20,14 +21,14 @@
  * (MIT © 2026 Stepan Kropachev and dotpm contributors).
  */
 
-import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import { activeTaskStatuses, projectStatusLabel, toWikiLink } from "../models/types";
 import {
 	createPrince2Stage,
-	ensurePrince2Registers,
 	readProjectStages,
 } from "../services/governance";
+import { ensurePrince2DocumentStructure } from "../services/prince2Templates";
 import {
 	buildProjectDocumentsTree,
 	tasksFolderBasename,
@@ -42,6 +43,16 @@ import {
 } from "../services/projectDelete";
 import { containingProjectFolder } from "../services/projectPaths";
 import {
+	OPERATIONAL_REGISTERS,
+	countRegisterEntries,
+	createRegisterEntry,
+	listRegisterEntries,
+	projectRegistersFolder,
+	registerIndexPath,
+	type OperationalRegisterKind,
+	type RegisterEntryRow,
+} from "../services/registerIo";
+import {
 	formatGiornate,
 	formatHours,
 	formatHoursAndGiornate,
@@ -54,6 +65,7 @@ import { CreateProjectDocumentModal } from "../ui/CreateProjectDocumentModal";
 import { EmptyState } from "../ui/EmptyState";
 import { renderProjectChrome } from "../ui/ProjectChrome";
 import { renderProjectDocumentsTree } from "../ui/ProjectDocumentsTree";
+import { TextPromptModal } from "../ui/TextPromptModal";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
 import { loadAllTasks } from "../services/taskIo";
 import { openProjectEditor } from "./ProjectEditView";
@@ -69,6 +81,9 @@ import {
 
 /** Registered ItemView type id. */
 export const OVERVIEW_VIEW_TYPE = "projects-engine-overview";
+
+/** How many recent register entries to show per widget. */
+const REGISTER_WIDGET_RECENT = 5;
 
 interface OverviewState {
 	filePath?: string;
@@ -93,7 +108,12 @@ export class ProjectOverviewView extends ItemView {
 	private filterEl!: HTMLElement;
 	/** Governance section (Semplificato blurb or PRINCE2 stages) — first body section. */
 	private governanceEl!: HTMLElement;
-	/** Editable project status — second body section. */
+	/**
+	 * PRINCE2 operational registers widgets (Risk / Issue & Change / Quality).
+	 * Hidden for Semplificato projects.
+	 */
+	private registersEl!: HTMLElement;
+	/** Editable project status — after Registers (or Governance when Simplified). */
 	private statusEl!: HTMLElement;
 	/** Task / budget metric strip — third body section. */
 	private metricsEl!: HTMLElement;
@@ -175,8 +195,9 @@ export class ProjectOverviewView extends ItemView {
 	}
 
 	/**
-	 * Build stable section mounts in Dashboard order (v1.0.3):
-	 * Governance → Status → metrics → search+tasks → Documents → Entities → Actions.
+	 * Build stable section mounts in Dashboard order:
+	 * Governance → Registers (PRINCE2) → Status → metrics → search+tasks →
+	 * Documents → Entities → Actions.
 	 *
 	 * Separate elements (not one meta panel) so CSS stacking cannot pull the
 	 * task-table footer over Documents — each section is a normal block sibling.
@@ -192,17 +213,19 @@ export class ProjectOverviewView extends ItemView {
 		this.chromeEl = root.createDiv({ cls: "pe-chrome-mount" });
 		// 1. Governance first (before Status).
 		this.governanceEl = root.createDiv({ cls: "pe-overview-governance" });
-		// 2. Status
+		// 2. PRINCE2 Registers widgets (empty / hidden for Semplificato).
+		this.registersEl = root.createDiv({ cls: "pe-overview-registers" });
+		// 3. Status
 		this.statusEl = root.createDiv({ cls: "pe-overview-status" });
-		// 3. Task summary / metrics
+		// 4. Task summary / metrics
 		this.metricsEl = root.createDiv({ cls: "pe-overview-summary pe-overview-metrics" });
-		// 4. Task search + optional filter hint + task list
+		// 5. Task search + optional filter hint + task list
 		this.tasksSectionEl = root.createDiv({ cls: "pe-overview-tasks" });
 		this.taskSearchEl = this.tasksSectionEl.createDiv({ cls: "pe-overview-task-search" });
 		this.filterEl = this.tasksSectionEl.createDiv({ cls: "pe-chrome-filter-panel" });
 		this.tasksSectionEl.createEl("h3", { text: "Tasks", cls: "pe-section-title" });
 		this.tableEl = this.tasksSectionEl.createDiv({ cls: "pe-overview-table" });
-		// 5–7. Documents → Linked Entities → Actions
+		// 6–8. Documents → Linked Entities → Actions
 		this.docsEl = root.createDiv({ cls: "pe-overview-docs" });
 		this.entitiesEl = root.createDiv({ cls: "pe-overview-entities" });
 		this.actionsEl = root.createDiv({ cls: "pe-overview-actions" });
@@ -248,6 +271,7 @@ export class ProjectOverviewView extends ItemView {
 		this.chromeEl?.empty();
 		this.filterEl?.empty();
 		this.governanceEl?.empty();
+		this.registersEl?.empty();
 		this.statusEl?.empty();
 		this.metricsEl?.empty();
 		this.taskSearchEl?.empty();
@@ -339,8 +363,9 @@ export class ProjectOverviewView extends ItemView {
 			this.filterEl.removeClass("is-open");
 		}
 
-		// Body order: Governance → Status → metrics → search+tasks → Docs → Entities → Actions
+		// Body order: Governance → Registers → Status → metrics → search+tasks → Docs → Entities → Actions
 		this.renderGovernance(project);
+		this.renderRegisters(project);
 		this.renderStatus(project);
 		this.renderMetrics(project);
 		this.renderTaskSearch(filterActive);
@@ -712,23 +737,202 @@ export class ProjectOverviewView extends ItemView {
 		}
 
 		const actions = section.createDiv({ cls: "pe-inline-row" });
-		this.cta(actions, "Ensure registers", false, () => {
+		this.cta(actions, "Ensure PRINCE2 docs", false, () => {
 			void (async () => {
 				const folder = project.file.parent?.path ?? "";
-				await ensurePrince2Registers(
-					this.app.vault,
-					folder,
-					toWikiLink(project.file.basename),
-					project.name,
-					this.plugin.settings.scaffoldRegistersFolder,
-				);
-				new Notice("PRINCE2 registers ready");
+				await ensurePrince2DocumentStructure({
+					vault: this.app.vault,
+					projectFolder: folder,
+					projectLink: toWikiLink(project.file.basename),
+					projectName: project.name,
+					initiationFolderName: this.plugin.settings.scaffoldInitiationFolder,
+					registersFolderName: this.plugin.settings.scaffoldRegistersFolder,
+				});
+				new Notice("PRINCE2 document templates ready");
 				await this.loadProject();
 			})();
 		});
 		this.cta(actions, "Add stage", false, () => {
 			void this.promptAddStage(project);
 		});
+	}
+
+	/**
+	 * PRINCE2-only Dashboard widgets: count / recent entries / quick-add / open.
+	 * Cleared for Semplificato and when Settings → “Show PRINCE2 register widgets”
+	 * is off. Register notes remain in Registers/ and the Documents tree either way.
+	 */
+	private renderRegisters(project: ProjectRow): void {
+		const section = this.registersEl;
+		section.empty();
+		const showWidgets =
+			project.governance === "PRINCE2" &&
+			this.plugin.settings.showPrince2RegisterWidgets !== false;
+		section.toggleClass("is-hidden", !showWidgets);
+		if (!showWidgets) {
+			return;
+		}
+
+		section.createEl("h3", { text: "Registers", cls: "pe-section-title" });
+		section.createEl("p", {
+			cls: "pe-help",
+			text: "Operational Risk, Issue & Change, and Quality entries as linked notes. Quick-add creates a Graph-ready entry under Registers/.",
+		});
+
+		const registersFolder = projectRegistersFolder(
+			project.file.path,
+			this.plugin.settings.scaffoldRegistersFolder,
+		);
+		if (!registersFolder) {
+			section.createEl("p", {
+				cls: "pe-help",
+				text: "Project folder not found — cannot load registers.",
+			});
+			return;
+		}
+
+		const grid = section.createDiv({ cls: "pe-register-widgets" });
+		for (const meta of OPERATIONAL_REGISTERS) {
+			const entries = listRegisterEntries(this.app, registersFolder, meta.kind);
+			this.renderRegisterWidget(grid, project, registersFolder, meta.kind, meta.title, entries);
+		}
+	}
+
+	/**
+	 * One register card: title + counts, Open / Add, recent clickable rows.
+	 */
+	private renderRegisterWidget(
+		parent: HTMLElement,
+		project: ProjectRow,
+		registersFolder: string,
+		kind: OperationalRegisterKind,
+		title: string,
+		entries: RegisterEntryRow[],
+	): void {
+		const widget = parent.createDiv({ cls: "pe-register-widget" });
+		const header = widget.createDiv({ cls: "pe-register-widget-header" });
+		const counts = countRegisterEntries(entries);
+		header.createEl("h4", {
+			cls: "pe-register-widget-title",
+			text: title,
+		});
+		header.createEl("span", {
+			cls: "pe-register-widget-counts",
+			text:
+				counts.total === 0
+					? "No entries yet"
+					: `${counts.open} open · ${counts.total} total`,
+		});
+
+		const actions = widget.createDiv({ cls: "pe-inline-row pe-register-widget-actions" });
+		this.cta(actions, "Open", false, () => {
+			void this.openRegisterIndex(registersFolder, kind);
+		});
+		this.cta(actions, "Add entry", true, () => {
+			this.promptAddRegisterEntry(project, kind);
+		});
+
+		const list = widget.createEl("ul", { cls: "pe-register-entry-list" });
+		const recent = entries.slice(0, REGISTER_WIDGET_RECENT);
+		if (recent.length === 0) {
+			list.createEl("li", {
+				cls: "pe-register-entry-empty",
+				text: "No entries — use Add entry to create the first note.",
+			});
+			return;
+		}
+		for (const entry of recent) {
+			const li = list.createEl("li", { cls: "pe-register-entry-row" });
+			const button = li.createEl("button", {
+				cls: "pe-register-entry-link pe-touch-target",
+				attr: { type: "button" },
+			});
+			const metaBits = [entry.id, entry.status || "—"];
+			if (entry.severityOrPriority) {
+				metaBits.push(entry.severityOrPriority);
+			}
+			if (entry.date) {
+				metaBits.push(entry.date);
+			}
+			button.createSpan({ cls: "pe-register-entry-meta", text: metaBits.join(" · ") });
+			button.createSpan({ cls: "pe-register-entry-name", text: entry.title });
+			button.addEventListener("click", () => {
+				void this.app.workspace.getLeaf(false).openFile(entry.file);
+			});
+		}
+	}
+
+	/**
+	 * Open (or create) the lean register index note for a kind.
+	 */
+	private async openRegisterIndex(
+		registersFolder: string,
+		kind: OperationalRegisterKind,
+	): Promise<void> {
+		const project = this.project;
+		if (!project) {
+			return;
+		}
+		try {
+			await ensurePrince2DocumentStructure({
+				vault: this.app.vault,
+				projectFolder: project.file.parent?.path ?? "",
+				projectLink: toWikiLink(project.file.basename),
+				projectName: project.name,
+				initiationFolderName: this.plugin.settings.scaffoldInitiationFolder,
+				registersFolderName: this.plugin.settings.scaffoldRegistersFolder,
+			});
+			const path = registerIndexPath(registersFolder, kind);
+			const file = this.app.vault.getAbstractFileByPath(path);
+			if (file instanceof TFile) {
+				await this.app.workspace.getLeaf(false).openFile(file);
+			} else {
+				new Notice(`Register note not found at ${path}`);
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			new Notice(`Could not open register: ${message}`);
+		}
+	}
+
+	/**
+	 * Prompt for a title, then create a Graph-linked entry note and open it.
+	 */
+	private promptAddRegisterEntry(
+		project: ProjectRow,
+		kind: OperationalRegisterKind,
+	): void {
+		const meta = OPERATIONAL_REGISTERS.find((item) => item.kind === kind);
+		const noun = meta?.entryNoun ?? "entry";
+		new TextPromptModal(this.app, {
+			title: `Add ${noun}`,
+			message: `Creates a Markdown note under Registers/ linked to this project (${meta?.title ?? kind}).`,
+			placeholder: kind === "quality-register" ? "Product or check name" : "Short title",
+			confirmLabel: "Create",
+			onSubmit: async (value) => {
+				const title = value.trim();
+				if (!title) {
+					return "Title is required";
+				}
+				try {
+					const result = await createRegisterEntry({
+						app: this.app,
+						vault: this.app.vault,
+						projectFile: project.file,
+						kind,
+						title,
+						registersFolderName: this.plugin.settings.scaffoldRegistersFolder,
+					});
+					new Notice(`Created ${result.id}`);
+					await this.app.workspace.getLeaf(false).openFile(result.file);
+					await this.loadProject();
+					return undefined;
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					return message;
+				}
+			},
+		}).open();
 	}
 
 	private async promptAddStage(row: ProjectRow): Promise<void> {

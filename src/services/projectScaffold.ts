@@ -1,15 +1,17 @@
 /**
  * Auto-scaffold project subfolders on create (§9 / §10).
  *
- * Creates purposeful empty folders only (Tasks, Initiation, Documents).
- * Does **not** write empty stub notes. PRINCE2 gets lean register templates
- * under Registers/ when governance requires them.
+ * Always creates purposeful folders (Tasks, Initiation, Documents).
+ * PRINCE2 additionally gets lean Markdown templates under Initiation/ and
+ * Registers/ (Business Case, registers, Work Package starter, Project Brief,
+ * PID, Stage Boundaries guide). Semplificato stays folder-only — no PRINCE2
+ * template dump.
  */
 
 import type { TFile, Vault } from "obsidian";
 import type { GovernanceModel, ProjectsEngineSettings } from "../models/types";
 import { toWikiLink } from "../models/types";
-import { ensurePrince2Registers } from "./governance";
+import { ensurePrince2DocumentStructure } from "./prince2Templates";
 import { containingProjectFolder, projectTasksFolder } from "./projectPaths";
 import { ensureFolder, joinVaultPath } from "./vaultIo";
 
@@ -40,7 +42,7 @@ export async function scaffoldProjectTree(args: {
 	const documentsName = s.scaffoldDocumentsFolder.trim() || "Documents";
 	const registersName = s.scaffoldRegistersFolder.trim() || "Registers";
 
-	// Folders only — no spam stub notes (§10).
+	// Folders for every governance model — no spam stub notes for Semplificato.
 	for (const name of [tasksName, initiationName, documentsName]) {
 		const path = joinVaultPath(projectFolder, name);
 		await ensureFolder(args.vault, path);
@@ -52,13 +54,14 @@ export async function scaffoldProjectTree(args: {
 		await ensureFolder(args.vault, registersFolder);
 		folders.push(registersFolder);
 		const projectLink = toWikiLink(args.projectFile.basename);
-		const created = await ensurePrince2Registers(
-			args.vault,
+		const created = await ensurePrince2DocumentStructure({
+			vault: args.vault,
 			projectFolder,
 			projectLink,
-			args.projectName,
-			registersName,
-		);
+			projectName: args.projectName,
+			initiationFolderName: initiationName,
+			registersFolderName: registersName,
+		});
 		for (const file of created) {
 			notes.push(file.path);
 		}
