@@ -16,7 +16,7 @@ import type {
 	WikiLink,
 } from "../models/types";
 import { toWikiLink } from "../models/types";
-import { buildMarkdownNote, splitFrontmatter } from "./frontmatter";
+import { buildGraphLinksSection, buildMarkdownNote, splitFrontmatter } from "./frontmatter";
 import {
 	ensurePrince2DocumentStructure,
 	ensurePrince2Registers,
@@ -147,7 +147,7 @@ export async function createPrince2Stage(args: {
 		[
 			`# ${stage.name}`,
 			"",
-			`Project: ${stage.project}`,
+			buildGraphLinksSection([{ label: "Project", wikiLink: stage.project }]),
 			`Boundary milestone: \`${boundaryTaskId}\``,
 			"",
 			"Work in later stages cannot start until this boundary task finishes.",

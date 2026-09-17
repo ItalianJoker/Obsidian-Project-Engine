@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
 	buildGraphLinksSection,
 	buildMarkdownNote,
+	peNoteTags,
 	splitFrontmatter,
 } from "../src/services/frontmatter";
 import {
@@ -129,6 +130,48 @@ describe("frontmatter helpers", () => {
 		expect(
 			buildGraphLinksSection([{ label: "Customer", wikiLink: "[[Acme]]" }]),
 		).toContain("- Customer: [[Acme]]");
+	});
+
+	it("injects Obsidian tags for every pe_type note", () => {
+		const project = splitFrontmatter(
+			buildMarkdownNote({ pe_type: "project", id: "PRJ-2026-001" }, "# P"),
+		).data;
+		expect(project.tags).toEqual(
+			expect.arrayContaining(["projects-engine", "project", "pe/prj-2026-001"]),
+		);
+
+		const task = splitFrontmatter(
+			buildMarkdownNote(
+				{ pe_type: "task", id: "T-1", project_id: "PRJ-2026-001" },
+				"# T",
+			),
+		).data;
+		expect(task.tags).toEqual(
+			expect.arrayContaining(["projects-engine", "task", "pe/prj-2026-001"]),
+		);
+
+		const register = splitFrontmatter(
+			buildMarkdownNote(
+				{
+					pe_type: "prince2-register",
+					register_kind: "risk-register",
+					name: "Risk",
+				},
+				"# R",
+			),
+		).data;
+		expect(register.tags).toEqual(
+			expect.arrayContaining([
+				"projects-engine",
+				"prince2-register",
+				"risk-register",
+			]),
+		);
+
+		expect(peNoteTags({ peType: "customer", existing: ["#custom"] })).toEqual(
+			expect.arrayContaining(["custom", "projects-engine", "customer"]),
+		);
+		expect(buildMarkdownNote({ name: "no-type" }, "# x")).not.toContain("tags:");
 	});
 });
 
