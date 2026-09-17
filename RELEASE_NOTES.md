@@ -1,5 +1,13 @@
 # Release notes — Projects Engine
 
+## 1.0.5 — PRINCE2 operational registers
+
+**IT:** Registri operativi PRINCE2 (Risk, Issue & Change, Quality, Lessons) con template lean nello scaffold; widget Overview + toggle in Settings per mostrarli/nasconderli.
+
+**EN:** PRINCE2 operational registers (Risk, Issue & Change, Quality, Lessons) with lean scaffold templates; Overview widgets + Settings toggle to show/hide them.
+
+---
+
 ## 1.0.4 — Board columns, Eisenhower, safety suite
 
 **IT:** Colonne Board configurabili in Settings; toggle `kanbanShowSubtasks` / anteprima descrizione collegati al Board; vista **Eisenhower** (importante × urgente) nello switcher (**Dashboard | Table | Gantt | Board | Eisenhower**). Pass di safety-first: suite Vitest sui moduli puri, cleanup a zero regressione, `npm test` in README.
