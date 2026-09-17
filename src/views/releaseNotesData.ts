@@ -11,7 +11,7 @@ export const RELEASE_NOTES_MARKDOWN = `
 
 ### Features
 
-- **PRINCE2 operational registers** — Risk, Issue & Change, Quality, and Lessons with lean Markdown templates in the project scaffold.
+- **PRINCE2 operational registers** — Risk, Issue & Change, and Quality with lean Markdown templates in the project scaffold.
 - **Overview widgets** — register summaries on the project Dashboard/Overview.
 - **Settings toggle** — show or hide PRINCE2 register widgets from Settings.
 
