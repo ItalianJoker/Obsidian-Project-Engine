@@ -15,6 +15,10 @@ export const RELEASE_NOTES_MARKDOWN = `
 - **Overview widgets** — register summaries on the project Dashboard/Overview.
 - **Settings toggle** — show or hide PRINCE2 register widgets from Settings.
 
+### Refactoring & tests
+
+- **Safety-first (zero regression)** — unreachable stage-boundary null guard removed; README deps/AI guidelines + version **1.0.5**; Vitest coverage for task subtree helpers and Eisenhower defaults. **Breaking changes: none.**
+
 ## 1.0.4
 
 ### Features

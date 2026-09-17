@@ -39,7 +39,7 @@ import {
 } from "../src/services/timeLogs";
 import { isValidHttpUrl, isValidTeamsChannelUrl } from "../src/services/urls";
 import { joinVaultPath, parentFolder, sanitiseNoteBasename } from "../src/services/vaultIo";
-import { isWikiLink, toWikiLink, wikiLinkLabel, wikiLinkTarget } from "../src/models/types";
+import { isWikiLink, toWikiLink, wikiLinkLabel, wikiLinkTarget, eisenhowerFromPriority, resolveEisenhowerFlags } from "../src/models/types";
 import { fuzzyScore } from "../src/views/suggest";
 
 describe("urls", () => {
@@ -192,5 +192,34 @@ describe("governance / wiki / fuzzy / URI", () => {
 			view: "workspace",
 			mode: "kanban",
 		});
+	});
+
+	it("soft-defaults Eisenhower flags from priority", () => {
+		expect(eisenhowerFromPriority("urgent")).toEqual({
+			important: true,
+			urgent: true,
+		});
+		expect(eisenhowerFromPriority("high")).toEqual({
+			important: true,
+			urgent: false,
+		});
+		expect(eisenhowerFromPriority("low")).toEqual({
+			important: false,
+			urgent: false,
+		});
+		expect(
+			resolveEisenhowerFlags({
+				important: true,
+				urgent: false,
+				priority: "none",
+			}),
+		).toEqual({ important: true, urgent: false });
+		expect(
+			resolveEisenhowerFlags({
+				important: null,
+				urgent: null,
+				priority: "urgent",
+			}),
+		).toEqual({ important: true, urgent: true });
 	});
 });

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
 	OPERATIONAL_REGISTERS,
 	REGISTER_ENTRY_PE_TYPE,
+	asOperationalKind,
 	buildOperationalRegisterIndexMarkdown,
 	buildRegisterEntryMarkdown,
 	countRegisterEntries,
@@ -98,6 +99,14 @@ describe("registerIo", () => {
 		expect(countRegisterEntries(rows)).toEqual({ total: 5, open: 3 });
 		expect(isOpenRegisterStatus("rejected", "issue-change-log")).toBe(false);
 		expect(isOpenRegisterStatus("fail", "quality-register")).toBe(true);
+		expect(isOpenRegisterStatus("", "risk-register")).toBe(true);
+		expect(isOpenRegisterStatus("closed", "risk-register")).toBe(false);
+	});
+
+	it("narrows formal register kinds to operational ones", () => {
+		expect(asOperationalKind("risk-register")).toBe("risk-register");
+		expect(asOperationalKind("work-package")).toBeNull();
+		expect(asOperationalKind("business-case")).toBeNull();
 	});
 });
 
