@@ -33,6 +33,8 @@ describe("registerIo", () => {
 		);
 		expect(md).toContain('pe_type: "prince2-register"');
 		expect(md).toContain('register_kind: "risk-register"');
+		expect(md).toContain("tags:");
+		expect(md).toContain("projects-engine");
 		expect(md).toContain("## Links");
 		expect(md).toContain("[[PRJ-001 Demo]]");
 		expect(md).not.toMatch(/\| R-01 \|/);

@@ -18,7 +18,7 @@ import type {
 	WikiLink,
 } from "../models/types";
 import { eisenhowerFromPriority, toWikiLink, wikiLinkTarget } from "../models/types";
-import { buildMarkdownNote, splitFrontmatter } from "./frontmatter";
+import { buildGraphLinksSection, buildMarkdownNote, splitFrontmatter } from "./frontmatter";
 import {
 	computeEffortRollup,
 	hoursToGiornate,
@@ -256,11 +256,18 @@ export function buildTaskMarkdown(draft: TaskDraft, hoursPerManday: number): str
 	if (draft.assignee) frontmatter.assignee = draft.assignee;
 	if (draft.notes) frontmatter.notes = draft.notes;
 
+	const graphLinks: { label: string; wikiLink: string }[] = [
+		{ label: "Project", wikiLink: draft.project },
+	];
+	if (draft.assignee) {
+		graphLinks.push({ label: "Assignee", wikiLink: draft.assignee });
+	}
+
 	const body = [
 		`# ${draft.title.trim() || draft.id}`,
 		"",
 		draft.notes?.trim() ? draft.notes.trim() + "\n" : "",
-		`Project: ${draft.project}`,
+		buildGraphLinksSection(graphLinks),
 		draft.parentId ? `Parent: \`${draft.parentId}\`` : "",
 		"",
 	]

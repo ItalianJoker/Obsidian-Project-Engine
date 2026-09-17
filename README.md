@@ -39,7 +39,7 @@ Il plugin include:
 | Stakeholder | `stakeholder` | `Projects/Entities/Stakeholders/` |
 | Task | `task` | `Projects/{ID} - {Name}/Tasks/` |
 
-Nel YAML i riferimenti sono **wikilink tra virgolette** (`"[[Acme Corp]]"`). Uno **Stakeholder** può puntare a un Customer (`customer`) e essere referenziato da uno o più Project (`stakeholders`); l’associazione vale a livello progetto, cliente, o entrambi (wikilink nei due sensi). Il corpo della nota ripete i link in una sezione **Links**, così Graph View genera cluster anche quando l’indicizzazione YAML è limitata. Le note create da Overview → Documents usano lo stesso schema (`project: "[[…]]"` + **Links** → Project). Non servono plugin di terze parti per il grafo.
+Nel YAML i riferimenti sono **wikilink tra virgolette** (`"[[Acme Corp]]"`). Ogni nota PE con `pe_type` riceve anche **`tags`** Obsidian (`projects-engine`, il `pe_type`, e dove noto `pe/<project-id>`) più le proprietà YAML, così Properties / Tags / Bases / filtri Graph funzionano nativamente. Uno **Stakeholder** può puntare a un Customer (`customer`) e essere referenziato da uno o più Project (`stakeholders`); l’associazione vale a livello progetto, cliente, o entrambi (wikilink nei due sensi). Il corpo della nota ripete i link in una sezione **Links**, così Graph View genera cluster anche quando l’indicizzazione YAML è limitata. Le note create da Overview → Documents usano lo stesso schema (`project: "[[…]]"` + **Links** → Project; task e stage idem). Non servono plugin di terze parti per il grafo.
 
 ### Campi personalizzati
 
@@ -298,7 +298,7 @@ The plugin ships with:
 | Stakeholder | `stakeholder` | `Projects/Entities/Stakeholders/` |
 | Task | `task` | `Projects/{ID} - {Name}/Tasks/` |
 
-YAML stores **quoted wikilinks** (`"[[Acme Corp]]"`). A **Stakeholder** may wikilink a Customer (`customer`) and be referenced from one or more Projects (`stakeholders`); association is valid at project level, customer level, or both. The note body repeats links in a **Links** section so Graph View still clusters when YAML property indexing is limited. Notes created from Overview → Documents use the same pattern (`project: "[[…]]"` + **Links** → Project). No third-party graph plugin is required.
+YAML stores **quoted wikilinks** (`"[[Acme Corp]]"`). Every PE note with `pe_type` also gets Obsidian **`tags`** (`projects-engine`, the `pe_type`, and when known `pe/<project-id>`) plus YAML properties so Properties / Tags / Bases / Graph filters work natively. A **Stakeholder** may wikilink a Customer (`customer`) and be referenced from one or more Projects (`stakeholders`); association is valid at project level, customer level, or both. The note body repeats links in a **Links** section so Graph View still clusters when YAML property indexing is limited. Notes created from Overview → Documents use the same pattern (`project: "[[…]]"` + **Links** → Project; tasks and stages likewise). No third-party graph plugin is required.
 
 ### Custom fields
 

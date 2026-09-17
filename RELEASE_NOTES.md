@@ -2,13 +2,13 @@
 
 ## 1.0.5 — PRINCE2 operational registers
 
-**IT:** Registri operativi PRINCE2 (Risk, Issue & Change, Quality) con template lean nello scaffold; widget Overview + toggle in Settings per mostrarli/nasconderli. Pass safety-first su baseline 1.0.5 (cleanup zero-regressione, docs stack/AI, copertura Vitest).
+**IT:** Registri operativi PRINCE2 (Risk, Issue & Change, Quality) con template lean nello scaffold; widget Overview + toggle in Settings. **Tag e proprietà YAML** nativi su ogni nota PE (`tags` + `pe_type` + **Links**) per Graph / Properties / Bases. Pass safety-first + copertura Vitest.
 
-**EN:** PRINCE2 operational registers (Risk, Issue & Change, Quality) with lean scaffold templates; Overview widgets + Settings toggle to show/hide them. Safety-first pass on the 1.0.5 baseline (zero-regression cleanup, deps/AI docs, Vitest coverage).
+**EN:** PRINCE2 operational registers (Risk, Issue & Change, Quality) with lean scaffold templates; Overview widgets + Settings toggle. Native Obsidian **tags and YAML properties** on every PE note (`tags` + `pe_type` + **Links**) for Graph / Properties / Bases. Safety-first pass + Vitest coverage.
 
 ### Performance
 
-- No behavioural runtime changes. Scheduler stage-boundary adjacency drops an unreachable null guard after the existing prefilter (identical edges).
+- No behavioural runtime changes beyond additive frontmatter. Scheduler stage-boundary adjacency drops an unreachable null guard after the existing prefilter (identical edges).
 
 ### Dependencies
 
@@ -18,18 +18,20 @@
 
 - `buildAdjacency` implicit-boundary loop: remove dead `boundaryStage == null` continue (filter already guarantees non-null).
 - README version strings aligned to **1.0.5**; Dependencies & Libraries Stack + AI Context guidelines (IT/EN).
+- Central `ensurePeFrontmatterTags` in `buildMarkdownNote`; tasks/stages emit `## Links` for Graph View.
 
 ### Tests
 
-- Extended Vitest: task subtree collect / confirm copy; Eisenhower soft-defaults; `asOperationalKind` guard. Existing suites remain green (no weakened assertions).
+- Extended Vitest: task subtree helpers; Eisenhower soft-defaults; register kind guard; PE tags injection; task Markdown Links. Existing suites remain green (no weakened assertions).
 
 ### Documentation
 
 - README Quickstart + library/AI policy tables; RELEASE_NOTES Keep a Changelog sections for this patch; in-app release notes summary updated.
+- Graph View docs: every PE note carries Obsidian `tags` + YAML properties (+ body **Links**).
 
 ### Breaking Changes
 
-- **None.**
+- **None.** Additive `tags` on write; existing notes gain tags on next PE save/rebuild of that note.
 
 ---
 

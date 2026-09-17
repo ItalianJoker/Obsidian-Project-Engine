@@ -14,6 +14,7 @@ export const RELEASE_NOTES_MARKDOWN = `
 - **PRINCE2 operational registers** — Risk, Issue & Change, and Quality with lean Markdown templates in the project scaffold.
 - **Overview widgets** — register summaries on the project Dashboard/Overview.
 - **Settings toggle** — show or hide PRINCE2 register widgets from Settings.
+- **Native Obsidian tags & properties** — every PE note with \`pe_type\` gets YAML \`tags\` (\`projects-engine\`, type, optional \`pe/<project-id>\` / register kind); tasks and stages use \`## Links\` for Graph View.
 
 ### Refactoring & tests
 
