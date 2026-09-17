@@ -1,16 +1,20 @@
 /**
- * Project overview — project home with screenshot-aligned chrome and task table.
+ * Project overview — project **Dashboard** home with screenshot-aligned chrome.
  *
- * Section order on the project home (required UX):
- * 1. Tasks
- * 2. Governance
- * 3. Documents
- * 4. Linked Entities
- * 5. Actions
+ * Bound to the chrome switcher’s **Dashboard** tab (left of Table). Table /
+ * Gantt / Board navigate to the Workspace leaf (task-only SubViews).
  *
- * A compact metrics/status strip sits above Tasks as project summary chrome
- * (not one of the five numbered sections). Documents tree is file-based and
- * excludes Tasks/. Edit / Delete project live under Actions.
+ * Section order on Dashboard (v1.0.3, Luca):
+ * 1. Governance
+ * 2. Status (project status)
+ * 3. Task summary / metrics
+ * 4. Task search bar + task list
+ * 5. Documents
+ * 6. Linked Entities
+ * 7. Actions
+ *
+ * Documents tree is file-based and excludes Tasks/. Edit / Delete project live
+ * under Actions.
  *
  * Layout inspiration from [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm)
  * (MIT © 2026 Stepan Kropachev and dotpm contributors).
@@ -59,8 +63,10 @@ import {
 	TableSubView,
 	type TaskDashboardFilters,
 } from "./subviews/TableSubView";
-import type { WorkspaceViewMode } from "./ProjectWorkspaceView";
-import { WORKSPACE_VIEW_TYPE } from "./ProjectWorkspaceView";
+import {
+	isWorkspaceViewMode,
+	type WorkspaceViewMode,
+} from "./ProjectWorkspaceView";
 
 /** Registered ItemView type id. */
 export const OVERVIEW_VIEW_TYPE = "projects-engine-overview";
@@ -71,7 +77,7 @@ interface OverviewState {
 }
 
 /**
- * Project home leaf: chrome + Tasks → Governance → Documents → Entities → Actions.
+ * Project Dashboard leaf: Governance → Status → metrics → search+tasks → …
  */
 export class ProjectOverviewView extends ItemView {
 	private filePath: string | null = null;
@@ -86,13 +92,17 @@ export class ProjectOverviewView extends ItemView {
 	private table: TableSubView | null = null;
 	private chromeEl!: HTMLElement;
 	private filterEl!: HTMLElement;
-	/** Metrics + status — summary chrome above the Tasks section. */
-	private summaryEl!: HTMLElement;
-	/** Tasks section mount (heading + table SubView). */
-	private tasksSectionEl!: HTMLElement;
-	private tableEl!: HTMLElement;
-	/** Governance section (Semplificato blurb or PRINCE2 stages). */
+	/** Governance section (Semplificato blurb or PRINCE2 stages) — first body section. */
 	private governanceEl!: HTMLElement;
+	/** Editable project status — second body section. */
+	private statusEl!: HTMLElement;
+	/** Task / budget metric strip — third body section. */
+	private metricsEl!: HTMLElement;
+	/** Tasks section: in-body search + heading + table SubView. */
+	private tasksSectionEl!: HTMLElement;
+	/** Mount for Dashboard search / All / Filter (not in chrome). */
+	private taskSearchEl!: HTMLElement;
+	private tableEl!: HTMLElement;
 	/** File-based documents tree (Documents /, Initiation /, … — not Tasks /). */
 	private docsEl!: HTMLElement;
 	/** Linked entities grid. */
@@ -166,7 +176,8 @@ export class ProjectOverviewView extends ItemView {
 	}
 
 	/**
-	 * Build stable section mounts in the required Overview order.
+	 * Build stable section mounts in Dashboard order (v1.0.3):
+	 * Governance → Status → metrics → search+tasks → Documents → Entities → Actions.
 	 *
 	 * Separate elements (not one meta panel) so CSS stacking cannot pull the
 	 * task-table footer over Documents — each section is a normal block sibling.
@@ -180,12 +191,19 @@ export class ProjectOverviewView extends ItemView {
 		root.addClass("pe-root");
 		root.addClass("pe-overview");
 		this.chromeEl = root.createDiv({ cls: "pe-chrome-mount" });
-		this.filterEl = root.createDiv({ cls: "pe-chrome-filter-panel" });
-		this.summaryEl = root.createDiv({ cls: "pe-overview-summary" });
+		// 1. Governance first (before Status).
+		this.governanceEl = root.createDiv({ cls: "pe-overview-governance" });
+		// 2. Status
+		this.statusEl = root.createDiv({ cls: "pe-overview-status" });
+		// 3. Task summary / metrics
+		this.metricsEl = root.createDiv({ cls: "pe-overview-summary pe-overview-metrics" });
+		// 4. Task search + optional filter hint + task list
 		this.tasksSectionEl = root.createDiv({ cls: "pe-overview-tasks" });
+		this.taskSearchEl = this.tasksSectionEl.createDiv({ cls: "pe-overview-task-search" });
+		this.filterEl = this.tasksSectionEl.createDiv({ cls: "pe-chrome-filter-panel" });
 		this.tasksSectionEl.createEl("h3", { text: "Tasks", cls: "pe-section-title" });
 		this.tableEl = this.tasksSectionEl.createDiv({ cls: "pe-overview-table" });
-		this.governanceEl = root.createDiv({ cls: "pe-overview-governance" });
+		// 5–7. Documents → Linked Entities → Actions
 		this.docsEl = root.createDiv({ cls: "pe-overview-docs" });
 		this.entitiesEl = root.createDiv({ cls: "pe-overview-entities" });
 		this.actionsEl = root.createDiv({ cls: "pe-overview-actions" });
@@ -230,9 +248,11 @@ export class ProjectOverviewView extends ItemView {
 	private renderMissing(): void {
 		this.chromeEl?.empty();
 		this.filterEl?.empty();
-		this.summaryEl?.empty();
-		this.tableEl?.empty();
 		this.governanceEl?.empty();
+		this.statusEl?.empty();
+		this.metricsEl?.empty();
+		this.taskSearchEl?.empty();
+		this.tableEl?.empty();
 		this.docsEl?.empty();
 		this.entitiesEl?.empty();
 		this.actionsEl?.empty();
@@ -260,14 +280,22 @@ export class ProjectOverviewView extends ItemView {
 			this.filters.priority !== "all" ||
 			this.showFilterPanel;
 
+		// Dashboard chrome: highlight Dashboard; search lives in the tasks section.
 		renderProjectChrome({
 			container: this.chromeEl,
 			project,
-			mode: "table",
+			mode: "dashboard",
 			searchText: this.filters.text,
 			filterAll: !filterActive,
+			showSearchRow: false,
 			onModeChange: (mode) => {
-				void this.openWorkspace(mode);
+				// Already on Dashboard — no-op when re-selecting home.
+				if (mode === "dashboard") {
+					return;
+				}
+				if (isWorkspaceViewMode(mode)) {
+					void this.openWorkspace(mode);
+				}
 			},
 			onSearchChange: (text) => {
 				this.filters.text = text;
@@ -300,20 +328,24 @@ export class ProjectOverviewView extends ItemView {
 			},
 		});
 
+		// Optional hint when Filter is toggled from the in-body search row.
 		this.filterEl.empty();
 		if (this.showFilterPanel) {
 			this.filterEl.addClass("is-open");
 			this.filterEl.createEl("p", {
 				cls: "pe-help",
-				text: "Use Workspace filters for status and priority, or clear with All.",
+				text: "Use Table / Gantt / Board filters for status and priority, or clear with All.",
 			});
 		} else {
 			this.filterEl.removeClass("is-open");
 		}
 
-		this.renderSummary(project);
-		this.renderTable();
+		// Body order: Governance → Status → metrics → search+tasks → Docs → Entities → Actions
 		this.renderGovernance(project);
+		this.renderStatus(project);
+		this.renderMetrics(project);
+		this.renderTaskSearch(filterActive);
+		this.renderTable();
 		this.renderDocuments(project);
 		this.renderEntities(project);
 		this.renderActions(project);
@@ -406,32 +438,15 @@ export class ProjectOverviewView extends ItemView {
 	}
 
 	/**
-	 * Budget / effort chips + status select — sits above Tasks, not between
-	 * the numbered home sections.
+	 * Editable project status — Dashboard section 2 (after Governance).
 	 */
-	private renderSummary(project: ProjectRow): void {
-		const root = this.summaryEl;
+	private renderStatus(project: ProjectRow): void {
+		const root = this.statusEl;
 		root.empty();
-
-		const hoursPer = this.plugin.settings.hoursPerManday;
-		const remainingHours = this.tasks.reduce((s, t) => s + t.remainingHours, 0);
-		const loggedHours = this.tasks.reduce((s, t) => s + t.actualHours, 0);
-		const estimateHours = this.tasks.reduce((s, t) => s + t.estimateHours, 0);
-		const budgetHours = giornateToHours(project.assignedDays, hoursPer);
-
-		const metrics = root.createDiv({ cls: "pe-metric-strip" });
-		this.metric(metrics, "Tasks", String(this.tasks.length));
-		this.metric(
-			metrics,
-			"Budget",
-			`${formatGiornate(project.assignedDays)} · ${formatHours(budgetHours)}`,
-		);
-		this.metric(metrics, "Logged", formatHoursAndGiornate(loggedHours, hoursPer));
-		this.metric(metrics, "Remaining", formatHoursAndGiornate(remainingHours, hoursPer));
-		this.metric(metrics, "Est. tasks", formatHours(estimateHours));
+		root.createEl("h3", { text: "Status", cls: "pe-section-title" });
 
 		const statusRow = root.createDiv({ cls: "pe-overview-status-row pe-inline-row" });
-		statusRow.createEl("label", { text: "Status", cls: "pe-label" });
+		statusRow.createEl("label", { text: "Project status", cls: "pe-label" });
 		const statusSelect = statusRow.createEl("select", {
 			cls: "pe-input pe-touch-target",
 			attr: { "aria-label": "Project status" },
@@ -466,6 +481,77 @@ export class ProjectOverviewView extends ItemView {
 					new Notice(`Could not update status: ${message}`);
 				}
 			})();
+		});
+	}
+
+	/**
+	 * Budget / effort metric strip — Dashboard section 3 (task summary).
+	 */
+	private renderMetrics(project: ProjectRow): void {
+		const root = this.metricsEl;
+		root.empty();
+		root.createEl("h3", { text: "Task summary", cls: "pe-section-title" });
+
+		const hoursPer = this.plugin.settings.hoursPerManday;
+		const remainingHours = this.tasks.reduce((s, t) => s + t.remainingHours, 0);
+		const loggedHours = this.tasks.reduce((s, t) => s + t.actualHours, 0);
+		const estimateHours = this.tasks.reduce((s, t) => s + t.estimateHours, 0);
+		const budgetHours = giornateToHours(project.assignedDays, hoursPer);
+
+		const metrics = root.createDiv({ cls: "pe-metric-strip" });
+		this.metric(metrics, "Tasks", String(this.tasks.length));
+		this.metric(
+			metrics,
+			"Budget",
+			`${formatGiornate(project.assignedDays)} · ${formatHours(budgetHours)}`,
+		);
+		this.metric(metrics, "Logged", formatHoursAndGiornate(loggedHours, hoursPer));
+		this.metric(metrics, "Remaining", formatHoursAndGiornate(remainingHours, hoursPer));
+		this.metric(metrics, "Est. tasks", formatHours(estimateHours));
+	}
+
+	/**
+	 * In-body Search tasks… / All / Filter — Dashboard section 4 (with the task table).
+	 * Kept out of chrome so Status → metrics → search+list reading order is correct.
+	 */
+	private renderTaskSearch(filterActive: boolean): void {
+		const row = this.taskSearchEl;
+		row.empty();
+		row.addClass("pe-chrome-search-row");
+
+		const search = row.createEl("input", {
+			cls: "pe-chrome-search pe-touch-target",
+			attr: {
+				type: "search",
+				placeholder: "Search tasks…",
+				"aria-label": "Search tasks",
+			},
+		});
+		search.value = this.filters.text;
+		search.addEventListener("input", () => {
+			this.filters.text = search.value;
+			this.renderTable();
+		});
+
+		const chips = row.createDiv({ cls: "pe-chrome-filter-chips" });
+		const allBtn = chips.createEl("button", {
+			text: "All",
+			cls: `pe-filter-chip pe-touch-target${!filterActive ? " is-active" : ""}`,
+			attr: { type: "button", "aria-pressed": String(!filterActive) },
+		});
+		allBtn.addEventListener("click", () => {
+			this.filters = { text: this.filters.text, status: "all", priority: "all" };
+			this.showFilterPanel = false;
+			this.render();
+		});
+		const filterBtn = chips.createEl("button", {
+			text: "Filter",
+			cls: `pe-filter-chip pe-touch-target${filterActive ? " is-active" : ""}`,
+			attr: { type: "button", "aria-pressed": String(filterActive) },
+		});
+		filterBtn.addEventListener("click", () => {
+			this.showFilterPanel = !this.showFilterPanel;
+			this.render();
 		});
 	}
 
@@ -533,14 +619,13 @@ export class ProjectOverviewView extends ItemView {
 		}).open();
 	}
 
+	/**
+	 * Leave Dashboard for a task-only Workspace SubView (Table / Gantt / Board).
+	 */
 	private async openWorkspace(mode: WorkspaceViewMode): Promise<void> {
 		const project = this.project;
 		if (!project) return;
-		await this.plugin.router.openWorkspace(project.file.path, this.leaf);
-		await this.leaf.setViewState({
-			type: WORKSPACE_VIEW_TYPE,
-			state: { filePath: project.file.path, mode },
-		});
+		await this.plugin.router.openWorkspace(project.file.path, this.leaf, mode);
 	}
 
 	private metric(parent: HTMLElement, label: string, value: string): void {
