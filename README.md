@@ -213,9 +213,10 @@ git clone https://github.com/ItalianJoker/Obsidian-Project-Engine.git
 cd Obsidian-Project-Engine
 npm install
 npm run build
+npm test
 ```
 
-Copia `main.js`, `manifest.json`, `styles.css` in `<vault>/.obsidian/plugins/projects-engine/`, poi ricarica e abilita. In sviluppo: `npm run dev`.
+Copia `main.js`, `manifest.json`, `styles.css` in `<vault>/.obsidian/plugins/projects-engine/`, poi ricarica e abilita. In sviluppo: `npm run dev`. I test Vitest coprono i moduli puri (`engine/`, `services/`) senza l’API Obsidian completa.
 
 #### 4. Mobile (iOS / Android)
 
