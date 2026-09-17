@@ -1,5 +1,13 @@
 # Release notes — Projects Engine
 
+## 1.0.2 — Create note, context menu, Edit spacing
+
+**IT:** Da Overview → Documents: **New note** in Documents/Initiation/… con wikilink Graph (`project` YAML + sezione Links); menu contestuale sulle note; spacing Edit Project più arioso.
+
+**EN:** From Overview → Documents: **New note** in Documents/Initiation/… with Graph wikilinks (YAML `project` + Links section); note context menu; clearer Edit Project vertical spacing.
+
+---
+
 ## 1.0.1 — Obsidian URL deep links
 
 **IT:** Deep link Obsidian (`obsidian://projects-engine?...`) apre Overview/Workspace del progetto; **Copy Obsidian URL** nella chrome di progetto.

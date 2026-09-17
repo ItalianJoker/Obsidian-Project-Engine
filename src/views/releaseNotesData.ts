@@ -7,6 +7,14 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.0.2
+
+### Features
+
+- **New note from Overview Documents** — create a Markdown note in Documents, Initiation, or another project subfolder. Notes include YAML \`project: "[[…]]"\` and a body **Links** section so Graph View clusters them with the project.
+- **Documents tree context menu** — Open, Open in new leaf, Reveal in navigation, Rename, Delete, Copy path, Copy Obsidian URL (Obsidian Menu API).
+- **Edit Project spacing** — clearer vertical rhythm between field groups (and form footer separation).
+
 ## 1.0.1
 
 ### Features

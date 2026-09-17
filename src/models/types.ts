@@ -402,6 +402,16 @@ export interface WorkPackage {
 }
 
 /**
+ * Free-form Markdown note created under a project folder (Documents, Initiation, …).
+ *
+ * Graph linking mirrors tasks/registers: YAML `project` wikilink plus a body
+ * `## Links` entry so Obsidian Graph View clusters the note with its project.
+ *
+ * @remarks YAML `pe_type: project-document`
+ */
+export type ProjectDocumentPeType = "project-document";
+
+/**
  * Recursively nestable task with intra- and cross-project dependencies.
  *
  * Subtasks nest to arbitrary depth via `parentId` / `childIds`. Duration is

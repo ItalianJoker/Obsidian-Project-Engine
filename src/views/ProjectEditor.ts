@@ -227,7 +227,7 @@ export class ProjectEditor {
 			this.form.teamsChannelUrl = value;
 		}, "url");
 
-		const actions = contentEl.createDiv({ cls: "pe-actions" });
+		const actions = contentEl.createDiv({ cls: "pe-actions pe-form-footer" });
 		const cancel = actions.createEl("button", {
 			text: "Cancel",
 			cls: "pe-secondary pe-touch-target",

@@ -29,6 +29,9 @@ import {
 	buildProjectDocumentsTree,
 	tasksFolderBasename,
 } from "../services/projectDocuments";
+import {
+	listProjectDocumentFolders,
+} from "../services/projectDocumentNote";
 import { setProjectStatus } from "../services/projectIo";
 import {
 	deleteProjectFolder,
@@ -44,6 +47,7 @@ import {
 import { copyProjectObsidianUri } from "../services/obsidianUri";
 import { isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
 import { ConfirmModal } from "../ui/ConfirmModal";
+import { CreateProjectDocumentModal } from "../ui/CreateProjectDocumentModal";
 import { EmptyState } from "../ui/EmptyState";
 import { renderProjectChrome } from "../ui/ProjectChrome";
 import { renderProjectDocumentsTree } from "../ui/ProjectDocumentsTree";
@@ -318,14 +322,18 @@ export class ProjectOverviewView extends ItemView {
 	/**
 	 * Scan the project folder and render quick links (excludes Tasks/).
 	 * Reuses the Overview vault event debounce for auto-refresh.
+	 *
+	 * “New note” opens {@link CreateProjectDocumentModal} so the file gets
+	 * YAML `project` + body `## Links` wikilinks for Graph View.
 	 */
 	private renderDocuments(project: ProjectRow): void {
 		const folder = containingProjectFolder(project.file.path);
+		const excludeTasks = tasksFolderBasename(
+			this.plugin.settings.scaffoldTasksFolder,
+		);
 		const nodes = folder
 			? buildProjectDocumentsTree(this.app.vault, folder, {
-					excludeRootFolderName: tasksFolderBasename(
-						this.plugin.settings.scaffoldTasksFolder,
-					),
+					excludeRootFolderName: excludeTasks,
 					excludeFilePaths: [project.file.path],
 				})
 			: [];
@@ -343,7 +351,42 @@ export class ProjectOverviewView extends ItemView {
 				}
 				this.renderDocuments(project);
 			},
+			onCreateNote: folder
+				? (folderPath) => {
+						this.openCreateDocumentModal(project, folder, folderPath);
+					}
+				: undefined,
 		});
+	}
+
+	/**
+	 * Modal to create a Graph-linked note under Documents / Initiation / etc.
+	 */
+	private openCreateDocumentModal(
+		project: ProjectRow,
+		projectFolder: string,
+		initialFolderPath?: string,
+	): void {
+		const documentsFolderName =
+			this.plugin.settings.scaffoldDocumentsFolder || "Documents";
+		const folderChoices = listProjectDocumentFolders(this.app.vault, projectFolder, {
+			documentsFolderName,
+			excludeRootFolderName: tasksFolderBasename(
+				this.plugin.settings.scaffoldTasksFolder,
+			),
+		});
+
+		new CreateProjectDocumentModal(this.app, {
+			projectFile: project.file,
+			projectFolderPath: projectFolder,
+			folderChoices,
+			documentsFolderName,
+			initialFolderPath,
+			onCreated: async (file) => {
+				this.renderDocuments(project);
+				await this.app.workspace.getLeaf(false).openFile(file);
+			},
+		}).open();
 	}
 
 	private renderTable(): void {
