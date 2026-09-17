@@ -70,3 +70,15 @@ export function stringifyYaml(data: Record<string, unknown>): string {
 		})
 		.join("\n");
 }
+
+/** Stub Lucide registry for modules that call {@link getIconIds}. */
+export function getIconIds(): string[] {
+	return ["clipboard-list", "folder", "rocket", "briefcase", "home"];
+}
+
+/** No-op icon injector for node tests. */
+export function setIcon(_parent: HTMLElement, _iconId: string): void {}
+
+export function getIcon(_iconId: string): null {
+	return null;
+}

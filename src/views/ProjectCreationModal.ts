@@ -24,6 +24,7 @@ import { isValidHttpUrl, isValidTeamsChannelUrl, openExternalUrl } from "../serv
 import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from "../services/vaultIo";
 import { projectNotePath } from "../services/projectPaths";
 import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from "../models/types";
+import { mountIconPicker } from "../ui/IconPicker";
 import { loadProjectRows } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
 
@@ -218,23 +219,15 @@ export class ProjectCreationModal extends Modal {
 	}
 
 	private addIconColorFields(): void {
-		const wrap = this.contentEl.createDiv({ cls: "pe-field pe-field-row" });
-		const iconField = wrap.createDiv({ cls: "pe-field" });
-		iconField.createEl("label", { text: "Icon", cls: "pe-label" });
-		iconField.createEl("p", {
-			cls: "pe-help",
-			text: "Obsidian / Lucide icon id (example: clipboard-list, folder, rocket).",
-		});
-		const iconInput = iconField.createEl("input", {
-			cls: "pe-input pe-touch-target",
-			attr: { type: "text", spellcheck: "false", placeholder: DEFAULT_PROJECT_ICON },
-		});
-		iconInput.value = this.form.icon;
-		iconInput.addEventListener("input", () => {
-			this.form.icon = iconInput.value.trim() || DEFAULT_PROJECT_ICON;
+		mountIconPicker(this.contentEl, {
+			value: this.form.icon,
+			help: "Click an icon to select it. Search filters the grid; press Enter to use a typed id.",
+			onChange: (iconId) => {
+				this.form.icon = iconId || DEFAULT_PROJECT_ICON;
+			},
 		});
 
-		const colorField = wrap.createDiv({ cls: "pe-field" });
+		const colorField = this.contentEl.createDiv({ cls: "pe-field" });
 		colorField.createEl("label", { text: "Color", cls: "pe-label" });
 		const colorInput = colorField.createEl("input", {
 			cls: "pe-touch-target",

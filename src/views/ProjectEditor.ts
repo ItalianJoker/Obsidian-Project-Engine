@@ -27,6 +27,7 @@ import {
 import { isValidHttpUrl, isValidTeamsChannelUrl } from "../services/urls";
 import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from "../services/vaultIo";
 import { ConfirmModal } from "../ui/ConfirmModal";
+import { mountIconPicker } from "../ui/IconPicker";
 import { loadProjectRows, type ProjectRow } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
 
@@ -251,18 +252,15 @@ export class ProjectEditor {
 	}
 
 	private addIconColorFields(): void {
-		const wrap = this.rootEl!.createDiv({ cls: "pe-field pe-field-row" });
-		const iconField = wrap.createDiv({ cls: "pe-field" });
-		iconField.createEl("label", { text: "Icon", cls: "pe-label" });
-		const iconInput = iconField.createEl("input", {
-			cls: "pe-input pe-touch-target",
-			attr: { type: "text", spellcheck: "false", placeholder: DEFAULT_PROJECT_ICON },
+		mountIconPicker(this.rootEl!, {
+			value: this.form.icon,
+			help: "Click an icon to select it. Search filters the grid; press Enter to use a typed id.",
+			onChange: (iconId) => {
+				this.form.icon = iconId || DEFAULT_PROJECT_ICON;
+			},
 		});
-		iconInput.value = this.form.icon;
-		iconInput.addEventListener("input", () => {
-			this.form.icon = iconInput.value.trim() || DEFAULT_PROJECT_ICON;
-		});
-		const colorField = wrap.createDiv({ cls: "pe-field" });
+
+		const colorField = this.rootEl!.createDiv({ cls: "pe-field" });
 		colorField.createEl("label", { text: "Color", cls: "pe-label" });
 		const colorInput = colorField.createEl("input", {
 			cls: "pe-touch-target",

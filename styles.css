@@ -2706,3 +2706,103 @@
 		min-height: 0;
 	}
 }
+
+/* =============================================================================
+ * Project icon picker (creation + edit)
+ * ============================================================================= */
+
+.pe-icon-picker {
+	gap: 10px;
+}
+
+.pe-icon-picker-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+}
+
+.pe-icon-picker-preview {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	min-width: 48px;
+	min-height: 48px;
+	border-radius: 10px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	--icon-size: var(--icon-l);
+}
+
+.pe-icon-picker-search {
+	flex: 1;
+	min-width: 160px;
+}
+
+.pe-icon-picker-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px 16px;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.pe-icon-picker-id {
+	font-family: var(--font-monospace);
+	color: var(--text-normal);
+}
+
+.pe-icon-picker-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+	gap: 8px;
+	max-height: 220px;
+	overflow: auto;
+	padding: 10px;
+	border-radius: 10px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.pe-icon-picker-cell {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	aspect-ratio: 1;
+	min-width: 44px;
+	min-height: 44px;
+	border-radius: 8px;
+	border: 1px solid transparent;
+	background: var(--background-primary);
+	color: var(--text-muted);
+	cursor: pointer;
+	--icon-size: var(--icon-m);
+}
+
+.pe-icon-picker-cell:hover {
+	color: var(--text-normal);
+	border-color: var(--background-modifier-border-hover, var(--background-modifier-border));
+	background: var(--background-modifier-hover);
+}
+
+.pe-icon-picker-cell--selected {
+	color: var(--text-on-accent, var(--text-normal));
+	border-color: var(--interactive-accent);
+	background: var(--interactive-accent);
+}
+
+.pe-icon-picker-more {
+	grid-column: 1 / -1;
+	justify-self: center;
+	margin-top: 4px;
+	padding: 8px 14px;
+}
+
