@@ -19,6 +19,8 @@ import type {
 	TimeDisplayFormat,
 } from "./models/types";
 import { DEFAULT_PROJECT_STATUSES, DEFAULT_TASK_STATUSES } from "./models/types";
+import { openTaskListTemplateModal } from "./views/TaskListTemplateModal";
+import { ensureTaskListTemplatesFolder } from "./services/taskListTemplates";
 
 const ENTITY_KINDS: { id: CustomFieldEntityKind; label: string }[] = [
 	{ id: "customer", label: "Customer" },
@@ -68,6 +70,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		this.renderBoard();
 		this.renderScheduling();
 		this.renderPaths();
+		this.renderTaskListTemplates();
 		this.renderScaffold();
 		this.renderIdentifiers();
 		this.renderTimeModel();
@@ -551,6 +554,37 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		);
 	}
 
+	/**
+	 * Task-list template catalogue (Entity-as-a-Note) + create shortcut.
+	 * Flat button row (no card) per PE settings UX.
+	 */
+	private renderTaskListTemplates(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Task list templates" });
+		containerEl.createEl("p", {
+			cls: "setting-item-description",
+			text: "Reusable task trees stored as Markdown notes (pe_type: task-list-template). Assign on project create/edit; apply creates notes under the project Tasks/ folder.",
+		});
+
+		this.addFolderSetting(
+			"Task list templates folder",
+			"taskListTemplatesFolder",
+			"Projects/Entities/Task List Templates",
+		);
+
+		new Setting(containerEl)
+			.setName("New task list template")
+			.setDesc("Opens the template editor. Starter hierarchy is included; customise freely.")
+			.addButton((button) => {
+				button.setButtonText("Create template").onClick(() => {
+					void ensureTaskListTemplatesFolder(
+						this.app.vault,
+						this.plugin.settings,
+					).then(() => openTaskListTemplateModal(this.plugin));
+				});
+			});
+	}
+
 	/** Per-project scaffold subfolder names. */
 	private renderScaffold(): void {
 		const { containerEl } = this;
@@ -661,6 +695,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			| "projectTypesFolder"
 			| "technologiesFolder"
 			| "stakeholdersFolder"
+			| "taskListTemplatesFolder"
 			| "tasksFolder",
 		placeholder: string,
 		desc?: string,

@@ -19,7 +19,7 @@ import type {
 	Technology,
 	WikiLink,
 } from "../models/types";
-import { toWikiLink } from "../models/types";
+import { TASK_LIST_TEMPLATE_PE_TYPE, toWikiLink } from "../models/types";
 
 /**
  * Lightweight projection used by fuzzy autocomplete.
@@ -41,6 +41,8 @@ export class EntityIndexer {
 	private projectTypes: ProjectType[] = [];
 	private technologies: Technology[] = [];
 	private stakeholders: Stakeholder[] = [];
+	/** Task-list template catalogue (`pe_type: task-list-template`). */
+	private taskListTemplates: IndexedEntity[] = [];
 	private projectIds = new Set<string>();
 	private readonly rebuildDebounced: Debounced<() => void>;
 
@@ -66,6 +68,7 @@ export class EntityIndexer {
 		this.projectTypes = [];
 		this.technologies = [];
 		this.stakeholders = [];
+		this.taskListTemplates = [];
 		this.projectIds = new Set();
 
 		const settings = this.getSettings();
@@ -81,6 +84,16 @@ export class EntityIndexer {
 				if (id) {
 					this.projectIds.add(id);
 				}
+				continue;
+			}
+
+			if (inferred === TASK_LIST_TEMPLATE_PE_TYPE || inferred === "task-list-template") {
+				this.taskListTemplates.push({
+					type: "task-list-template",
+					name: file.basename,
+					file,
+					wikiLink: toWikiLink(file.basename),
+				});
 				continue;
 			}
 
@@ -154,6 +167,11 @@ export class EntityIndexer {
 		return this.stakeholders;
 	}
 
+	/** Indexed task-list template notes for fuzzy autocomplete. */
+	public getTaskListTemplates(): readonly IndexedEntity[] {
+		return this.taskListTemplates;
+	}
+
 	public hasProjectId(id: string): boolean {
 		return this.projectIds.has(id);
 	}
@@ -187,6 +205,14 @@ export class EntityIndexer {
 		if (type === "project-type") pushAll("project-type", this.projectTypes);
 		if (type === "technology") pushAll("technology", this.technologies);
 		if (type === "stakeholder") pushAll("stakeholder", this.stakeholders);
+		if (type === "task-list-template") {
+			for (const item of this.taskListTemplates) {
+				const file = this.app.vault.getAbstractFileByPath(item.file.path);
+				if (file instanceof TFile) {
+					rows.push({ ...item, file });
+				}
+			}
+		}
 		return rows;
 	}
 
@@ -206,6 +232,9 @@ function inferTypeFromFolder(path: string, settings: ProjectsEngineSettings): En
 	if (folderContains(normalised, settings.projectTypesFolder)) return "project-type";
 	if (folderContains(normalised, settings.technologiesFolder)) return "technology";
 	if (folderContains(normalised, settings.stakeholdersFolder)) return "stakeholder";
+	if (folderContains(normalised, settings.taskListTemplatesFolder)) {
+		return "task-list-template";
+	}
 	if (folderContains(normalised, settings.projectsFolder)) return "project";
 	return "";
 }

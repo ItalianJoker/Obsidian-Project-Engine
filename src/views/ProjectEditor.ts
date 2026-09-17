@@ -21,6 +21,13 @@ import { governanceDisplayLabel } from "../services/governance";
 import { appendEntityLink } from "../services/linkSync";
 import { patchProjectFrontmatter } from "../services/projectIo";
 import {
+	applyTaskListTemplate,
+	countTemplateTasks,
+	loadTaskListTemplate,
+	projectTasksFolderHasNotes,
+	resolveTaskListTemplateFile,
+} from "../services/taskListTemplates";
+import {
 	deleteProjectFolder,
 	notifyProjectDeleted,
 } from "../services/projectDelete";
@@ -58,6 +65,8 @@ interface EditForm {
 	icon: string;
 	color: string;
 	parentProjectId: string;
+	/** Optional task-list template basename. */
+	taskListTemplate: string;
 }
 
 /**
@@ -157,6 +166,7 @@ export class ProjectEditor {
 			icon: row.icon || DEFAULT_PROJECT_ICON,
 			color: row.color || DEFAULT_PROJECT_COLOR,
 			parentProjectId: row.parentProjectId ?? "",
+			taskListTemplate: stripWiki(row.taskListTemplate),
 		};
 	}
 
@@ -195,6 +205,7 @@ export class ProjectEditor {
 		this.addParentPicker();
 		this.addStatusPicker();
 		this.addGovernanceToggle();
+		this.addTaskListTemplatePicker();
 		this.addEntityPicker("Customer *", "customer", this.form.customer, (name) => {
 			this.form.customer = name;
 		});
@@ -242,6 +253,14 @@ export class ProjectEditor {
 		});
 		save.addEventListener("click", () => {
 			void this.save();
+		});
+		const applyTpl = actions.createEl("button", {
+			text: "Apply template…",
+			cls: "pe-secondary pe-touch-target",
+			attr: { type: "button", title: "Create task notes from the assigned template" },
+		});
+		applyTpl.addEventListener("click", () => {
+			void this.applyTemplate();
 		});
 		const del = actions.createEl("button", {
 			text: "Delete project…",
@@ -314,6 +333,62 @@ export class ProjectEditor {
 		}).open();
 	}
 
+	/**
+	 * Materialise the assigned (or currently selected) template into Tasks/.
+	 * Confirms when the folder already has notes to avoid silent duplicates.
+	 */
+	private async applyTemplate(): Promise<void> {
+		const name = this.form.taskListTemplate.trim();
+		if (!name) {
+			new Notice("Choose a task list template first");
+			return;
+		}
+		const file = resolveTaskListTemplateFile(this.app, this.plugin.settings, name);
+		if (!file) {
+			new Notice(`Template “${name}” was not found`);
+			return;
+		}
+		const template = await loadTaskListTemplate(this.app, file);
+		if (!template || template.tasks.length === 0) {
+			new Notice(`Template “${name}” has no tasks`);
+			return;
+		}
+
+		const run = async (): Promise<void> => {
+			// Persist the assignment before apply so YAML stays consistent.
+			await patchProjectFrontmatter(this.app.vault, this.project.file, (data) => {
+				data.task_list_template = toWikiLink(name);
+			});
+			const result = await applyTaskListTemplate({
+				app: this.app,
+				vault: this.app.vault,
+				projectFile: this.project.file,
+				projectId: this.form.id.trim() || this.project.id,
+				projectLink: toWikiLink(this.project.file.basename),
+				template,
+				settings: this.plugin.settings,
+			});
+			this.plugin.refreshOpenViews();
+			new Notice(
+				result.created > 0
+					? `Applied template “${template.name}” (${result.created} tasks)`
+					: `No tasks created from “${template.name}”`,
+			);
+		};
+
+		if (projectTasksFolderHasNotes(this.app, this.project.file, this.plugin.settings)) {
+			const n = countTemplateTasks(template.tasks);
+			new ConfirmModal(this.app, {
+				title: "Apply task list template?",
+				message: `This project already has notes under Tasks/. Applying “${template.name}” will add ${n} new task notes (existing notes are kept). Continue?`,
+				confirmLabel: "Apply template",
+				onConfirm: () => run(),
+			}).open();
+			return;
+		}
+		await run();
+	}
+
 	private addText(
 		label: string,
 		value: string,
@@ -382,6 +457,43 @@ export class ProjectEditor {
 				button.setAttr("aria-pressed", "true");
 			});
 		}
+	}
+
+	/**
+	 * Assign an Entity-as-a-Note task-list template (wikilink stored on save).
+	 * Use {@link applyTemplate} to materialise tasks under Tasks/.
+	 */
+	private addTaskListTemplatePicker(): void {
+		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: "Task list template", cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Optional. Saving assigns the template; click Apply template… to create task notes under Tasks/.",
+		});
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: {
+				type: "text",
+				placeholder: "Search templates… (optional)",
+				spellcheck: "false",
+				"aria-label": "Task list template",
+			},
+		});
+		input.value = this.form.taskListTemplate;
+		const suggest = new EntitySuggest(
+			this.app,
+			input,
+			() => this.plugin.indexer.list("task-list-template"),
+			(suggestion) => {
+				const name = suggestionName(suggestion);
+				input.value = name;
+				this.form.taskListTemplate = name;
+			},
+		);
+		this.suggests.push(suggest);
+		input.addEventListener("input", () => {
+			this.form.taskListTemplate = input.value.trim();
+		});
 	}
 
 	private addEntityPicker(
@@ -693,6 +805,12 @@ export class ProjectEditor {
 				data.assigned_days = assignedDays;
 				data.project_url = this.form.projectUrl.trim();
 				data.teams_channel_url = this.form.teamsChannelUrl.trim();
+				const templateName = this.form.taskListTemplate.trim();
+				if (templateName) {
+					data.task_list_template = toWikiLink(templateName);
+				} else {
+					delete data.task_list_template;
+				}
 			});
 
 			this.plugin.indexer.rebuild();

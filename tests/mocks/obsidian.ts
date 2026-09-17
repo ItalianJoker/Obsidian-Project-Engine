@@ -36,7 +36,7 @@ export class AbstractInputSuggest<T> {
 
 /**
  * Naive YAML round-trip sufficient for frontmatter helper tests.
- * Supports flat scalars plus simple string arrays (block `- item` form).
+ * Supports flat scalars, string arrays, and simple object arrays (block form).
  */
 export function parseYaml(yaml: string): unknown {
 	const result: Record<string, unknown> = {};
@@ -48,24 +48,79 @@ export function parseYaml(yaml: string): unknown {
 		const key = match[1]!;
 		const raw = match[2]!;
 		if (raw === "" || raw === "[]") {
-			const items: string[] = [];
+			const items: unknown[] = [];
 			while (i + 1 < lines.length) {
 				const next = lines[i + 1] ?? "";
-				const item = /^\s*-\s+(.*)$/.exec(next);
-				if (!item) break;
+				const itemMatch = /^(\s*)-\s+(.*)$/.exec(next);
+				if (!itemMatch) break;
 				i += 1;
-				items.push(unquote(item[1]!.trim()));
+				const indent = itemMatch[1]!.length;
+				const rest = itemMatch[2]!.trim();
+				// Object list item: `- title: Foo` then nested `key: value` lines
+				const objKey = /^([A-Za-z0-9_]+):\s*(.*)$/.exec(rest);
+				if (objKey) {
+					const obj: Record<string, unknown> = {
+						[objKey[1]!]: coerceScalar(objKey[2]!.trim()),
+					};
+					while (i + 1 < lines.length) {
+						const nested = lines[i + 1] ?? "";
+						const nestedMatch = /^(\s+)([A-Za-z0-9_]+):\s*(.*)$/.exec(nested);
+						if (!nestedMatch || nestedMatch[1]!.length <= indent) break;
+						// Nested list under this object (e.g. children:)
+						if (nestedMatch[3]!.trim() === "") {
+							i += 1;
+							const childIndent = nestedMatch[1]!.length;
+							const children: unknown[] = [];
+							while (i + 1 < lines.length) {
+								const childLine = lines[i + 1] ?? "";
+								const childItem = /^(\s*)-\s+(.*)$/.exec(childLine);
+								if (!childItem || childItem[1]!.length <= childIndent) break;
+								i += 1;
+								const cRest = childItem[2]!.trim();
+								const cKey = /^([A-Za-z0-9_]+):\s*(.*)$/.exec(cRest);
+								if (cKey) {
+									const childObj: Record<string, unknown> = {
+										[cKey[1]!]: coerceScalar(cKey[2]!.trim()),
+									};
+									while (i + 1 < lines.length) {
+										const more = lines[i + 1] ?? "";
+										const moreMatch = /^(\s+)([A-Za-z0-9_]+):\s*(.*)$/.exec(more);
+										if (!moreMatch || moreMatch[1]!.length <= childItem[1]!.length) {
+											break;
+										}
+										i += 1;
+										childObj[moreMatch[2]!] = coerceScalar(moreMatch[3]!.trim());
+									}
+									children.push(childObj);
+								} else {
+									children.push(unquote(cRest));
+								}
+							}
+							obj[nestedMatch[2]!] = children;
+						} else {
+							i += 1;
+							obj[nestedMatch[2]!] = coerceScalar(nestedMatch[3]!.trim());
+						}
+					}
+					items.push(obj);
+				} else {
+					items.push(unquote(rest));
+				}
 			}
 			result[key] = items;
 			continue;
 		}
-		if (raw === "true") result[key] = true;
-		else if (raw === "false") result[key] = false;
-		else if (raw === "null" || raw === "~") result[key] = null;
-		else if (/^-?\d+(\.\d+)?$/.test(raw)) result[key] = Number(raw);
-		else result[key] = unquote(raw);
+		result[key] = coerceScalar(raw);
 	}
 	return result;
+}
+
+function coerceScalar(raw: string): unknown {
+	if (raw === "true") return true;
+	if (raw === "false") return false;
+	if (raw === "null" || raw === "~") return null;
+	if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw);
+	return unquote(raw);
 }
 
 function unquote(raw: string): string {
@@ -78,7 +133,8 @@ function unquote(raw: string): string {
 	return raw;
 }
 
-function formatYamlValue(value: unknown): string {
+function formatYamlValue(value: unknown, indent = 0): string {
+	const pad = "  ".repeat(indent);
 	if (value === null || value === undefined) {
 		return "null";
 	}
@@ -90,7 +146,27 @@ function formatYamlValue(value: unknown): string {
 			return "[]";
 		}
 		if (value.every((item) => typeof item === "string")) {
-			return `\n${value.map((item) => `  - ${JSON.stringify(item)}`).join("\n")}`;
+			return `\n${value.map((item) => `${pad}  - ${JSON.stringify(item)}`).join("\n")}`;
+		}
+		if (value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
+			const blocks = value.map((item) => {
+				const obj = item as Record<string, unknown>;
+				const entries = Object.entries(obj);
+				if (entries.length === 0) {
+					return `${pad}  - {}`;
+				}
+				const [firstKey, firstVal] = entries[0]!;
+				const head = `${pad}  - ${firstKey}: ${formatInlineOrBlock(firstVal, indent + 2)}`;
+				const rest = entries.slice(1).map(([k, v]) => {
+					const formatted = formatInlineOrBlock(v, indent + 2);
+					if (formatted.startsWith("\n")) {
+						return `${pad}    ${k}:${formatted}`;
+					}
+					return `${pad}    ${k}: ${formatted}`;
+				});
+				return [head, ...rest].join("\n");
+			});
+			return `\n${blocks.join("\n")}`;
 		}
 		return JSON.stringify(value);
 	}
@@ -100,10 +176,20 @@ function formatYamlValue(value: unknown): string {
 	return JSON.stringify(String(value));
 }
 
+function formatInlineOrBlock(value: unknown, indent: number): string {
+	if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object") {
+		return formatYamlValue(value, indent);
+	}
+	if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
+		return formatYamlValue(value, indent);
+	}
+	return formatYamlValue(value, indent);
+}
+
 export function stringifyYaml(data: Record<string, unknown>): string {
 	return Object.entries(data)
 		.map(([key, value]) => {
-			const formatted = formatYamlValue(value);
+			const formatted = formatYamlValue(value, 0);
 			if (formatted.startsWith("\n")) {
 				return `${key}:${formatted}`;
 			}

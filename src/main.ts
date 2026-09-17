@@ -16,6 +16,7 @@ import { EntityIndexer } from "./engine/Indexer";
 import { DEFAULT_SETTINGS, type CustomFieldEntityKind, type ProjectsEngineSettings } from "./models/types";
 import { splitFrontmatter } from "./services/frontmatter";
 import { scaffoldProjectTree } from "./services/projectScaffold";
+import { applyAssignedTaskListTemplate } from "./services/taskListTemplates";
 import {
 	handleProjectDeepLink,
 	PROJECTS_ENGINE_URI_ACTION,
@@ -23,6 +24,7 @@ import {
 import { isValidTeamsChannelUrl, openExternalUrl } from "./services/urls";
 import { ProjectsEngineSettingTab } from "./settings";
 import { openEntityModal } from "./views/EntityModal";
+import { openTaskListTemplateModal } from "./views/TaskListTemplateModal";
 import { ProjectCreationModal } from "./views/ProjectCreationModal";
 import {
 	DASHBOARD_VIEW_TYPE,
@@ -203,6 +205,31 @@ export default class ProjectsEnginePlugin extends Plugin {
 		this.registerEntityCommands();
 
 		this.addCommand({
+			id: "create-task-list-template",
+			name: "Create task list template",
+			callback: () => openTaskListTemplateModal(this),
+		});
+
+		this.addCommand({
+			id: "edit-active-task-list-template",
+			name: "Edit active task list template",
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file) {
+					return false;
+				}
+				const peType = this.app.metadataCache.getFileCache(file)?.frontmatter?.pe_type;
+				if (peType !== "task-list-template") {
+					return false;
+				}
+				if (!checking) {
+					openTaskListTemplateModal(this, file);
+				}
+				return true;
+			},
+		});
+
+		this.addCommand({
 			id: "open-teams-channel",
 			name: "Open Teams channel for current project",
 			checkCallback: (checking) => {
@@ -363,6 +390,9 @@ export default class ProjectsEnginePlugin extends Plugin {
 			this.settings.scaffoldDocumentsFolder || "Documents";
 		this.settings.scaffoldRegistersFolder =
 			this.settings.scaffoldRegistersFolder || "Registers";
+		this.settings.taskListTemplatesFolder =
+			this.settings.taskListTemplatesFolder ||
+			"Projects/Entities/Task List Templates";
 	}
 
 	public async saveSettings(): Promise<void> {
@@ -372,7 +402,8 @@ export default class ProjectsEnginePlugin extends Plugin {
 	/**
 	 * Called by the creation modal after a project note is written so the
 	 * containment tree (Tasks / Initiation / Documents / Registers) is
-	 * scaffolded and the router can open the new project.
+	 * scaffolded, an optional task-list template is applied, and the router
+	 * can open the new project.
 	 */
 	public async afterProjectCreated(
 		file: TFile,
@@ -388,6 +419,16 @@ export default class ProjectsEnginePlugin extends Plugin {
 			governance: governance === "PRINCE2" ? "PRINCE2" : "Semplificato",
 			settings: this.settings,
 		});
+		const applied = await applyAssignedTaskListTemplate({
+			app: this.app,
+			vault: this.app.vault,
+			projectFile: file,
+			projectId,
+			settings: this.settings,
+		});
+		if (applied && applied.created > 0) {
+			new Notice(`Applied task list template (${applied.created} tasks)`);
+		}
 		await this.router.openProjectLink(file.path);
 	}
 

@@ -64,7 +64,12 @@ export type EntityType =
 	/** Single Risk / Issue / Quality row note under Registers/. */
 	| "prince2-register-entry"
 	/** PRINCE2 Initiation / guidance templates (Project Brief, PID, …). */
-	| "prince2-document";
+	| "prince2-document"
+	/**
+	 * Reusable task-list blueprint (Entity-as-a-Note).
+	 * Assigned to projects via YAML `task_list_template` wikilink.
+	 */
+	| "task-list-template";
 
 /**
  * Governance model selected when a project is created.
@@ -544,7 +549,8 @@ export interface Task {
  * Project record created by {@link ProjectCreationModal}.
  *
  * @remarks YAML `pe_type: project`. Wikilink fields: `customer`, `project_type`,
- * `technologies`, `team[].member`, `stakeholders`. Teams deep link: `teams_channel_url`.
+ * `technologies`, `team[].member`, `stakeholders`, optional `task_list_template`.
+ * Teams deep link: `teams_channel_url`.
  */
 export interface Project {
 	id: string;
@@ -559,6 +565,16 @@ export interface Project {
 	 * @remarks YAML: `stakeholders`
 	 */
 	stakeholders: WikiLink[];
+	/**
+	 * Optional task-list template note assigned to this project.
+	 * @remarks YAML: `task_list_template` (wikilink to `pe_type: task-list-template`)
+	 */
+	taskListTemplate?: WikiLink;
+	/**
+	 * ISO timestamp of the last successful template apply (create or “Apply template…”).
+	 * @remarks YAML: `task_list_template_applied`
+	 */
+	taskListTemplateApplied?: IsoDateTime;
 	/** Work-order / commessa codes (example: `COM-2026-01`). @remarks YAML: `work_orders` */
 	workOrders: string[];
 	/**
@@ -596,6 +612,52 @@ export interface Project {
 	createdAt: IsoDateTime;
 	updatedAt: IsoDateTime;
 	customFields: CustomFieldMap;
+}
+
+// ---------------------------------------------------------------------------
+// Task list templates (Entity-as-a-Note blueprints)
+// ---------------------------------------------------------------------------
+
+/**
+ * Frontmatter discriminator for task-list template notes.
+ *
+ * @remarks YAML `pe_type: task-list-template`
+ */
+export const TASK_LIST_TEMPLATE_PE_TYPE = "task-list-template" as const;
+
+/**
+ * One node in a task-list template tree (arbitrary depth via {@link children}).
+ *
+ * Persisted under YAML `tasks` on the template note. When applied, each node
+ * becomes a real `pe_type: task` note under the project’s `Tasks/` folder.
+ */
+export interface TaskListTemplateItem {
+	/** Task title written to the generated note. */
+	title: string;
+	/** Optional status id from Settings task columns (default: first open status). */
+	status?: TaskStatus;
+	/** Optional priority (default: `none`). */
+	priority?: TaskPriority;
+	/** Optional planned effort in hours. */
+	estimateHours?: number;
+	/** Optional body notes copied onto the generated task. */
+	notes?: string;
+	/** Nested subtasks (parent/child wired on apply). */
+	children?: TaskListTemplateItem[];
+}
+
+/**
+ * Parsed task-list template (Entity-as-a-Note).
+ *
+ * @remarks YAML `pe_type: task-list-template`. Relationship: projects store
+ * `task_list_template: "[[Template Name]]"`.
+ */
+export interface TaskListTemplate {
+	name: string;
+	description?: string;
+	tasks: TaskListTemplateItem[];
+	filePath: string;
+	wikiLink: WikiLink;
 }
 
 // ---------------------------------------------------------------------------
@@ -828,6 +890,12 @@ export interface ProjectsEngineSettings {
 	technologiesFolder: string;
 	stakeholdersFolder: string;
 	/**
+	 * Vault folder for Entity-as-a-Note task-list templates
+	 * (`pe_type: task-list-template`).
+	 * @example `"Projects/Entities/Task List Templates"`
+	 */
+	taskListTemplatesFolder: string;
+	/**
 	 * Legacy / fallback global tasks folder. New tasks are written under each
 	 * project’s scaffolded Tasks subfolder; this path remains for older notes
 	 * and as a scan hint for {@link loadAllTasks}.
@@ -931,6 +999,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	projectTypesFolder: "Projects/Entities/Project Types",
 	technologiesFolder: "Projects/Entities/Technologies",
 	stakeholdersFolder: "Projects/Entities/Stakeholders",
+	taskListTemplatesFolder: "Projects/Entities/Task List Templates",
 	tasksFolder: "Projects/Tasks",
 	scaffoldTasksFolder: "Tasks",
 	scaffoldInitiationFolder: "Initiation",

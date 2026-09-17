@@ -59,6 +59,8 @@ interface CreationForm {
 	icon: string;
 	color: string;
 	parentProjectId: string;
+	/** Optional task-list template note basename (Entity-as-a-Note). */
+	taskListTemplate: string;
 }
 
 /**
@@ -112,6 +114,7 @@ export class ProjectCreationModal extends Modal {
 			icon: DEFAULT_PROJECT_ICON,
 			color: DEFAULT_PROJECT_COLOR,
 			parentProjectId: "",
+			taskListTemplate: "",
 		};
 	}
 
@@ -149,6 +152,8 @@ export class ProjectCreationModal extends Modal {
 		this.addParentProjectField();
 
 		this.addGovernanceToggle();
+
+		this.addTaskListTemplatePicker();
 
 		this.addEntityPicker("Customer *", "customer", (name) => {
 			this.form.customer = name;
@@ -306,6 +311,43 @@ export class ProjectCreationModal extends Modal {
 
 		makeButton("Semplificato");
 		makeButton("PRINCE2");
+	}
+
+	/**
+	 * Optional fuzzy picker for an Entity-as-a-Note task-list template.
+	 * Applied after scaffold when the field is set.
+	 */
+	private addTaskListTemplatePicker(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", { text: "Task list template", cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Optional. When set, creates the template’s tasks under Tasks/ after scaffold. Manage templates in Settings or via the Create task list template command.",
+		});
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: {
+				type: "text",
+				placeholder: "Search templates… (optional)",
+				spellcheck: "false",
+				"aria-label": "Task list template",
+			},
+		});
+		input.value = this.form.taskListTemplate;
+		const suggest = new EntitySuggest(
+			this.app,
+			input,
+			() => this.plugin.indexer.list("task-list-template"),
+			(suggestion) => {
+				const name = suggestionName(suggestion);
+				input.value = name;
+				this.form.taskListTemplate = name;
+			},
+		);
+		this.suggests.push(suggest);
+		input.addEventListener("input", () => {
+			this.form.taskListTemplate = input.value.trim();
+		});
 	}
 
 	private addEntityPicker(
@@ -825,6 +867,10 @@ export class ProjectCreationModal extends Modal {
 			created: now,
 			updated: now,
 		};
+		const templateName = this.form.taskListTemplate.trim();
+		if (templateName) {
+			frontmatter.task_list_template = toWikiLink(templateName);
+		}
 
 		const graphLinks = buildGraphLinksSection([
 			{ label: "Customer", wikiLink: customer },
@@ -832,6 +878,9 @@ export class ProjectCreationModal extends Modal {
 			...technologies.map((wikiLink) => ({ label: "Technology", wikiLink })),
 			...team.map((item) => ({ label: "Team", wikiLink: item.member })),
 			...stakeholders.map((wikiLink) => ({ label: "Stakeholder", wikiLink })),
+			...(templateName
+				? [{ label: "Task list template", wikiLink: toWikiLink(templateName) }]
+				: []),
 		]);
 
 		const teamsBlock = this.form.teamsChannelUrl.trim()

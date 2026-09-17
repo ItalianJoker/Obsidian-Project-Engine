@@ -183,6 +183,24 @@
 	min-width: 0;
 }
 
+.pe-template-task-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-bottom: 12px;
+}
+
+.pe-template-task-row {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.pe-template-task-row .pe-inline-row {
+	flex-wrap: wrap;
+	align-items: center;
+}
+
 .pe-actions {
 	justify-content: flex-end;
 	margin-top: 0;
