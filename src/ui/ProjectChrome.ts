@@ -3,9 +3,9 @@
  * icon + name + “This project” badge | view switchers | + add task | gear
  * Search tasks… | All / Filter  (task views only — Dashboard embeds search in-body)
  *
- * Switcher order (v1.0.3+): **Dashboard | Table | Gantt | Board**.
+ * Switcher order: **Dashboard | Table | Gantt | Board | Eisenhower**.
  * - Dashboard → project home (Overview leaf): status, metrics, tasks, governance…
- * - Table / Gantt / Board → task-only Workspace SubViews
+ * - Table / Gantt / Board / Eisenhower → task-only Workspace SubViews
  *
  * Pattern adapted from [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm)
  * ProjectView (MIT © 2026 Stepan Kropachev and dotpm contributors).
@@ -26,7 +26,7 @@ export interface ProjectChromeProps {
 	project: ProjectRow;
 	/**
 	 * Active chrome mode for the view switcher highlight.
-	 * Use `"dashboard"` on Overview; `"table"` / `"gantt"` / `"kanban"` on Workspace.
+	 * Use `"dashboard"` on Overview; task modes on Workspace.
 	 */
 	mode: ProjectChromeMode;
 	/** Free-text search value (task views). Ignored when {@link showSearchRow} is false. */
@@ -51,15 +51,14 @@ export interface ProjectChromeProps {
 	 * When false, omit the chrome search / All / Filter row.
 	 * Dashboard (Overview) renders search above the in-body task list instead
 	 * so Status → metrics → search+tasks reading order is preserved.
-	 * Defaults to true (Table / Gantt / Board).
+	 * Defaults to true (Table / Gantt / Board / Eisenhower).
 	 */
 	showSearchRow?: boolean;
 }
 
 /**
  * Segmented switcher options — Dashboard first (left of Table).
- * Icons: home for project Dashboard; table / git-fork / columns for task views.
- * Board uses `columns` so it does not collide with Overview’s `layout-dashboard` leaf icon.
+ * Board uses `columns`; Eisenhower uses `layout-grid`.
  */
 const CHROME_SWITCHER_OPTIONS: Array<{
 	id: ProjectChromeMode;
@@ -70,6 +69,7 @@ const CHROME_SWITCHER_OPTIONS: Array<{
 	{ id: "table", icon: "table", label: "Table" },
 	{ id: "gantt", icon: "git-fork", label: "Gantt" },
 	{ id: "kanban", icon: "columns", label: "Board" },
+	{ id: "eisenhower", icon: "layout-grid", label: "Eisenhower" },
 ];
 
 /**
@@ -113,7 +113,7 @@ export function renderProjectChrome(props: ProjectChromeProps): void {
 	identity.createSpan({ text: "This project", cls: "pe-chrome-badge" });
 
 	const actions = top.createDiv({ cls: "pe-chrome-actions" });
-	// Dashboard | Table | Gantt | Board — Dashboard is a first-class surface (v1.0.3).
+	// Dashboard | Table | Gantt | Board | Eisenhower
 	new ViewSwitcher<ProjectChromeMode>(actions, {
 		options: CHROME_SWITCHER_OPTIONS,
 		active: mode,

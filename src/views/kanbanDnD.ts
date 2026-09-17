@@ -1,15 +1,14 @@
 /**
- * Pointer- and HTML5-based drag-and-drop helpers for the Semplificato Kanban.
+ * Pointer- and HTML5-based drag-and-drop helpers for the task Board (Kanban).
  *
  * Desktop prefers HTML5 DnD. Touch / small screens use a pointer-capture drag
- * from a dedicated handle (≥ 44×44px). Status buttons remain as an accessible
+ * from a dedicated handle (≥ 44×44px). Status selects remain as an accessible
  * fallback when DnD is awkward (narrow viewports).
  *
  * Persistence is the caller's job (typically {@link PersistStatusCommand} via
- * `vault.process`).
+ * `vault.process`). Column ids are Settings-driven strings (`taskStatuses`).
  */
 
-import type { SemplificatoStatus } from "../models/types";
 
 const DRAG_MIME = "application/x-projects-engine-task";
 
@@ -18,7 +17,7 @@ const DRAG_MIME = "application/x-projects-engine-task";
  */
 export interface KanbanDragPayload {
 	taskId: string;
-	fromStatus: SemplificatoStatus;
+	fromStatus: string;
 }
 
 /**
@@ -28,9 +27,9 @@ export interface KanbanDnDOptions {
 	/** Task id encoded into the drag payload. */
 	taskId: string;
 	/** Current column status. */
-	fromStatus: SemplificatoStatus;
+	fromStatus: string;
 	/** Called when the card is dropped onto a different column. */
-	onDrop: (taskId: string, toStatus: SemplificatoStatus) => void;
+	onDrop: (taskId: string, toStatus: string) => void;
 	/**
 	 * When true, HTML5 DnD is enabled on the card body.
 	 * Disable on very small screens if preferred — pointer handle still works.
@@ -39,7 +38,7 @@ export interface KanbanDnDOptions {
 }
 
 /**
- * Make `card` draggable and `column` a drop target for Semplificato status moves.
+ * Make `card` draggable and `column` a drop target for board status moves.
  *
  * @param card - Kanban card element.
  * @param column - Column element that owns `data-status`.
@@ -52,7 +51,7 @@ export function wireKanbanCardDnD(
 	handle: HTMLElement | null,
 	options: KanbanDnDOptions,
 ): void {
-	const status = column.dataset.status as SemplificatoStatus | undefined;
+	const status = column.dataset.status as string | undefined;
 	if (!status) {
 		return;
 	}
@@ -138,7 +137,7 @@ export function wireKanbanCardDnD(
 		const el = document.elementFromPoint(event.clientX, event.clientY);
 		const targetColumn = el instanceof HTMLElement ? el.closest(".pe-kanban-column") : null;
 		const toStatus = targetColumn instanceof HTMLElement
-			? (targetColumn.dataset.status as SemplificatoStatus | undefined)
+			? (targetColumn.dataset.status as string | undefined)
 			: undefined;
 		if (toStatus && toStatus !== options.fromStatus) {
 			options.onDrop(options.taskId, toStatus);
@@ -161,8 +160,8 @@ export function wireKanbanCardDnD(
  */
 export function wireKanbanColumnDrop(
 	column: HTMLElement,
-	status: SemplificatoStatus,
-	onDrop: (taskId: string, toStatus: SemplificatoStatus) => void,
+	status: string,
+	onDrop: (taskId: string, toStatus: string) => void,
 ): void {
 	column.dataset.status = status;
 
@@ -184,7 +183,7 @@ export function wireKanbanColumnDrop(
 			event.dataTransfer?.getData("text/plain") ||
 			"";
 		let taskId = raw;
-		let fromStatus: SemplificatoStatus | null = null;
+		let fromStatus: string | null = null;
 		try {
 			const parsed = JSON.parse(raw) as KanbanDragPayload;
 			if (parsed?.taskId) {

@@ -71,8 +71,8 @@ export type EntityType =
 export type GovernanceModel = "Semplificato" | "PRINCE2";
 
 /**
- * Linear board status used by Semplificato projects and by operational tasks
- * inside a PRINCE2 stage.
+ * Classic linear board status ids shipped as the default task-column set.
+ * Kept for governance copy and migration of notes written before configurable columns.
  */
 export type SemplificatoStatus = "backlog" | "in-progress" | "review" | "done";
 
@@ -119,10 +119,44 @@ export const DEFAULT_PROJECT_STATUSES: ProjectStatusOption[] = [
 export type TaskPriority = "none" | "low" | "medium" | "high" | "urgent";
 
 /**
- * Task status. PRINCE2 work-package tasks reuse the same vocabulary so a
- * single board widget can render either governance model.
+ * Task board / editor status id.
+ *
+ * Concrete ids come from {@link ProjectsEngineSettings.taskStatuses}. Defaults
+ * mirror the classic Semplificato columns plus `blocked` / `cancelled`
+ * (archived by default so the Board stays four columns until the user enables them).
  */
-export type TaskStatus = SemplificatoStatus | "blocked" | "cancelled";
+export type TaskStatus = string;
+
+/**
+ * One configurable task-board column / status (Settings → Task board columns).
+ * Same shape as {@link ProjectStatusOption}: add / rename / reorder / colour / archive.
+ */
+export interface TaskStatusOption {
+	/** Stable id written to YAML `status`. */
+	id: string;
+	/** Label shown on Board columns, filters, and the task editor. */
+	label: string;
+	/** Optional accent colour (CSS hex) for column heads and status chips. */
+	color?: string;
+	/**
+	 * When true the status is hidden from Board columns and new-task pickers
+	 * but still resolves for existing notes (archive without remapping).
+	 */
+	archived?: boolean;
+}
+
+/**
+ * Default task board columns — classic Backlog → Done, plus archived blocked/cancelled
+ * so older notes keep resolving without expanding the Board until the user un-archives them.
+ */
+export const DEFAULT_TASK_STATUSES: TaskStatusOption[] = [
+	{ id: "backlog", label: "Backlog", color: "#94a3b8" },
+	{ id: "in-progress", label: "In Progress", color: "#a855f7" },
+	{ id: "review", label: "Review", color: "#64748b" },
+	{ id: "done", label: "Done", color: "#22c55e" },
+	{ id: "blocked", label: "Blocked", color: "#ef4444", archived: true },
+	{ id: "cancelled", label: "Cancelled", color: "#64748b", archived: true },
+];
 
 // ---------------------------------------------------------------------------
 // Custom fields (Settings-tab schema + per-note values)
@@ -476,6 +510,18 @@ export interface Task {
 	status: TaskStatus;
 	/** Delivery priority for the task dashboard. @remarks YAML: `priority` */
 	priority: TaskPriority;
+	/**
+	 * Eisenhower “important” flag for the matrix view.
+	 * `null` means the YAML key is absent (soft-infer from {@link priority} for display only).
+	 * @remarks YAML: `important`
+	 */
+	important: boolean | null;
+	/**
+	 * Eisenhower “urgent” flag for the matrix view.
+	 * `null` means the YAML key is absent (soft-infer from {@link priority} for display only).
+	 * @remarks YAML: `urgent`
+	 */
+	urgent: boolean | null;
 	/** Zero-duration checkpoint (also used for PRINCE2 stage boundaries). */
 	isMilestone: boolean;
 	/** When true, later stages cannot start until this task ends. */
@@ -715,7 +761,7 @@ export type ProjectSurface = "overview" | "workspace";
 /**
  * Default SubView mode inside the project delivery workspace.
  */
-export type DefaultWorkspaceView = "table" | "gantt" | "kanban";
+export type DefaultWorkspaceView = "table" | "gantt" | "kanban" | "eisenhower";
 
 /**
  * Display pattern for calendar dates in the UI (ISO stored in YAML).
@@ -797,13 +843,19 @@ export interface ProjectsEngineSettings {
 	 * Mirrors obsidian-pm `taskEditorSurface`.
 	 */
 	taskEditorSurface: "modal" | "tab";
-	/** Initial Table / Gantt / Board mode when opening the workspace. */
+	/** Initial Table / Gantt / Board / Eisenhower mode when opening the workspace. */
 	defaultView: DefaultWorkspaceView;
 	/**
 	 * Configurable project lifecycle statuses (add / rename / reorder / archive).
 	 * At least one non-archived entry should remain for new projects.
 	 */
 	projectStatuses: ProjectStatusOption[];
+	/**
+	 * Configurable task board columns / statuses (add / rename / reorder / colour / archive).
+	 * Board, filters, and the task editor read this list. At least one non-archived entry
+	 * should remain for new tasks.
+	 */
+	taskStatuses: TaskStatusOption[];
 	/** Calendar date display format (default Italian `DD/MM/YYYY`). */
 	dateFormat: DateDisplayFormat;
 	/** Clock display format (default `24h`). */
@@ -860,6 +912,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	taskEditorSurface: "modal",
 	defaultView: "table",
 	projectStatuses: DEFAULT_PROJECT_STATUSES.map((item) => ({ ...item })),
+	taskStatuses: DEFAULT_TASK_STATUSES.map((item) => ({ ...item })),
 	dateFormat: "DD/MM/YYYY",
 	timeFormat: "24h",
 	ganttGranularity: "week",
@@ -894,6 +947,75 @@ export function defaultProjectStatusId(
 ): string {
 	const open = statuses.find((item) => !item.archived);
 	return open?.id ?? statuses[0]?.id ?? "active";
+}
+
+/**
+ * Resolve a task-status id to its display label (falls back to the raw id).
+ */
+export function taskStatusLabel(
+	statuses: readonly TaskStatusOption[],
+	id: string,
+): string {
+	const hit = statuses.find((item) => item.id === id);
+	return hit?.label ?? id;
+}
+
+/**
+ * First non-archived task-status id, or `"backlog"` when the list is empty.
+ */
+export function defaultTaskStatusId(statuses: readonly TaskStatusOption[]): string {
+	const open = statuses.find((item) => !item.archived);
+	return open?.id ?? statuses[0]?.id ?? "backlog";
+}
+
+/**
+ * Non-archived task statuses in Settings order (Board columns + create picker).
+ */
+export function activeTaskStatuses(
+	statuses: readonly TaskStatusOption[],
+): TaskStatusOption[] {
+	return statuses.filter((item) => !item.archived);
+}
+
+/**
+ * Soft Eisenhower defaults inferred from {@link TaskPriority} for new tasks
+ * (and for display when YAML lacks explicit `important` / `urgent`).
+ *
+ * - `urgent` priority → important + urgent
+ * - `high` → important only
+ * - everything else → neither
+ */
+export function eisenhowerFromPriority(priority: TaskPriority): {
+	important: boolean;
+	urgent: boolean;
+} {
+	if (priority === "urgent") {
+		return { important: true, urgent: true };
+	}
+	if (priority === "high") {
+		return { important: true, urgent: false };
+	}
+	return { important: false, urgent: false };
+}
+
+/**
+ * Effective Eisenhower flags for matrix placement.
+ * Prefer explicit frontmatter booleans; otherwise soft-infer from priority
+ * without rewriting the note until the user edits or drags.
+ */
+export function resolveEisenhowerFlags(task: {
+	important: boolean | null;
+	urgent: boolean | null;
+	priority: TaskPriority;
+}): { important: boolean; urgent: boolean } {
+	if (task.important != null && task.urgent != null) {
+		return { important: task.important, urgent: task.urgent };
+	}
+	const soft = eisenhowerFromPriority(task.priority);
+	return {
+		important: task.important ?? soft.important,
+		urgent: task.urgent ?? soft.urgent,
+	};
 }
 
 // ---------------------------------------------------------------------------

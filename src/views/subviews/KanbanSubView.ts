@@ -1,20 +1,27 @@
 /**
- * Semplificato / operational Kanban SubView hosted in the project workspace.
+ * Operational Kanban SubView hosted in the project workspace.
  *
+ * Columns come from Settings → Board → Task board columns (`taskStatuses`).
  * Drag-and-drop wiring reuses {@link wireKanbanCardDnD}; chrome follows the
  * Board mode of [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm)
- * (column-per-status) without copying branding.
+ * without copying branding.
+ *
+ * Settings toggles:
+ * - `kanbanShowSubtasks` — include nested tasks as cards (default: roots only)
+ * - `kanbanShowDescriptionPreview` — show a short `notes` / body preview on cards
  */
 
 import { Notice, TFile, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
-import type { SemplificatoStatus, Task } from "../../models/types";
+import {
+	activeTaskStatuses,
+	defaultTaskStatusId,
+	taskStatusLabel,
+	type Task,
+	type TaskStatusOption,
+} from "../../models/types";
 import { toWikiLink } from "../../models/types";
 import { formatDuePill, formatDisplayDateTime, isOverdue, effectiveDue } from "../../services/dateFormat";
-import {
-	SEMPLIFICATO_LABELS,
-	SEMPLIFICATO_STATUSES,
-} from "../../services/governance";
 import { PersistStatusCommand } from "../../services/taskCommands";
 import { EmptyState } from "../../ui/EmptyState";
 import { wireKanbanCardDnD, wireKanbanColumnDrop } from "../kanbanDnD";
@@ -33,7 +40,7 @@ export interface KanbanSubViewProps {
 }
 
 /**
- * One column per Semplificato status with DnD + compact edit affordance.
+ * One column per active task status with DnD + compact edit affordance.
  */
 export class KanbanSubView implements SubView {
 	constructor(private readonly props: KanbanSubViewProps) {}
@@ -44,13 +51,21 @@ export class KanbanSubView implements SubView {
 		container.addClass("pe-subview");
 		container.addClass("pe-kanban-subview");
 
+		const columns = activeTaskStatuses(plugin.settings.taskStatuses);
+		const fallbackStatus = defaultTaskStatusId(plugin.settings.taskStatuses);
+		const showSubtasks = plugin.settings.kanbanShowSubtasks === true;
+		const showPreview = plugin.settings.kanbanShowDescriptionPreview === true;
+
 		const q = filterText.trim().toLowerCase();
 		const projectTasks = tasks.filter((task) => {
-			if (task.projectId !== project.id || task.parentId != null) {
+			if (task.projectId !== project.id) {
+				return false;
+			}
+			if (!showSubtasks && task.parentId != null) {
 				return false;
 			}
 			if (!q) return true;
-			return `${task.title} ${task.status}`.toLowerCase().includes(q);
+			return `${task.title} ${task.status} ${task.notes ?? ""}`.toLowerCase().includes(q);
 		});
 
 		if (tasks.filter((t) => t.projectId === project.id).length === 0) {
@@ -66,36 +81,57 @@ export class KanbanSubView implements SubView {
 			return;
 		}
 
+		if (columns.length === 0) {
+			new EmptyState(container)
+				.setTitle("No board columns")
+				.setBody("Add or un-archive task columns in Settings → Board.")
+				.setAction("Open settings", () => {
+					(
+						plugin.app as unknown as {
+							setting?: { open: () => void; openTabById: (id: string) => void };
+						}
+					).setting?.open();
+				});
+			return;
+		}
+
 		const board = container.createDiv({ cls: "pe-kanban" });
 		const enableHtml5 = typeof window !== "undefined" && window.innerWidth >= 720;
 		const isMobile = typeof window !== "undefined" && window.innerWidth < 720;
 		const byId = new Map(projectTasks.map((task) => [task.id, task] as const));
 		const dateFormat = plugin.settings.dateFormat;
 
-		const onDrop = (taskId: string, toStatus: SemplificatoStatus): void => {
+		const onDrop = (taskId: string, toStatus: string): void => {
 			const task = byId.get(taskId);
 			if (!task) {
 				new Notice("Task not found on this board");
 				return;
 			}
-			if (normaliseStatus(task.status) === toStatus) {
+			if (resolveColumnId(task.status, columns, fallbackStatus) === toStatus && task.status === toStatus) {
 				return;
 			}
-			void this.moveTaskStatus(task, toStatus).then(() => {
+			void this.moveTaskStatus(task, toStatus, columns).then(() => {
 				onChanged();
 				plugin.refreshOpenViews();
 			});
 		};
 
-		for (const status of SEMPLIFICATO_STATUSES) {
+		for (const columnDef of columns) {
+			const status = columnDef.id;
 			const column = board.createDiv({
-				cls: `pe-kanban-column pe-kanban-column--${status}`,
+				cls: "pe-kanban-column",
 			});
+			column.style.setProperty("--pe-kanban-col-color", columnDef.color ?? "#94a3b8");
 			wireKanbanColumnDrop(column, status, onDrop);
 
 			const head = column.createDiv({ cls: "pe-kanban-column-head" });
-			head.createEl("h4", { text: SEMPLIFICATO_LABELS[status], cls: "pe-kanban-title" });
-			const inColumn = projectTasks.filter((task) => normaliseStatus(task.status) === status);
+			head.createEl("h4", {
+				text: columnDef.label,
+				cls: "pe-kanban-title",
+			});
+			const inColumn = projectTasks.filter(
+				(task) => resolveColumnId(task.status, columns, fallbackStatus) === status,
+			);
 			head.createSpan({ text: String(inColumn.length), cls: "pe-kanban-count" });
 
 			const cards = column.createDiv({ cls: "pe-kanban-cards" });
@@ -106,6 +142,16 @@ export class KanbanSubView implements SubView {
 					text: task.title || task.id,
 					cls: "pe-kanban-card-title",
 				});
+
+				if (showPreview) {
+					const preview = descriptionPreview(task);
+					if (preview) {
+						card.createEl("p", {
+							text: preview,
+							cls: "pe-kanban-card-preview",
+						});
+					}
+				}
 
 				const foot = card.createDiv({ cls: "pe-kanban-card-foot" });
 				const dueIso = effectiveDue(task);
@@ -149,17 +195,17 @@ export class KanbanSubView implements SubView {
 						cls: "pe-kanban-status-fallback pe-input pe-touch-target",
 						attr: { "aria-label": "Move to column" },
 					});
-					for (const target of SEMPLIFICATO_STATUSES) {
+					for (const target of columns) {
 						select.createEl("option", {
-							text: SEMPLIFICATO_LABELS[target],
-							attr: { value: target },
+							text: target.label,
+							attr: { value: target.id },
 						});
 					}
 					select.value = status;
 					select.addEventListener("change", () => {
-						const next = select.value as SemplificatoStatus;
+						const next = select.value;
 						if (next !== status) {
-							void this.moveTaskStatus(task, next).then(() => {
+							void this.moveTaskStatus(task, next, columns).then(() => {
 								onChanged();
 								plugin.refreshOpenViews();
 							});
@@ -189,7 +235,11 @@ export class KanbanSubView implements SubView {
 		this.props.container.empty();
 	}
 
-	private async moveTaskStatus(task: Task, status: SemplificatoStatus): Promise<void> {
+	private async moveTaskStatus(
+		task: Task,
+		status: string,
+		columns: TaskStatusOption[],
+	): Promise<void> {
 		const file = this.props.app.vault.getAbstractFileByPath(task.filePath);
 		if (!(file instanceof TFile)) {
 			new Notice("Task file missing");
@@ -198,18 +248,38 @@ export class KanbanSubView implements SubView {
 		this.props.plugin.commandStack.execute(
 			new PersistStatusCommand(this.props.app.vault, file, task.status, status),
 		);
-		new Notice(`Moved to ${SEMPLIFICATO_LABELS[status]}`);
+		new Notice(`Moved to ${taskStatusLabel(columns, status)}`);
 	}
 }
 
-function normaliseStatus(status: string): SemplificatoStatus {
-	if (
-		status === "backlog" ||
-		status === "in-progress" ||
-		status === "review" ||
-		status === "done"
-	) {
+/**
+ * Map a note’s status onto an active Board column.
+ * Unknown / archived ids fall into the first (default) column for display
+ * without rewriting YAML until the user moves the card.
+ */
+function resolveColumnId(
+	status: string,
+	columns: readonly TaskStatusOption[],
+	fallback: string,
+): string {
+	if (columns.some((item) => item.id === status)) {
 		return status;
 	}
-	return "backlog";
+	return fallback;
+}
+
+/**
+ * Short description preview from task notes (first non-empty line, capped).
+ */
+function descriptionPreview(task: Task): string {
+	const raw = (task.notes ?? "").trim();
+	if (!raw) {
+		return "";
+	}
+	const line = raw.split(/\r?\n/).find((item) => item.trim().length > 0) ?? "";
+	const trimmed = line.trim();
+	if (trimmed.length <= 120) {
+		return trimmed;
+	}
+	return `${trimmed.slice(0, 117)}…`;
 }

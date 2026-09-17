@@ -76,13 +76,15 @@ Le scritture usano solo `vault.process` (sicure con Obsidian Sync / iCloud).
 
 In Settings → **Date format** / **Time format** il formato vale per editor task (due / scheduled / start / end / time log), campi custom date, tabelle, Kanban e Gantt. Default: **DD/MM/YYYY** + **24 ore**. In YAML resta ISO.
 
-### Status progetto configurabili
+### Status progetto e colonne Board
 
 In Settings → **Project statuses** si aggiungono, rinomina, riordinano (drag) e archivia status. Visibili in portfolio e modificabili da Overview / Edit project.
 
+In Settings → **Board → Task board columns** si configurano le colonne Kanban / status task (stesso modello: add / rename / reorder / colour / archive). Default: Backlog → Done; Blocked / Cancelled archiviati. Note con status sconosciuti restano leggibili e finiscono nella prima colonna attiva finché non le sposti.
+
 ### Governance
 
-**Semplificato** — flusso lineare **Backlog → In Progress → Review → Done**. Board Kanban lean, time log, giorni effettivi vs budget, vista tabella con fallback card/accordion su schermi stretti (&lt;720px).
+**Semplificato** — flusso lineare **Backlog → In Progress → Review → Done** (personalizzabile). Board Kanban lean, time log, giorni effettivi vs budget, vista tabella con fallback card/accordion su schermi stretti (&lt;720px).
 
 **PRINCE2** — Management Stages con Stage Boundary. Alla creazione (o da Portafoglio) vengono generati i registri: Business Case, Risk Register, Issue & Change Log, Quality Register, Work Packages. I milestone di fine stage (`is_stage_boundary`) sono **blocchi formali** nello scheduler: lo stage successivo non parte finché il boundary non è chiuso.
 
@@ -103,14 +105,15 @@ In Settings → **Project statuses** si aggiungono, rinomina, riordinano (drag) 
 
 **Edit project** — leaf dedicata (parità obsidian-pm), non solo modale.
 
-**Workspace** — leaf task-only con switcher condiviso **Dashboard | Table | Gantt | Board** (Dashboard torna all’Overview):
+**Workspace** — leaf task-only con switcher condiviso **Dashboard | Table | Gantt | Board | Eisenhower** (Dashboard torna all’Overview):
 - **Table** — gerarchia, status, priority, assignee, due/scheduled (formato Settings), estimate/remaining ore, filtri status/priority
-- **Board (Kanban)** — colonne Backlog / In Progress / Review / Done; DnD HTML5 + pointer-capture; pulsanti status come fallback
+- **Board (Kanban)** — colonne da Settings (default Backlog / In Progress / Review / Done); DnD HTML5 + pointer-capture; toggle sotto-task e anteprima descrizione; fallback status su mobile
+- **Eisenhower** — matrice 2×2 Important × Urgent; campi YAML `important` / `urgent`; DnD tra quadranti
 - **Gantt** — barre, zoom Day/Week/Month, curve SVG dipendenze; date nel formato Settings; click apre l’editor
 
-**Task** — editor in **tab** (default) o modale; date/ora seguono Settings. **Release notes** — comando dedicato.
+**Task** — editor in **tab** (default) o modale; date/ora seguono Settings; Important/Urgent editabili. **Release notes** — comando dedicato.
 
-In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per day**, **Date format** / **Time format**. UI in inglese.
+In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Task board columns** (Board), **Hours per day**, **Date format** / **Time format**. UI in inglese.
 
 ### Deep link Obsidian (URI del Dashboard / Overview)
 
@@ -132,7 +135,7 @@ Parametri:
 | `id` | Frontmatter `id` del progetto (es. `PRJ-2026-001`) |
 | `path` | Percorso relativo al vault della nota progetto |
 | `view` | `overview` (default) oppure `workspace` |
-| `mode` | Solo con `view=workspace`: `table` \| `gantt` \| `kanban` |
+| `mode` | Solo con `view=workspace`: `table` \| `gantt` \| `kanban` \| `eisenhower` |
 
 Esempio Overview:
 
@@ -313,13 +316,15 @@ All content writes go through `vault.process` only (safe with Obsidian Sync / iC
 
 Settings → **Date format** / **Time format** apply to the task editor (due / scheduled / start / end / time logs), custom-field dates, tables, Kanban, and Gantt. Defaults: **DD/MM/YYYY** + **24-hour**. YAML still stores ISO.
 
-### Configurable project statuses
+### Configurable project statuses & Board columns
 
 Settings → **Project statuses**: add, rename, reorder (drag), and archive. Visible on the portfolio and editable from Overview / Edit project.
 
+Settings → **Board → Task board columns**: configure Kanban / task status columns (same model: add / rename / reorder / colour / archive). Defaults: Backlog → Done; Blocked / Cancelled archived. Notes with unknown status ids still load and appear in the first active column until moved.
+
 ### Governance
 
-**Semplificato** — linear flow **Backlog → In Progress → Review → Done**. Lean Kanban, time logs, actual vs budget days, table view with card/accordion fallback below 720px.
+**Semplificato** — linear flow **Backlog → In Progress → Review → Done** (customisable). Lean Kanban, time logs, actual vs budget days, table view with card/accordion fallback below 720px.
 
 **PRINCE2** — Management Stages with Stage Boundaries. On create (or from Portfolio) the plugin scaffolds Business Case, Risk Register, Issue & Change Log, Quality Register, and Work Packages. End-of-stage milestones (`is_stage_boundary`) are **formal scheduler blocks**: later stages cannot start until the boundary finishes.
 
@@ -340,14 +345,15 @@ Settings → **Project statuses**: add, rename, reorder (drag), and archive. Vis
 
 **Edit project** — dedicated leaf (obsidian-pm parity), not modal-only.
 
-**Workspace** — task-only leaf with shared switcher **Dashboard | Table | Gantt | Board** (Dashboard returns to Overview):
+**Workspace** — task-only leaf with shared switcher **Dashboard | Table | Gantt | Board | Eisenhower** (Dashboard returns to Overview):
 - **Table** — hierarchy, status, priority, assignee, due/scheduled (Settings format), estimate/remaining hours, status/priority filters
-- **Board (Kanban)** — Backlog / In Progress / Review / Done; HTML5 + pointer-capture DnD; status buttons as fallback
+- **Board (Kanban)** — columns from Settings (default Backlog / In Progress / Review / Done); HTML5 + pointer-capture DnD; Show subtasks / description preview toggles; mobile status fallback
+- **Eisenhower** — 2×2 Important × Urgent matrix; YAML `important` / `urgent`; drag between quadrants
 - **Gantt** — bars, Day/Week/Month zoom, SVG dependency curves; dates use Settings format; click opens the editor
 
-**Task** — editor in a **tab** (default) or modal; date/time fields follow Settings. **Release notes** — dedicated command.
+**Task** — editor in a **tab** (default) or modal; date/time fields follow Settings; Important/Urgent editable. **Release notes** — dedicated command.
 
-Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Hours per day**, **Date format** / **Time format**. English UI throughout.
+Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Task board columns** (Board), **Hours per day**, **Date format** / **Time format**. English UI throughout.
 
 ### Obsidian URL deep link (Dashboard / Overview)
 
@@ -369,7 +375,7 @@ Parameters:
 | `id` | Project frontmatter `id` (e.g. `PRJ-2026-001`) |
 | `path` | Vault-relative path to the project note |
 | `view` | `overview` (default) or `workspace` |
-| `mode` | With `view=workspace` only: `table` \| `gantt` \| `kanban` |
+| `mode` | With `view=workspace` only: `table` \| `gantt` \| `kanban` \| `eisenhower` |
 
 Example Overview URL:
 

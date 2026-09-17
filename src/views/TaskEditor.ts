@@ -17,7 +17,13 @@ import type {
 	TimeLog,
 	WikiLink,
 } from "../models/types";
-import { toWikiLink } from "../models/types";
+import {
+	activeTaskStatuses,
+	defaultTaskStatusId,
+	eisenhowerFromPriority,
+	resolveEisenhowerFlags,
+	toWikiLink,
+} from "../models/types";
 import { CycleDetectedError } from "../engine/Scheduler";
 import {
 	PersistCascadeCommand,
@@ -71,15 +77,6 @@ export interface TaskEditorHost {
 	close: () => void;
 }
 
-const TASK_STATUSES: TaskStatus[] = [
-	"backlog",
-	"in-progress",
-	"review",
-	"done",
-	"blocked",
-	"cancelled",
-];
-
 const TASK_PRIORITIES: TaskPriority[] = ["none", "low", "medium", "high", "urgent"];
 
 /**
@@ -124,13 +121,20 @@ export class TaskEditor {
 			this.draft = taskToDraft(existing);
 		} else {
 			const placeholderId = `${projectId}#T-pending`;
+			const priority: TaskPriority = "none";
+			const soft = eisenhowerFromPriority(priority);
 			this.draft = blankTaskDraft({
 				id: placeholderId,
 				projectId,
 				projectLink,
 				parentId,
 				filePath: "",
+				status: defaultTaskStatusId(plugin.settings.taskStatuses),
+				priority,
 			});
+			// blankTaskDraft already applies soft Eisenhower defaults; keep explicit for clarity.
+			this.draft.important = soft.important;
+			this.draft.urgent = soft.urgent;
 		}
 	}
 
@@ -219,6 +223,7 @@ export class TaskEditor {
 
 		this.addStatus();
 		this.addPriority();
+		this.addEisenhowerFlags();
 		this.addNumber("Duration (calendar days)", this.draft.durationDays, (value) => {
 			this.draft.durationDays = value;
 			if (value === 0) {
@@ -310,6 +315,53 @@ export class TaskEditor {
 		select.value = this.draft.priority;
 		select.addEventListener("change", () => {
 			this.draft.priority = select.value as TaskPriority;
+			// Soft-default Eisenhower only when the user has not set explicit flags yet.
+			if (this.draft.important == null || this.draft.urgent == null) {
+				const soft = eisenhowerFromPriority(this.draft.priority);
+				if (this.draft.important == null) this.draft.important = soft.important;
+				if (this.draft.urgent == null) this.draft.urgent = soft.urgent;
+			}
+		});
+	}
+
+	/**
+	 * Explicit Important / Urgent checkboxes for the Eisenhower matrix.
+	 * Stored as YAML `important` / `urgent`; matrix DnD updates the same fields.
+	 */
+	private addEisenhowerFlags(): void {
+		const wrap = this.rootEl!.createDiv({ cls: "pe-field pe-flag-row pe-eisenhower-flags" });
+		wrap.createEl("label", { text: "Eisenhower", cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Used by the Eisenhower matrix. New tasks soft-default from Priority; dragging a card persists these flags.",
+		});
+
+		const effective = resolveEisenhowerFlags({
+			important: this.draft.important,
+			urgent: this.draft.urgent,
+			priority: this.draft.priority,
+		});
+
+		const important = wrap.createEl("label", { cls: "pe-check-label pe-touch-target" });
+		const importantCb = important.createEl("input", { attr: { type: "checkbox" } });
+		importantCb.checked = this.draft.important ?? effective.important;
+		important.createSpan({ text: "Important" });
+		importantCb.addEventListener("change", () => {
+			this.draft.important = importantCb.checked;
+			if (this.draft.urgent == null) {
+				this.draft.urgent = effective.urgent;
+			}
+		});
+
+		const urgent = wrap.createEl("label", { cls: "pe-check-label pe-touch-target" });
+		const urgentCb = urgent.createEl("input", { attr: { type: "checkbox" } });
+		urgentCb.checked = this.draft.urgent ?? effective.urgent;
+		urgent.createSpan({ text: "Urgent" });
+		urgentCb.addEventListener("change", () => {
+			this.draft.urgent = urgentCb.checked;
+			if (this.draft.important == null) {
+				this.draft.important = effective.important;
+			}
 		});
 	}
 
@@ -339,8 +391,27 @@ export class TaskEditor {
 		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
 		wrap.createEl("label", { text: "Status", cls: "pe-label" });
 		const select = wrap.createEl("select", { cls: "pe-input pe-touch-target" });
-		for (const status of TASK_STATUSES) {
-			select.createEl("option", { text: status, attr: { value: status } });
+		const statuses = this.plugin.settings.taskStatuses;
+		const active = activeTaskStatuses(statuses);
+		const options = [...active];
+		// Keep the current (possibly archived) status selectable when editing.
+		if (
+			this.draft.status &&
+			!options.some((item) => item.id === this.draft.status)
+		) {
+			const archived = statuses.find((item) => item.id === this.draft.status);
+			options.push(
+				archived ?? {
+					id: this.draft.status,
+					label: this.draft.status,
+				},
+			);
+		}
+		for (const status of options) {
+			select.createEl("option", {
+				text: status.label,
+				attr: { value: status.id },
+			});
 		}
 		select.value = this.draft.status;
 		select.addEventListener("change", () => {
@@ -978,6 +1049,8 @@ function taskToDraft(task: Task): TaskDraft {
 		timeLogs: task.timeLogs.map((log) => ({ ...log })),
 		status: task.status,
 		priority: task.priority,
+		important: task.important,
+		urgent: task.urgent,
 		isMilestone: task.isMilestone,
 		isStageBoundary: task.isStageBoundary,
 		stageId: task.stageId,

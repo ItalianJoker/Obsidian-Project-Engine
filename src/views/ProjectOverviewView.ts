@@ -22,9 +22,8 @@
 
 import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
-import { projectStatusLabel, toWikiLink } from "../models/types";
+import { activeTaskStatuses, projectStatusLabel, toWikiLink } from "../models/types";
 import {
-	SEMPLIFICATO_LABELS,
 	createPrince2Stage,
 	ensurePrince2Registers,
 	readProjectStages,
@@ -686,9 +685,14 @@ export class ProjectOverviewView extends ItemView {
 		section.createEl("h3", { text: "Governance", cls: "pe-section-title" });
 
 		if (project.governance === "Semplificato") {
+			const columns = activeTaskStatuses(this.plugin.settings.taskStatuses);
+			const flow =
+				columns.length > 0
+					? columns.map((item) => item.label).join(" → ")
+					: "Backlog → In Progress → Review → Done";
 			section.createEl("p", {
 				cls: "pe-help",
-				text: `Linear board: ${Object.values(SEMPLIFICATO_LABELS).join(" → ")}. Open the Board view to move tasks.`,
+				text: `Linear board: ${flow}. Open the Board view to move tasks (columns are configurable in Settings).`,
 			});
 			return;
 		}

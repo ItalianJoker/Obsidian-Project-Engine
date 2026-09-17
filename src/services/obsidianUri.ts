@@ -37,7 +37,7 @@ export interface ProjectDeepLinkParams {
 	view?: ProjectDeepLinkView;
 	/**
 	 * Optional Workspace SubView when `view=workspace`
-	 * (`table` | `gantt` | `kanban`).
+	 * (`table` | `gantt` | `kanban` | `eisenhower`).
 	 */
 	mode?: WorkspaceViewMode;
 }
@@ -99,7 +99,10 @@ export function parseProjectDeepLinkParams(
 				: undefined;
 
 	const mode: WorkspaceViewMode | undefined =
-		modeRaw === "table" || modeRaw === "gantt" || modeRaw === "kanban"
+		modeRaw === "table" ||
+		modeRaw === "gantt" ||
+		modeRaw === "kanban" ||
+		modeRaw === "eisenhower"
 			? modeRaw
 			: undefined;
 
