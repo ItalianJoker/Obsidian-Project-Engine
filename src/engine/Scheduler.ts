@@ -213,10 +213,9 @@ export function buildAdjacency(tasks: readonly SchedulableTask[]): {
 			continue;
 		}
 		for (const boundary of boundaries) {
-			const boundaryStage = boundary.stageSequence;
-			if (boundaryStage == null) {
-				continue;
-			}
+			// `boundaries` is pre-filtered with `stageSequence != null`; the local
+			// non-null assertion matches that invariant (no runtime null path).
+			const boundaryStage = boundary.stageSequence!;
 			if (task.stageSequence > boundaryStage && task.id !== boundary.id) {
 				addEdge(boundary.id, task.id);
 			}

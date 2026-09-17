@@ -2,7 +2,7 @@
 
 Obsidian.md plugin for Project Portfolio, Governance, and Delivery Management in Markdown.
 
-Version **1.0.3** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
+Version **1.0.5** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
 
 Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT); domain features and branding remain Projects Engine. See `NOTICE`.
 
@@ -193,7 +193,7 @@ Campi task rilevanti: `blocked_by`, `blocking`, `start_date`, `end_date`, `durat
 
 Requisiti: Obsidian **1.5.0+** (desktop e mobile). Node.js 18+ solo per build da sorgente.
 
-Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.0.3`
+Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.0.5`
 
 #### 1. Installazione utente (copia dei file)
 
@@ -246,6 +246,24 @@ Dopo la sync del vault, abilita **Projects Engine anche sull’app mobile** (Imp
 - Gantt: niente resize barre via drag; click apre l’editor (zoom a preset Day/Week/Month)
 - Kanban DnD: su alcuni WebView iOS usare l’handle; i pulsanti status restano disponibili
 - Undo/Redo a profondità limitata (stack in memoria)
+
+### Dipendenze e stack librerie
+
+| Pacchetto | Ruolo | Note |
+| --- | --- | --- |
+| `obsidian` (dev) | Tipi API host | Externalizzato da esbuild; runtime fornito da Obsidian |
+| `esbuild` (dev) | Bundle produzione `main.js` | Nessun builtin Node nel bundle |
+| `typescript` (dev) | Typecheck (`tsc --noEmit`) | `noUnusedLocals` / `noUnusedParameters` |
+| `vitest` (dev) | Suite moduli puri | Stub `tests/mocks/obsidian.ts` |
+
+Nessuna dipendenza runtime npm: il plugin usa solo l’API Obsidian e API web native.
+
+### Contesto AI e linee guida sviluppatori
+
+- **Architettura:** Entity-as-a-Note → Indexer / Scheduler puri → viste Obsidian (`views/`, `ui/`). Scrivere solo via `vault.process`.
+- **Invarianti:** chiavi YAML, default Settings, firme pubbliche e side-effect I/O invariati salvo migrazione esplicita.
+- **Policy librerie:** niente nuove dipendenze senza necessità; preferire API native; non rimuovere export “orfani” se sono superficie pubblica / migrazione.
+- **Test:** `npm test` deve restare verde; estendere Vitest sui moduli puri, non indebolire assertion.
 
 ---
 
@@ -436,7 +454,7 @@ Scheduler-relevant task fields: `blocked_by`, `blocking`, `start_date`, `end_dat
 
 Requirements: Obsidian **1.5.0+** (desktop and mobile). Node.js 18+ only for from-source builds.
 
-Id: `projects-engine` · Name: **Projects Engine** · Version: `1.0.3`
+Id: `projects-engine` · Name: **Projects Engine** · Version: `1.0.5`
 
 #### 1. End-user install (copy the plugin files)
 
@@ -489,6 +507,35 @@ After vault sync, **enable Projects Engine on the mobile app as well** (Settings
 - Gantt: no bar drag-resize; click opens the editor (preset Day/Week/Month zoom)
 - Kanban DnD: some iOS WebViews need the handle; status buttons remain available
 - Undo/Redo is depth-limited (in-memory stack)
+
+### Dependencies & Libraries Stack
+
+| Package | Role | Notes |
+| --- | --- | --- |
+| `obsidian` (dev) | Host API types | Externalised by esbuild; runtime provided by Obsidian |
+| `esbuild` (dev) | Production `main.js` bundle | No Node builtins in the browser bundle |
+| `typescript` (dev) | Typecheck (`tsc --noEmit`) | `noUnusedLocals` / `noUnusedParameters` |
+| `vitest` (dev) | Pure-module test suite | Stub at `tests/mocks/obsidian.ts` |
+
+No runtime npm dependencies — the plugin uses the Obsidian API and native web APIs only.
+
+### Quickstart
+
+```bash
+npm install
+npm test
+npm run build
+```
+
+Copy `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/projects-engine/`, reload Obsidian, enable **Projects Engine**.
+
+### AI Context & Developer Guidelines
+
+- **Architecture:** Entity-as-a-Note → pure Indexer / Scheduler → Obsidian views (`views/`, `ui/`). Persist only via `vault.process`.
+- **Invariants:** YAML keys, Settings defaults, public signatures, and I/O side-effects stay identical unless an explicit migration ships.
+- **Library policy:** no new deps without need; prefer native APIs; do not blind-delete unused exports that may be public / migration surface (Watchlist).
+- **Tests:** keep `npm test` 100% green; extend Vitest on pure modules; never weaken assertions.
+- **Safety-first:** empty branches / unreachable guards only when proven; dynamic/UI stubs stay on the Watchlist.
 
 ### License
 

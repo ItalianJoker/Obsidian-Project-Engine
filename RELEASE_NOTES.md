@@ -2,9 +2,34 @@
 
 ## 1.0.5 — PRINCE2 operational registers
 
-**IT:** Registri operativi PRINCE2 (Risk, Issue & Change, Quality, Lessons) con template lean nello scaffold; widget Overview + toggle in Settings per mostrarli/nasconderli.
+**IT:** Registri operativi PRINCE2 (Risk, Issue & Change, Quality, Lessons) con template lean nello scaffold; widget Overview + toggle in Settings per mostrarli/nasconderli. Pass safety-first su baseline 1.0.5 (cleanup zero-regressione, docs stack/AI, copertura Vitest).
 
-**EN:** PRINCE2 operational registers (Risk, Issue & Change, Quality, Lessons) with lean scaffold templates; Overview widgets + Settings toggle to show/hide them.
+**EN:** PRINCE2 operational registers (Risk, Issue & Change, Quality, Lessons) with lean scaffold templates; Overview widgets + Settings toggle to show/hide them. Safety-first pass on the 1.0.5 baseline (zero-regression cleanup, deps/AI docs, Vitest coverage).
+
+### Performance
+
+- No behavioural runtime changes. Scheduler stage-boundary adjacency drops an unreachable null guard after the existing prefilter (identical edges).
+
+### Dependencies
+
+- Stack unchanged: `obsidian`, `esbuild`, `typescript`, `vitest` (dev-only). **No removals**; no new runtime deps. Removable candidates: **none proven safe**.
+
+### Refactoring
+
+- `buildAdjacency` implicit-boundary loop: remove dead `boundaryStage == null` continue (filter already guarantees non-null).
+- README version strings aligned to **1.0.5**; Dependencies & Libraries Stack + AI Context guidelines (IT/EN).
+
+### Tests
+
+- Extended Vitest: task subtree collect / confirm copy; Eisenhower soft-defaults; `asOperationalKind` guard. Existing suites remain green (no weakened assertions).
+
+### Documentation
+
+- README Quickstart + library/AI policy tables; RELEASE_NOTES Keep a Changelog sections for this patch; in-app release notes summary updated.
+
+### Breaking Changes
+
+- **None.**
 
 ---
 
