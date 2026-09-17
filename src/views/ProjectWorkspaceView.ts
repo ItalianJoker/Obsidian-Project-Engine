@@ -28,8 +28,23 @@ export const WORKSPACE_VIEW_TYPE = "projects-engine-workspace";
 
 /**
  * Delivery modes hosted as SubViews (obsidian-pm ViewMode analogue).
+ * Task-only surfaces — Table / Gantt / Board. Project home is {@link ProjectChromeMode}
+ * `"dashboard"` (Overview leaf), not a Workspace SubView.
  */
 export type WorkspaceViewMode = "table" | "gantt" | "kanban";
+
+/**
+ * Full project chrome switcher: Dashboard (home) plus the three task views.
+ * Order in the UI: Dashboard | Table | Gantt | Board.
+ */
+export type ProjectChromeMode = "dashboard" | WorkspaceViewMode;
+
+/**
+ * True when `mode` is a Workspace SubView (not the project Dashboard / Overview).
+ */
+export function isWorkspaceViewMode(mode: ProjectChromeMode): mode is WorkspaceViewMode {
+	return mode === "table" || mode === "gantt" || mode === "kanban";
+}
 
 interface WorkspaceState {
 	filePath?: string;
@@ -244,6 +259,14 @@ export class ProjectWorkspaceView extends ItemView {
 			searchText: this.filters.text,
 			filterAll: !filterActive,
 			onModeChange: (mode) => {
+				// Dashboard is the Overview leaf — leave Workspace when selected.
+				if (mode === "dashboard") {
+					void this.plugin.router.openOverview(project.file.path, this.leaf);
+					return;
+				}
+				if (!isWorkspaceViewMode(mode)) {
+					return;
+				}
 				this.mode = mode;
 				void this.leaf.setViewState({
 					type: WORKSPACE_VIEW_TYPE,
@@ -285,6 +308,7 @@ export class ProjectWorkspaceView extends ItemView {
 							parent.addClass("pe-chrome-extra--gantt-host");
 						}
 					: undefined,
+			showSearchRow: true,
 		});
 
 		this.filterEl.empty();

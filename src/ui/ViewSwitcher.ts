@@ -1,5 +1,8 @@
 /**
- * Segmented icon switcher for Table / Gantt / Board modes.
+ * Segmented icon switcher for project chrome modes.
+ *
+ * Used for **Dashboard | Table | Gantt | Board** (v1.0.3+). Dashboard is the
+ * project home (Overview); the other three are task-only Workspace SubViews.
  *
  * UX pattern adapted from [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm)
  * `packages/ui/src/primitives/ViewSwitcher.ts`

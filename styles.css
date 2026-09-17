@@ -1141,8 +1141,15 @@
 	margin: 0;
 }
 
-.pe-overview-summary {
+.pe-overview-summary,
+.pe-overview-metrics {
 	padding: 8px var(--pe-overview-pad-x, 20px) 4px;
+}
+
+.pe-overview-status {
+	padding: 4px var(--pe-overview-pad-x, 20px) 8px;
+	border-top: 1px solid var(--background-modifier-border);
+	margin-top: 4px;
 }
 
 .pe-overview-tasks,
@@ -1155,6 +1162,8 @@
 
 .pe-overview-tasks .pe-section-title,
 .pe-overview-governance .pe-section-title,
+.pe-overview-status .pe-section-title,
+.pe-overview-metrics .pe-section-title,
 .pe-overview-entities .pe-section-title {
 	margin: 12px 0 10px;
 	font-size: 0.85rem;
@@ -1162,6 +1171,10 @@
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 	color: var(--text-muted);
+}
+
+.pe-overview-task-search {
+	margin: 0 0 8px;
 }
 
 .pe-metric-strip {

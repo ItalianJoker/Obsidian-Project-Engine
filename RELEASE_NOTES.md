@@ -1,5 +1,13 @@
 # Release notes — Projects Engine
 
+## 1.0.3 — Dashboard as first-class switcher surface
+
+**IT:** Tab **Dashboard** a sinistra di Table nello switcher progetto (**Dashboard | Table | Gantt | Board**). Table/Gantt/Board restano viste solo-task; Dashboard è la home Overview. Ordine sezioni Dashboard: **Governance → Status → Task summary → search + task list → Documents → Linked Entities → Actions**.
+
+**EN:** **Dashboard** tab left of Table in the project chrome switcher (**Dashboard | Table | Gantt | Board**). Table/Gantt/Board stay task-only; Dashboard is the Overview home. Dashboard section order: **Governance → Status → Task summary → search + task list → Documents → Linked Entities → Actions**.
+
+---
+
 ## 1.0.2 — Create note, context menu, Edit spacing
 
 **IT:** Da Overview → Documents: **New note** in Documents/Initiation/… con wikilink Graph (`project` YAML + sezione Links); menu contestuale sulle note; spacing Edit Project più arioso.

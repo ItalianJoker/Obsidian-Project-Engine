@@ -7,6 +7,13 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.0.3
+
+### Features
+
+- **Dashboard switcher tab** — chrome order **Dashboard | Table | Gantt | Board**. Dashboard is the project Overview home; Table / Gantt / Board remain task-only Workspace views. Returning from Board/Gantt via Dashboard restores the project home (not only the task table).
+- **Dashboard section order** — Governance → Status → Task summary → search + task list → Documents → Linked Entities → Actions.
+
 ## 1.0.2
 
 ### Features
