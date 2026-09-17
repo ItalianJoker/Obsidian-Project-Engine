@@ -3,7 +3,8 @@
  *
  * PRINCE2 end-of-stage milestones are written as task notes with
  * `is_stage_boundary: true` so {@link Scheduler} treats them as formal blocks.
- * Register templates are Entity-as-a-Note files under the project folder.
+ * Formal register **index** notes live under Registers/; operational **entry**
+ * notes (Risk / Issue / Quality) are created on demand via `registerIo`.
  */
 
 import type { TFile, Vault } from "obsidian";
@@ -17,7 +18,11 @@ import type {
 	WikiLink,
 } from "../models/types";
 import { toWikiLink } from "../models/types";
-import { buildMarkdownNote, splitFrontmatter } from "./frontmatter";
+import { buildGraphLinksSection, buildMarkdownNote, splitFrontmatter } from "./frontmatter";
+import {
+	buildOperationalRegisterIndexMarkdown,
+	isOperationalRegisterKind,
+} from "./registerIo";
 import {
 	blankTaskDraft,
 	buildTaskMarkdown,
@@ -248,6 +253,10 @@ function buildRegisterMarkdown(
 	projectLink: WikiLink,
 	projectName: string,
 ): string {
+	if (isOperationalRegisterKind(kind)) {
+		return buildOperationalRegisterIndexMarkdown(kind, title, projectLink, projectName);
+	}
+
 	const data: Record<string, unknown> = {
 		pe_type: "prince2-register",
 		register_kind: kind,
@@ -287,41 +296,21 @@ function buildRegisterMarkdown(
 				"## Major risks",
 				"",
 				"",
-			].join("\n");
-			break;
-		case "risk-register":
-			body += [
-				"| ID | Description | Probability | Impact | Proximity | Response | Owner | Status |",
-				"| --- | --- | --- | --- | --- | --- | --- | --- |",
-				"| R-01 |  | medium | medium |  |  |  | open |",
-				"",
-			].join("\n");
-			break;
-		case "issue-change-log":
-			body += [
-				"| ID | Type | Description | Raised by | Raised on | Status | Decision |",
-				"| --- | --- | --- | --- | --- | --- | --- |",
-				"| I-01 | issue |  |  |  | open |  |",
-				"",
-			].join("\n");
-			break;
-		case "quality-register":
-			body += [
-				"| ID | Product | Method | Reviewer | Planned | Actual | Result |",
-				"| --- | --- | --- | --- | --- | --- | --- |",
-				"| Q-01 |  |  |  |  |  | pending |",
-				"",
+				buildGraphLinksSection([{ label: "Project", wikiLink: projectLink }]),
 			].join("\n");
 			break;
 		case "work-package":
 			body += [
 				"## Work packages",
 				"",
-				"| ID | Name | Assignee | Estimate (md) | Status |",
-				"| --- | --- | --- | --- | --- |",
-				"| WP-01 |  |  |  | planned |",
+				"Create work-package notes or link stage work packages from the project note.",
+				"Avoid empty stub rows — add packages when work is authorised.",
 				"",
+				buildGraphLinksSection([{ label: "Project", wikiLink: projectLink }]),
 			].join("\n");
+			break;
+		default:
+			body += buildGraphLinksSection([{ label: "Project", wikiLink: projectLink }]);
 			break;
 	}
 

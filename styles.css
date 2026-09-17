@@ -1154,14 +1154,20 @@
 
 .pe-overview-tasks,
 .pe-overview-governance,
+.pe-overview-registers,
 .pe-overview-entities {
 	padding: 4px var(--pe-overview-pad-x, 20px) 8px;
 	border-top: 1px solid var(--background-modifier-border);
 	margin-top: 4px;
 }
 
+.pe-overview-registers.is-hidden {
+	display: none;
+}
+
 .pe-overview-tasks .pe-section-title,
 .pe-overview-governance .pe-section-title,
+.pe-overview-registers .pe-section-title,
 .pe-overview-status .pe-section-title,
 .pe-overview-metrics .pe-section-title,
 .pe-overview-entities .pe-section-title {
@@ -1171,6 +1177,90 @@
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 	color: var(--text-muted);
+}
+
+.pe-register-widgets {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 4px 0 8px;
+}
+
+.pe-register-widget {
+	padding: 10px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-secondary);
+}
+
+.pe-register-widget-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 6px;
+}
+
+.pe-register-widget-title {
+	margin: 0;
+	font-size: 0.95rem;
+	font-weight: 600;
+}
+
+.pe-register-widget-counts {
+	font-size: 0.8rem;
+	color: var(--text-muted);
+}
+
+.pe-register-widget-actions {
+	margin-bottom: 8px;
+}
+
+.pe-register-entry-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.pe-register-entry-empty {
+	font-size: 0.85rem;
+	color: var(--text-muted);
+	padding: 4px 0;
+}
+
+.pe-register-entry-link {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	width: 100%;
+	text-align: left;
+	padding: 8px 10px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-normal);
+	cursor: pointer;
+	min-height: 44px;
+}
+
+.pe-register-entry-link:hover,
+.pe-register-entry-link:focus-visible {
+	background: var(--background-modifier-hover);
+}
+
+.pe-register-entry-meta {
+	font-size: 0.75rem;
+	color: var(--text-muted);
+}
+
+.pe-register-entry-name {
+	font-size: 0.9rem;
+	font-weight: 500;
 }
 
 .pe-overview-task-search {

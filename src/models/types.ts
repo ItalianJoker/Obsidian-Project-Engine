@@ -60,7 +60,9 @@ export type EntityType =
 	| "task"
 	| "work-package"
 	| "prince2-stage"
-	| "prince2-register";
+	| "prince2-register"
+	/** Single Risk / Issue / Quality row note under Registers/. */
+	| "prince2-register-entry";
 
 /**
  * Governance model selected when a project is created.
@@ -626,6 +628,9 @@ export interface BusinessCase {
 
 /**
  * One row of the Risk Register.
+ *
+ * @remarks YAML `pe_type: prince2-register-entry`, `register_kind: risk-register`.
+ * Stored as its own Markdown note under the project Registers folder.
  */
 export interface RiskRegisterEntry {
 	id: string;
@@ -633,6 +638,10 @@ export interface RiskRegisterEntry {
 	description: string;
 	probability: "low" | "medium" | "high";
 	impact: "low" | "medium" | "high";
+	/** Combined attention level for Overview badges (`low` | `medium` | `high`). */
+	severity?: "low" | "medium" | "high";
+	/** Calendar date the risk was logged. @remarks YAML: `date` */
+	date?: IsoDate;
 	proximity?: IsoDate;
 	response: string;
 	owner?: WikiLink;
@@ -641,6 +650,8 @@ export interface RiskRegisterEntry {
 
 /**
  * One row of the Issue and Change Log.
+ *
+ * @remarks YAML `pe_type: prince2-register-entry`, `register_kind: issue-change-log`.
  */
 export interface IssueChangeLogEntry {
 	id: string;
@@ -649,12 +660,18 @@ export interface IssueChangeLogEntry {
 	description: string;
 	raisedBy?: WikiLink;
 	raisedOn: IsoDate;
+	/** Attention level for Overview widgets. @remarks YAML: `priority` */
+	priority?: "low" | "medium" | "high";
+	/** Alias of raised-on for generic recent sorting. @remarks YAML: `date` */
+	date?: IsoDate;
 	status: "open" | "in-review" | "approved" | "rejected" | "closed";
 	decision?: string;
 }
 
 /**
  * One row of the Quality Register.
+ *
+ * @remarks YAML `pe_type: prince2-register-entry`, `register_kind: quality-register`.
  */
 export interface QualityRegisterEntry {
 	id: string;
@@ -664,6 +681,10 @@ export interface QualityRegisterEntry {
 	reviewer?: WikiLink;
 	plannedDate?: IsoDate;
 	actualDate?: IsoDate;
+	/** Mirror of result for generic widgets. @remarks YAML: `status` */
+	status?: "pending" | "pass" | "fail";
+	/** Logged / planned date for recent sorting. @remarks YAML: `date` */
+	date?: IsoDate;
 	result?: "pass" | "fail" | "pending";
 }
 
@@ -821,9 +842,16 @@ export interface ProjectsEngineSettings {
 	scaffoldDocumentsFolder: string;
 	/**
 	 * Relative Registers folder for PRINCE2 formal docs (under the project folder).
-	 * When empty, falls back to `PRINCE2`.
+	 * When empty, falls back to `Registers`.
 	 */
 	scaffoldRegistersFolder: string;
+	/**
+	 * When true (default), PRINCE2 project Overview/Dashboard shows Risk /
+	 * Issue & Change / Quality register widgets (counts, recent entries, quick-add).
+	 * When false, widgets are hidden; register notes remain in Registers/ and the
+	 * Documents tree.
+	 */
+	showPrince2RegisterWidgets: boolean;
 	/**
 	 * Hours that constitute one **management day**.
 	 * Default **8**. Used for budget days ↔ task hours conversion.
@@ -906,6 +934,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	scaffoldInitiationFolder: "Initiation",
 	scaffoldDocumentsFolder: "Documents",
 	scaffoldRegistersFolder: "Registers",
+	showPrince2RegisterWidgets: true,
 	hoursPerManday: 8,
 	indexerDebounceMs: 250,
 	projectSurface: "overview",

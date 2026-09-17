@@ -354,6 +354,8 @@ export default class ProjectsEnginePlugin extends Plugin {
 		this.settings.pullForwardOnEarlyFinish = this.settings.pullForwardOnEarlyFinish === true;
 		this.settings.saveTaskOnClose = this.settings.saveTaskOnClose !== false;
 		this.settings.showReleaseNotes = this.settings.showReleaseNotes !== false;
+		this.settings.showPrince2RegisterWidgets =
+			this.settings.showPrince2RegisterWidgets !== false;
 		this.settings.scaffoldTasksFolder = this.settings.scaffoldTasksFolder || "Tasks";
 		this.settings.scaffoldInitiationFolder =
 			this.settings.scaffoldInitiationFolder || "Initiation";

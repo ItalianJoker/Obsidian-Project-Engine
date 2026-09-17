@@ -161,6 +161,21 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				});
 			});
+
+		new Setting(containerEl)
+			.setName("Show PRINCE2 register widgets")
+			.setDesc(
+				"On PRINCE2 project Overview/Dashboard, show Risk, Issue & Change, and Quality widgets (counts, recent entries, quick-add). Turn off if you prefer the Documents tree only — register notes stay in Registers/ either way.",
+			)
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.showPrince2RegisterWidgets !== false)
+					.onChange(async (value) => {
+						this.plugin.settings.showPrince2RegisterWidgets = value;
+						await this.plugin.saveSettings();
+						this.plugin.refreshOpenViews();
+					});
+			});
 	}
 
 	/** Date & time — PE default DD/MM/YYYY + 24h. */
