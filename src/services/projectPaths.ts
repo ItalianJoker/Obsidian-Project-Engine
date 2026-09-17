@@ -31,11 +31,16 @@ export function sanitiseProjectPathSegment(value: string): string {
 }
 
 /**
- * Folder basename: `{ProjectID} - {ProjectName}`.
+ * Folder basename: `{ProjectID} - {ProjectName}` after segment sanitisation.
+ *
+ * @remarks {@link sanitiseProjectPathSegment} normalises every `-` to ` - `,
+ * so ids like `PRJ-2026-001` become `PRJ - 2026 - 001` in the folder name.
+ * That behaviour is intentional for v1 filesystem safety — do not “fix” without
+ * a migration for existing vault folders.
  *
  * @example
  * `projectFolderBasename("PRJ-2026-001", "Cloud Migration")`
- * → `"PRJ-2026-001 - Cloud Migration"`
+ * → `"PRJ - 2026 - 001 - Cloud Migration"`
  */
 export function projectFolderBasename(projectId: string, projectName: string): string {
 	const id = sanitiseProjectPathSegment(projectId) || "PROJECT";

@@ -158,6 +158,11 @@ export class EntityIndexer {
 		return this.projectIds.has(id);
 	}
 
+	/**
+	 * Resolve indexed Entity-as-a-Note rows for fuzzy autocomplete.
+	 * Skips catalogue entries whose vault path no longer resolves to a `TFile`
+	 * (deleted/renamed between rebuild and suggest open — Sync race).
+	 */
 	public list(type: EntityType): IndexedEntity[] {
 		const toIndexed = (typeInner: EntityType, name: string, filePath: string): IndexedEntity | null => {
 			const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -185,6 +190,7 @@ export class EntityIndexer {
 		return rows;
 	}
 
+	/** Cancel a pending debounced rebuild (call from plugin `onunload`). */
 	public cancel(): void {
 		this.rebuildDebounced.cancel();
 	}

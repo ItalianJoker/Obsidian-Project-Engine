@@ -5,6 +5,9 @@
 
 /**
  * True for `http:` / `https:` URLs with a host.
+ *
+ * @param value - Raw user input (trimmed before parse). Empty / non-URL → false.
+ * @returns Whether the browser `URL` parser accepts it as http(s) with a hostname.
  */
 export function isValidHttpUrl(value: string): boolean {
 	try {

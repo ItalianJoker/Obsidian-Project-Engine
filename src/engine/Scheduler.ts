@@ -183,9 +183,8 @@ export function buildAdjacency(tasks: readonly SchedulableTask[]): {
 	}
 
 	const addEdge = (from: TaskId, to: TaskId): void => {
-		if (from === to) {
-			// A self-loop is already a cycle; record it as an edge so DFS finds it.
-		}
+		// Self-loops (from === to) are recorded like any other edge so DFS cycle
+		// detection surfaces them; do not special-case or skip them.
 		if (!adjacency.has(from)) {
 			throw new UnknownTaskError(from);
 		}
@@ -399,6 +398,11 @@ function sweepDates(
 ): Map<TaskId, ScheduledDates> {
 	const byId = new Map(tasks.map((task) => [task.id, task] as const));
 	const dates = new Map<TaskId, ScheduledDates>();
+	// Precompute once — identical filter to the former per-task scan inside
+	// materialiseImplicitBlockers; avoids O(n²) allocations on large graphs.
+	const boundaries = tasks.filter(
+		(task) => task.isStageBoundary && task.stageSequence != null,
+	);
 
 	for (const id of order) {
 		const task = byId.get(id);
@@ -416,7 +420,7 @@ function sweepDates(
 		// so they already appear in blockedBy-equivalent adjacency. We still
 		// honour explicit blockedBy here; implicit edges are materialised as
 		// extra blockedBy clones for the date sweep.
-		const withImplicit = materialiseImplicitBlockers(task, tasks);
+		const withImplicit = materialiseImplicitBlockers(task, boundaries);
 		const start = earliestStart(withImplicit, dates, floor);
 		const end = endFromStart(start, task.durationDays);
 		dates.set(id, { taskId: id, startDate: start, endDate: end });
@@ -428,17 +432,21 @@ function sweepDates(
 /**
  * Copy a task and append implicit stage-boundary blockers onto `blockedBy`
  * so {@link earliestStart} does not need a second code path.
+ *
+ * @param boundaries - Pre-filtered `isStageBoundary` tasks with a stage sequence
+ *   (same predicate as {@link buildAdjacency}'s implicit-edge pass).
  */
 function materialiseImplicitBlockers(
 	task: SchedulableTask,
-	all: readonly SchedulableTask[],
+	boundaries: readonly SchedulableTask[],
 ): SchedulableTask {
 	if (task.stageSequence == null) {
 		return task;
 	}
 	const extra: TaskId[] = [];
-	for (const other of all) {
-		if (!other.isStageBoundary || other.stageSequence == null) {
+	for (const other of boundaries) {
+		// Defensive: callers should already filter, but null sequence must not block.
+		if (other.stageSequence == null) {
 			continue;
 		}
 		if (task.stageSequence > other.stageSequence && !task.blockedBy.includes(other.id)) {
@@ -645,14 +653,17 @@ export class CommandStack {
 		return true;
 	}
 
+	/** True when at least one command can be undone. */
 	public get canUndo(): boolean {
 		return this.undoStack.length > 0;
 	}
 
+	/** True when at least one undone command can be re-applied. */
 	public get canRedo(): boolean {
 		return this.redoStack.length > 0;
 	}
 
+	/** Drop both stacks (e.g. after closing a project workspace). */
 	public clear(): void {
 		this.undoStack.length = 0;
 		this.redoStack.length = 0;

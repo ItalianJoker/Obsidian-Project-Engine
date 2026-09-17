@@ -13,6 +13,11 @@
 
 /**
  * Interpolate `pattern` with the given counter and clock.
+ *
+ * @param pattern - Template containing `YYYY`/`YY`/`MM`/`DD` and optional `#` runs.
+ * @param counter - Non-negative sequence; negative values are floored to 0 before padding.
+ * @param now - Clock for date tokens (UTC components). Inject in tests.
+ * @returns Interpolated id string (not uniqueness-checked — see {@link nextAvailableProjectId}).
  */
 export function formatProjectId(pattern: string, counter: number, now: Date = new Date()): string {
 	const year = now.getUTCFullYear().toString().padStart(4, "0");
