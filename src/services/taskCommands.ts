@@ -132,6 +132,48 @@ export class PersistStatusCommand implements EngineCommand {
 }
 
 /**
+ * Snapshot + restore Eisenhower `important` / `urgent` flags (matrix quadrant moves).
+ * Always writes explicit booleans so soft priority inference is replaced by persisted fields.
+ */
+export class PersistEisenhowerCommand implements EngineCommand {
+	public readonly description: string;
+
+	constructor(
+		private readonly vault: Vault,
+		private readonly file: TFile,
+		private readonly previous: { important: boolean | null; urgent: boolean | null },
+		private readonly next: { important: boolean; urgent: boolean },
+	) {
+		this.description = `Eisenhower → important=${next.important}, urgent=${next.urgent}`;
+	}
+
+	public execute(): void {
+		void this.write(this.next.important, this.next.urgent);
+	}
+
+	public undo(): void {
+		void this.write(this.previous.important, this.previous.urgent);
+	}
+
+	private async write(important: boolean | null, urgent: boolean | null): Promise<void> {
+		await processNote(this.vault, this.file, (current) => {
+			const { data, body } = splitFrontmatter(current);
+			if (important == null) {
+				delete data.important;
+			} else {
+				data.important = important;
+			}
+			if (urgent == null) {
+				delete data.urgent;
+			} else {
+				data.urgent = urgent;
+			}
+			return buildMarkdownNote(data, body);
+		});
+	}
+}
+
+/**
  * Build reverse `blocking` maps after changing a dependent's `blocked_by`.
  */
 export function recomputeBlockingMaps(

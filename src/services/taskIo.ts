@@ -17,7 +17,7 @@ import type {
 	TimeLog,
 	WikiLink,
 } from "../models/types";
-import { toWikiLink, wikiLinkTarget } from "../models/types";
+import { eisenhowerFromPriority, toWikiLink, wikiLinkTarget } from "../models/types";
 import { buildMarkdownNote, splitFrontmatter } from "./frontmatter";
 import {
 	computeEffortRollup,
@@ -57,6 +57,12 @@ export interface TaskDraft {
 	timeLogs: TimeLog[];
 	status: TaskStatus;
 	priority: TaskPriority;
+	/**
+	 * Explicit Eisenhower flags (`null` = not yet written to YAML).
+	 * New drafts soft-default from {@link priority} via {@link eisenhowerFromPriority}.
+	 */
+	important: boolean | null;
+	urgent: boolean | null;
 	isMilestone: boolean;
 	isStageBoundary: boolean;
 	stageId?: string;
@@ -100,7 +106,12 @@ export function blankTaskDraft(args: {
 	filePath: string;
 	stageId?: string;
 	stageSequence?: number;
+	/** Default status id from Settings (falls back to `"backlog"`). */
+	status?: TaskStatus;
+	priority?: TaskPriority;
 }): TaskDraft {
+	const priority = args.priority ?? "none";
+	const eisenhower = eisenhowerFromPriority(priority);
 	return {
 		id: args.id,
 		title: "",
@@ -117,8 +128,10 @@ export function blankTaskDraft(args: {
 		durationDays: 1,
 		estimateHours: 0,
 		timeLogs: [],
-		status: "backlog",
-		priority: "none",
+		status: args.status ?? "backlog",
+		priority,
+		important: eisenhower.important,
+		urgent: eisenhower.urgent,
 		isMilestone: false,
 		isStageBoundary: false,
 		stageId: args.stageId,
@@ -178,8 +191,10 @@ export function parseTaskNote(
 		actualHours: rollup.actualHours,
 		remainingHours: rollup.remainingHours,
 		timeLogs,
-		status: (typeof data.status === "string" ? data.status : "backlog") as TaskStatus,
+		status: parseTaskStatus(data.status),
 		priority: parsePriority(data.priority),
+		important: readOptionalBoolean(data.important),
+		urgent: readOptionalBoolean(data.urgent),
 		isMilestone: data.is_milestone === true,
 		isStageBoundary: data.is_stage_boundary === true,
 		stageId: typeof data.stage_id === "string" ? data.stage_id : undefined,
@@ -227,6 +242,14 @@ export function buildTaskMarkdown(draft: TaskDraft, hoursPerManday: number): str
 		is_stage_boundary: draft.isStageBoundary,
 		custom_fields: draft.customFields,
 	};
+	// Persist Eisenhower flags whenever the draft has an explicit boolean
+	// (new tasks soft-default from priority; matrix drags always set both).
+	if (draft.important != null) {
+		frontmatter.important = draft.important;
+	}
+	if (draft.urgent != null) {
+		frontmatter.urgent = draft.urgent;
+	}
 	if (draft.stageId) frontmatter.stage_id = draft.stageId;
 	if (draft.stageSequence != null) frontmatter.stage_sequence = draft.stageSequence;
 	if (draft.workPackageId) frontmatter.work_package_id = draft.workPackageId;
@@ -362,6 +385,28 @@ function parsePriority(raw: unknown): TaskPriority {
 		return raw as TaskPriority;
 	}
 	return "none";
+}
+
+/**
+ * Accept any non-empty string status (Settings-driven columns).
+ * Empty / missing → `"backlog"` for graceful migration of older notes.
+ */
+function parseTaskStatus(raw: unknown): TaskStatus {
+	if (typeof raw === "string" && raw.trim()) {
+		return raw.trim();
+	}
+	return "backlog";
+}
+
+/**
+ * Parse an optional YAML boolean. Missing / non-boolean → `null` so callers
+ * can soft-infer Eisenhower placement without rewriting the note.
+ */
+function readOptionalBoolean(raw: unknown): boolean | null {
+	if (raw === true || raw === false) {
+		return raw;
+	}
+	return null;
 }
 
 function readStringArray(raw: unknown): string[] {

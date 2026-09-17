@@ -266,6 +266,7 @@ export default class ProjectsEnginePlugin extends Plugin {
 			...DEFAULT_SETTINGS,
 			...saved,
 			projectStatuses: DEFAULT_SETTINGS.projectStatuses.map((item) => ({ ...item })),
+			taskStatuses: DEFAULT_SETTINGS.taskStatuses.map((item) => ({ ...item })),
 			customFieldSchemas: [],
 		};
 		if (saved?.customFieldSchemas && Array.isArray(saved.customFieldSchemas)) {
@@ -287,6 +288,24 @@ export default class ProjectsEnginePlugin extends Plugin {
 				...item,
 			}));
 		}
+		if (saved?.taskStatuses && Array.isArray(saved.taskStatuses) && saved.taskStatuses.length > 0) {
+			this.settings.taskStatuses = saved.taskStatuses
+				.filter((item) => item && typeof item.id === "string" && typeof item.label === "string")
+				.map((item) => ({
+					id: item.id.trim(),
+					label: item.label.trim() || item.id,
+					color: typeof item.color === "string" ? item.color : undefined,
+					archived: item.archived === true,
+				}))
+				.filter((item) => item.id.length > 0);
+		} else {
+			this.settings.taskStatuses = DEFAULT_SETTINGS.taskStatuses.map((item) => ({ ...item }));
+		}
+		if (this.settings.taskStatuses.length === 0) {
+			this.settings.taskStatuses = DEFAULT_SETTINGS.taskStatuses.map((item) => ({
+				...item,
+			}));
+		}
 		if (this.settings.projectSurface !== "workspace") {
 			this.settings.projectSurface = "overview";
 		}
@@ -295,7 +314,8 @@ export default class ProjectsEnginePlugin extends Plugin {
 		}
 		if (
 			this.settings.defaultView !== "gantt" &&
-			this.settings.defaultView !== "kanban"
+			this.settings.defaultView !== "kanban" &&
+			this.settings.defaultView !== "eisenhower"
 		) {
 			this.settings.defaultView = "table";
 		}

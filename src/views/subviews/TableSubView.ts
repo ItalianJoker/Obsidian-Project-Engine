@@ -8,12 +8,16 @@
 
 import { Notice, setIcon, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
-import type { SemplificatoStatus, Task, TaskId, TaskPriority, TaskStatus } from "../../models/types";
+import {
+	taskStatusLabel as resolveTaskStatusLabel,
+	type Task,
+	type TaskId,
+	type TaskPriority,
+	type TaskStatus,
+	type TaskStatusOption,
+} from "../../models/types";
 import { toWikiLink, wikiLinkTarget } from "../../models/types";
 import { formatDisplayDateTime, formatDuePill, isOverdue, effectiveDue } from "../../services/dateFormat";
-import {
-	SEMPLIFICATO_LABELS,
-} from "../../services/governance";
 import {
 	collectTaskSubtreeIds,
 	deleteTaskConfirmMessage,
@@ -204,8 +208,8 @@ export class TableSubView implements SubView {
 		});
 
 		const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
-		const statusLabel = taskStatusLabel(task.status);
-		const statusColor = statusColorVar(task.status);
+		const statusLabel = taskStatusLabel(task.status, this.props.plugin.settings.taskStatuses);
+		const statusColor = statusColorVar(task.status, this.props.plugin.settings.taskStatuses);
 		const statusChip = statusTd.createSpan({
 			text: statusLabel,
 			cls: `pe-status-chip pe-status-chip--task pe-status--${task.status}`,
@@ -355,16 +359,16 @@ function groupByParent(tasks: Task[]): Map<TaskId | null, Task[]> {
 	return byParent;
 }
 
-function taskStatusLabel(status: TaskStatus): string {
-	if (status in SEMPLIFICATO_LABELS) {
-		return SEMPLIFICATO_LABELS[status as SemplificatoStatus];
-	}
-	if (status === "blocked") return "Blocked";
-	if (status === "cancelled") return "Cancelled";
-	return status;
+function taskStatusLabel(status: TaskStatus, statuses: readonly TaskStatusOption[]): string {
+	return resolveTaskStatusLabel(statuses, status);
 }
 
-function statusColorVar(status: TaskStatus): string {
+function statusColorVar(status: TaskStatus, statuses: readonly TaskStatusOption[]): string {
+	const hit = statuses.find((item) => item.id === status);
+	if (hit?.color) {
+		return hit.color;
+	}
+	// Legacy fallbacks when Settings still use classic ids without colours.
 	switch (status) {
 		case "backlog":
 			return "var(--text-muted)";

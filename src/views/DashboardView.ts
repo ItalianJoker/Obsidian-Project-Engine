@@ -379,6 +379,11 @@ export class DashboardView extends ItemView {
 			});
 		});
 		menu.addItem((item) => {
+			item.setTitle("Open in Eisenhower").onClick(() => {
+				void this.plugin.router.openWorkspace(row.file.path, undefined, "eisenhower");
+			});
+		});
+		menu.addItem((item) => {
 			item.setTitle("Open in Gantt").onClick(() => {
 				void this.plugin.router.openWorkspace(row.file.path, undefined, "gantt");
 			});

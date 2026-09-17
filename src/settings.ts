@@ -18,7 +18,7 @@ import type {
 	DateDisplayFormat,
 	TimeDisplayFormat,
 } from "./models/types";
-import { DEFAULT_PROJECT_STATUSES } from "./models/types";
+import { DEFAULT_PROJECT_STATUSES, DEFAULT_TASK_STATUSES } from "./models/types";
 
 const ENTITY_KINDS: { id: CustomFieldEntityKind; label: string }[] = [
 	{ id: "customer", label: "Customer" },
@@ -84,7 +84,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Open projects in")
 			.setDesc(
-				"Where a project opens from the Projects pane: Overview (home + task table) or Workspace (Table / Gantt / Board).",
+				"Where a project opens from the Projects pane: Overview (home + task table) or Workspace (Table / Gantt / Board / Eisenhower).",
 			)
 			.addDropdown((dropdown) => {
 				dropdown
@@ -108,9 +108,15 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 					.addOption("table", "Table")
 					.addOption("gantt", "Gantt")
 					.addOption("kanban", "Board")
+					.addOption("eisenhower", "Eisenhower")
 					.setValue(this.plugin.settings.defaultView)
 					.onChange(async (value) => {
-						if (value === "gantt" || value === "kanban" || value === "table") {
+						if (
+							value === "gantt" ||
+							value === "kanban" ||
+							value === "table" ||
+							value === "eisenhower"
+						) {
 							this.plugin.settings.defaultView = value;
 							await this.plugin.saveSettings();
 						}
@@ -293,7 +299,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			});
 	}
 
-	/** Board — subtasks + description preview (dotpm Board). */
+	/** Board — subtasks + description preview + configurable columns. */
 	private renderBoard(): void {
 		const { containerEl } = this;
 		containerEl.createEl("h3", { text: "Board" });
@@ -323,6 +329,156 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 						this.plugin.refreshOpenViews();
 					});
 			});
+
+		this.renderTaskStatuses();
+	}
+
+	/**
+	 * Task board columns — add / rename / reorder / colour / archive
+	 * (mirrors {@link renderProjectStatuses}).
+	 */
+	private renderTaskStatuses(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h4", { text: "Task board columns" });
+		containerEl.createEl("p", {
+			cls: "setting-item-description",
+			text: "Statuses used by the Board, Eisenhower filters, and task editor. Drag to reorder. Archive hides a column from the Board without remapping existing notes. Defaults: Backlog → In Progress → Review → Done (Blocked / Cancelled archived).",
+		});
+
+		const list = containerEl.createDiv({ cls: "pe-status-list pe-task-status-list" });
+		this.renderTaskStatusRows(list);
+
+		const actions = containerEl.createDiv({ cls: "pe-settings-actions pe-settings-actions--flat" });
+		const add = actions.createEl("button", {
+			text: "+ add column",
+			cls: "pe-secondary pe-touch-target",
+			attr: { type: "button" },
+		});
+		add.addEventListener("click", () => {
+			void (async () => {
+				const id = `status-${Date.now().toString(36)}`;
+				this.plugin.settings.taskStatuses.push({
+					id,
+					label: "New column",
+					color: "#94a3b8",
+					archived: false,
+				});
+				await this.plugin.saveSettings();
+				this.display();
+			})();
+		});
+		const reset = actions.createEl("button", {
+			text: "Reset defaults",
+			cls: "pe-secondary pe-touch-target",
+			attr: { type: "button" },
+		});
+		reset.addEventListener("click", () => {
+			void (async () => {
+				this.plugin.settings.taskStatuses = DEFAULT_TASK_STATUSES.map((item) => ({
+					...item,
+				}));
+				await this.plugin.saveSettings();
+				this.display();
+			})();
+		});
+	}
+
+	private renderTaskStatusRows(list: HTMLElement): void {
+		list.empty();
+		const items = this.plugin.settings.taskStatuses;
+		items.forEach((status, index) => {
+			const row = list.createDiv({ cls: "pe-status-row pe-touch-target" });
+			row.draggable = true;
+			row.createSpan({ text: "⠿", cls: "pe-status-drag" });
+
+			row.addEventListener("dragstart", (event) => {
+				event.dataTransfer?.setData("text/plain", String(index));
+				row.addClass("is-dragging");
+			});
+			row.addEventListener("dragend", () => row.removeClass("is-dragging"));
+			row.addEventListener("dragover", (event) => event.preventDefault());
+			row.addEventListener("drop", (event) => {
+				event.preventDefault();
+				const from = Number.parseInt(event.dataTransfer?.getData("text/plain") ?? "", 10);
+				if (!Number.isFinite(from) || from === index) {
+					return;
+				}
+				const [moved] = items.splice(from, 1);
+				if (!moved) {
+					return;
+				}
+				items.splice(index, 0, moved);
+				void this.plugin.saveSettings().then(() => {
+					this.display();
+					this.plugin.refreshOpenViews();
+				});
+			});
+
+			const label = row.createEl("input", {
+				cls: "pe-input pe-status-label",
+				attr: { type: "text", "aria-label": "Column label" },
+			});
+			label.value = status.label;
+			label.addEventListener("change", () => {
+				status.label = label.value.trim() || status.id;
+				void this.plugin.saveSettings().then(() => this.plugin.refreshOpenViews());
+			});
+
+			const idInput = row.createEl("input", {
+				cls: "pe-input pe-status-id",
+				attr: { type: "text", "aria-label": "Column id", spellcheck: "false" },
+			});
+			idInput.value = status.id;
+			idInput.addEventListener("change", () => {
+				const next = idInput.value.trim().toLowerCase().replace(/\s+/g, "-");
+				if (!next) {
+					idInput.value = status.id;
+					return;
+				}
+				if (items.some((item, i) => i !== index && item.id === next)) {
+					new Notice("Column id must be unique");
+					idInput.value = status.id;
+					return;
+				}
+				status.id = next;
+				void this.plugin.saveSettings().then(() => this.plugin.refreshOpenViews());
+			});
+
+			const color = row.createEl("input", {
+				attr: { type: "color", "aria-label": "Column colour" },
+			});
+			color.value = status.color ?? "#94a3b8";
+			color.addEventListener("change", () => {
+				status.color = color.value;
+				void this.plugin.saveSettings().then(() => this.plugin.refreshOpenViews());
+			});
+
+			const archive = row.createEl("label", { cls: "pe-check-label pe-status-archive" });
+			const checkbox = archive.createEl("input", { attr: { type: "checkbox" } });
+			checkbox.checked = status.archived === true;
+			archive.createSpan({ text: "Archive" });
+			checkbox.addEventListener("change", () => {
+				status.archived = checkbox.checked;
+				void this.plugin.saveSettings().then(() => this.plugin.refreshOpenViews());
+			});
+
+			const remove = row.createEl("button", {
+				text: "Remove",
+				cls: "pe-secondary pe-touch-target",
+				attr: { type: "button" },
+			});
+			remove.addEventListener("click", () => {
+				if (items.length <= 1) {
+					new Notice("Keep at least one task column");
+					return;
+				}
+				items.splice(index, 1);
+				void this.plugin.saveSettings().then(() => {
+					this.display();
+					this.plugin.refreshOpenViews();
+				});
+			});
+		});
 	}
 
 	/** Scheduling — auto-schedule toggles (dotpm Scheduling). */

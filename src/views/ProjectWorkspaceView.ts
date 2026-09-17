@@ -1,5 +1,6 @@
 /**
- * Project delivery workspace — one ItemView hosting Table / Gantt / Kanban SubViews.
+ * Project delivery workspace — one ItemView hosting Table / Gantt / Kanban /
+ * Eisenhower SubViews.
  *
  * Chrome (icon, name, “This project”, view switchers, + add task, Search tasks…)
  * matches Luca’s dotpm screenshots; pattern adapted from
@@ -9,7 +10,10 @@
 
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
-import type { Task, TaskPriority, TaskStatus } from "../models/types";
+import {
+	type Task,
+	type TaskPriority,
+} from "../models/types";
 import { toWikiLink } from "../models/types";
 import { loadAllTasks } from "../services/taskIo";
 import { copyProjectObsidianUri } from "../services/obsidianUri";
@@ -17,6 +21,7 @@ import { EmptyState } from "../ui/EmptyState";
 import { renderProjectChrome } from "../ui/ProjectChrome";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
 import type { SubView } from "./SubView";
+import { EisenhowerSubView } from "./subviews/EisenhowerSubView";
 import { GanttSubView, type GanttZoomId } from "./subviews/GanttSubView";
 import { KanbanSubView } from "./subviews/KanbanSubView";
 import { TableSubView, type TaskDashboardFilters } from "./subviews/TableSubView";
@@ -28,14 +33,14 @@ export const WORKSPACE_VIEW_TYPE = "projects-engine-workspace";
 
 /**
  * Delivery modes hosted as SubViews (obsidian-pm ViewMode analogue).
- * Task-only surfaces — Table / Gantt / Board. Project home is {@link ProjectChromeMode}
- * `"dashboard"` (Overview leaf), not a Workspace SubView.
+ * Task-only surfaces — Table / Gantt / Board / Eisenhower. Project home is
+ * {@link ProjectChromeMode} `"dashboard"` (Overview leaf), not a Workspace SubView.
  */
-export type WorkspaceViewMode = "table" | "gantt" | "kanban";
+export type WorkspaceViewMode = "table" | "gantt" | "kanban" | "eisenhower";
 
 /**
- * Full project chrome switcher: Dashboard (home) plus the three task views.
- * Order in the UI: Dashboard | Table | Gantt | Board.
+ * Full project chrome switcher: Dashboard (home) plus the task views.
+ * Order in the UI: Dashboard | Table | Gantt | Board | Eisenhower.
  */
 export type ProjectChromeMode = "dashboard" | WorkspaceViewMode;
 
@@ -43,7 +48,9 @@ export type ProjectChromeMode = "dashboard" | WorkspaceViewMode;
  * True when `mode` is a Workspace SubView (not the project Dashboard / Overview).
  */
 export function isWorkspaceViewMode(mode: ProjectChromeMode): mode is WorkspaceViewMode {
-	return mode === "table" || mode === "gantt" || mode === "kanban";
+	return (
+		mode === "table" || mode === "gantt" || mode === "kanban" || mode === "eisenhower"
+	);
 }
 
 interface WorkspaceState {
@@ -51,16 +58,6 @@ interface WorkspaceState {
 	mode?: WorkspaceViewMode;
 	[key: string]: unknown;
 }
-
-const TASK_STATUS_FILTERS: Array<"all" | TaskStatus> = [
-	"all",
-	"backlog",
-	"in-progress",
-	"review",
-	"done",
-	"blocked",
-	"cancelled",
-];
 
 const TASK_PRIORITY_FILTERS: Array<"all" | TaskPriority> = [
 	"all",
@@ -132,7 +129,8 @@ export class ProjectWorkspaceView extends ItemView {
 		if (
 			state.mode === "table" ||
 			state.mode === "gantt" ||
-			state.mode === "kanban"
+			state.mode === "kanban" ||
+			state.mode === "eisenhower"
 		) {
 			this.mode = state.mode;
 		}
@@ -318,10 +316,27 @@ export class ProjectWorkspaceView extends ItemView {
 				cls: "pe-input pe-touch-target pe-header-filter",
 				attr: { "aria-label": "Filter by status" },
 			});
-			for (const value of TASK_STATUS_FILTERS) {
+			status.createEl("option", {
+				text: "All statuses",
+				attr: { value: "all" },
+			});
+			// Offer every configured status (including archived) so filters still match old notes.
+			const statusOptions = this.plugin.settings.taskStatuses;
+			const knownIds = new Set(statusOptions.map((item) => item.id));
+			for (const option of statusOptions) {
 				status.createEl("option", {
-					text: value === "all" ? "All statuses" : value,
-					attr: { value },
+					text: option.label,
+					attr: { value: option.id },
+				});
+			}
+			// If the active filter points at an unknown id, keep it selectable.
+			if (
+				this.filters.status !== "all" &&
+				!knownIds.has(this.filters.status)
+			) {
+				status.createEl("option", {
+					text: this.filters.status,
+					attr: { value: this.filters.status },
 				});
 			}
 			status.value = this.filters.status;
@@ -399,6 +414,16 @@ export class ProjectWorkspaceView extends ItemView {
 					this.zoomId = zoom;
 					this.renderCurrentView();
 				},
+			});
+		} else if (this.mode === "eisenhower") {
+			this.subview = new EisenhowerSubView({
+				app: this.app,
+				plugin: this.plugin,
+				project,
+				tasks: scopedTasks,
+				filterText: this.filters.text,
+				container: this.bodyEl,
+				onChanged,
 			});
 		} else {
 			this.subview = new KanbanSubView({
