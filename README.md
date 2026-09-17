@@ -64,6 +64,7 @@ Modale mobile-ready che raccoglie e valida:
 - **Technologies**, **Team** (ruolo opzionale), **Stakeholders** (progetto e/o cliente)
 - **Commesse** (chip multipli), **budget in giorni (giornate)**, **Project URL**
 - **`teams_channel_url`** — URL Teams / deep link `msteams://`, con pulsante di avvio rapido
+- **Task list template** (opzionale) — assegna un template Entity-as-a-Note; applicato in `Tasks/` dopo lo scaffold
 
 Le scritture usano solo `vault.process` (sicure con Obsidian Sync / iCloud).
 
