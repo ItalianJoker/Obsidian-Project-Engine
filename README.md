@@ -2,7 +2,7 @@
 
 Obsidian.md plugin for Project Portfolio, Governance, and Delivery Management in Markdown.
 
-Version **1.0.1** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
+Version **1.0.2** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
 
 Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT); domain features and branding remain Projects Engine. See `NOTICE`.
 
@@ -39,7 +39,7 @@ Il plugin include:
 | Stakeholder | `stakeholder` | `Projects/Entities/Stakeholders/` |
 | Task | `task` | `Projects/{ID} - {Name}/Tasks/` |
 
-Nel YAML i riferimenti sono **wikilink tra virgolette** (`"[[Acme Corp]]"`). Uno **Stakeholder** può puntare a un Customer (`customer`) e essere referenziato da uno o più Project (`stakeholders`); l’associazione vale a livello progetto, cliente, o entrambi (wikilink nei due sensi). Il corpo della nota ripete i link in una sezione **Links**, così Graph View genera cluster anche quando l’indicizzazione YAML è limitata. Non servono plugin di terze parti per il grafo.
+Nel YAML i riferimenti sono **wikilink tra virgolette** (`"[[Acme Corp]]"`). Uno **Stakeholder** può puntare a un Customer (`customer`) e essere referenziato da uno o più Project (`stakeholders`); l’associazione vale a livello progetto, cliente, o entrambi (wikilink nei due sensi). Il corpo della nota ripete i link in una sezione **Links**, così Graph View genera cluster anche quando l’indicizzazione YAML è limitata. Le note create da Overview → Documents usano lo stesso schema (`project: "[[…]]"` + **Links** → Project). Non servono plugin di terze parti per il grafo.
 
 ### Campi personalizzati
 
@@ -99,7 +99,7 @@ In Settings → **Project statuses** si aggiungono, rinomina, riordinano (drag) 
 
 **Projects (Dashboard)** — elenco progetti con filtri combinabili **Governance** + **Customer**, ricerca, chip status, budget giorni·ore su una riga, menu contestuale (overview / workspace / **Edit project** / table / board / Gantt). Sotto i 720px: card/accordion. Toolbar `+ new project` e CRUD entità. Margini allineati a Overview / Workspace.
 
-**Overview** — home del progetto (stile dotpm): glyph, metriche, status editabile, poi le sezioni nell’ordine **Tasks → Governance → Documents → Linked Entities → Actions**. Albero documenti (esclusa `Tasks/`). Eliminazione task dall’editor (e dalla tabella) con conferma; i sotto-task annidati vengono eliminati insieme al padre.
+**Overview** — home del progetto (stile dotpm): glyph, metriche, status editabile, poi le sezioni nell’ordine **Tasks → Governance → Documents → Linked Entities → Actions**. Albero documenti (esclusa `Tasks/`): **New note** crea una nota Markdown in una sottocartella (Documents, Initiation, …) già collegata al progetto per Graph View (`project` in YAML + sezione **Links**); menu contestuale sulle note (Open, new leaf, reveal, rename, delete, copy path/URL). Eliminazione task dall’editor (e dalla tabella) con conferma; i sotto-task annidati vengono eliminati insieme al padre.
 
 **Edit project** — leaf dedicata (parità obsidian-pm), non solo modale.
 
@@ -190,7 +190,7 @@ Campi task rilevanti: `blocked_by`, `blocking`, `start_date`, `end_date`, `durat
 
 Requisiti: Obsidian **1.5.0+** (desktop e mobile). Node.js 18+ solo per build da sorgente.
 
-Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.0.1`
+Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.0.2`
 
 #### 1. Installazione utente (copia dei file)
 
@@ -276,7 +276,7 @@ The plugin ships with:
 | Stakeholder | `stakeholder` | `Projects/Entities/Stakeholders/` |
 | Task | `task` | `Projects/{ID} - {Name}/Tasks/` |
 
-YAML stores **quoted wikilinks** (`"[[Acme Corp]]"`). A **Stakeholder** may wikilink a Customer (`customer`) and be referenced from one or more Projects (`stakeholders`); association is valid at project level, customer level, or both. The note body repeats links in a **Links** section so Graph View still clusters when YAML property indexing is limited. No third-party graph plugin is required.
+YAML stores **quoted wikilinks** (`"[[Acme Corp]]"`). A **Stakeholder** may wikilink a Customer (`customer`) and be referenced from one or more Projects (`stakeholders`); association is valid at project level, customer level, or both. The note body repeats links in a **Links** section so Graph View still clusters when YAML property indexing is limited. Notes created from Overview → Documents use the same pattern (`project: "[[…]]"` + **Links** → Project). No third-party graph plugin is required.
 
 ### Custom fields
 
@@ -336,7 +336,7 @@ Settings → **Project statuses**: add, rename, reorder (drag), and archive. Vis
 
 **Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, status chips, budget as days · hours on one line, context menu (overview / workspace / **Edit project** / table / board / Gantt). Below 720px: card/accordion. Toolbar: `+ new project` and entity CRUD. Pleasant left/right/top padding aligned with Overview / Workspace.
 
-**Overview** — project home (dotpm-like): glyph, metrics, editable status, then sections in order **Tasks → Governance → Documents → Linked Entities → Actions**. Documents tree (excludes `Tasks/`). Delete task from the editor (and table row) with confirmation; nested subtasks are deleted with the parent.
+**Overview** — project home (dotpm-like): glyph, metrics, editable status, then sections in order **Tasks → Governance → Documents → Linked Entities → Actions**. Documents tree (excludes `Tasks/`): **New note** creates a Markdown note in a chosen project subfolder (Documents, Initiation, …) already Graph-linked to the project (YAML `project` wikilink + body **Links** section); right-click context menu on notes (Open, new leaf, reveal, rename, delete, copy path/URL). Delete task from the editor (and table row) with confirmation; nested subtasks are deleted with the parent.
 
 **Edit project** — dedicated leaf (obsidian-pm parity), not modal-only.
 
@@ -429,7 +429,7 @@ Scheduler-relevant task fields: `blocked_by`, `blocking`, `start_date`, `end_dat
 
 Requirements: Obsidian **1.5.0+** (desktop and mobile). Node.js 18+ only for from-source builds.
 
-Id: `projects-engine` · Name: **Projects Engine** · Version: `1.0.1`
+Id: `projects-engine` · Name: **Projects Engine** · Version: `1.0.2`
 
 #### 1. End-user install (copy the plugin files)
 

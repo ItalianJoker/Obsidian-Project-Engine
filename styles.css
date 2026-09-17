@@ -16,7 +16,8 @@
 .pe-modal-body {
 	display: flex;
 	flex-direction: column;
-	gap: 14px;
+	/* Comfortable vertical rhythm between successive field groups (v1.0.2). */
+	gap: 20px;
 }
 
 .pe-modal-lead,
@@ -42,13 +43,14 @@
 .pe-field {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
 	margin: 0;
 }
 
 .pe-label {
 	font-weight: 600;
 	line-height: 1.3;
+	margin: 0;
 }
 
 .pe-touch-target,
@@ -188,6 +190,17 @@
 	bottom: 0;
 	padding-top: 4px;
 	background: var(--background-primary);
+}
+
+/* Form footers: separate actions from the last field (Edit Project spacing). */
+.pe-form-footer,
+.pe-edit > .pe-actions,
+.pe-modal-body > .pe-actions {
+	margin-top: 8px;
+	padding-top: 16px;
+	border-top: 1px solid var(--background-modifier-border);
+	gap: 12px;
+	flex-wrap: wrap;
 }
 
 /* Date + optional time: Settings-format text synced with native pickers */
@@ -1474,6 +1487,10 @@
 
 /* —— Project edit leaf (obsidian-pm ProjectEditView parity) —— */
 .pe-edit {
+	display: flex;
+	flex-direction: column;
+	/* Match pe-modal-body: gap between field labels/controls (Edit Project spacing). */
+	gap: 20px;
 	padding: 16px 20px 40px;
 	overflow: auto;
 	max-width: 720px;
@@ -1481,7 +1498,12 @@
 }
 
 .pe-edit .pe-crumbs {
-	margin-bottom: 8px;
+	margin-bottom: 0;
+}
+
+.pe-edit > h2,
+.pe-modal-body > h2 {
+	margin: 0;
 }
 
 /* —— Task editor tab surface —— */
@@ -2256,6 +2278,42 @@
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 	color: var(--text-muted);
+}
+
+.pe-docs-tree-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-bottom: 4px;
+}
+
+.pe-docs-tree-header .pe-section-title {
+	margin: 12px 0 10px;
+}
+
+.pe-docs-tree-add {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: 0.85rem;
+	min-height: 36px;
+}
+
+.pe-docs-tree-add:hover {
+	background: var(--background-modifier-hover);
+}
+
+.pe-docs-tree-add .svg-icon {
+	width: 16px;
+	height: 16px;
 }
 
 .pe-docs-tree-empty {
