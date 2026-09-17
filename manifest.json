@@ -1,7 +1,7 @@
 {
 	"id": "projects-engine",
 	"name": "Projects Engine",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"minAppVersion": "1.5.0",
 	"description": "Project portfolio, governance, and delivery management using Entity-as-a-Note Markdown and native Graph View.",
 	"author": "Luca",

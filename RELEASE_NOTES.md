@@ -1,5 +1,13 @@
 # Release notes — Projects Engine
 
+## 1.0.4 — Board columns, Eisenhower, safety suite
+
+**IT:** Colonne Board configurabili in Settings; toggle `kanbanShowSubtasks` / anteprima descrizione collegati al Board; vista **Eisenhower** (importante × urgente) nello switcher (**Dashboard | Table | Gantt | Board | Eisenhower**). Pass di safety-first: suite Vitest sui moduli puri, cleanup a zero regressione, `npm test` in README.
+
+**EN:** Configurable Board columns in Settings; Board wires `kanbanShowSubtasks` / description preview; **Eisenhower** matrix (important × urgent) in the chrome switcher (**Dashboard | Table | Gantt | Board | Eisenhower**). Safety-first pass: Vitest pure-module suite, zero-regression cleanup, `npm test` documented in README.
+
+---
+
 ## 1.0.3 — Dashboard as first-class switcher surface
 
 **IT:** Tab **Dashboard** a sinistra di Table nello switcher progetto (**Dashboard | Table | Gantt | Board**). Table/Gantt/Board restano viste solo-task; Dashboard è la home Overview. Ordine sezioni Dashboard: **Governance → Status → Task summary → search + task list → Documents → Linked Entities → Actions**.

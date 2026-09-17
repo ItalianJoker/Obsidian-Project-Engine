@@ -7,6 +7,18 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.0.4
+
+### Features
+
+- **Configurable Board columns** — task statuses add/rename/reorder/archive in Settings (Board + editor).
+- **Board settings wired** — \`kanbanShowSubtasks\` and description preview apply on the Kanban Board.
+- **Eisenhower matrix** — chrome switcher **Dashboard | Table | Gantt | Board | Eisenhower**; \`important\` / \`urgent\` on tasks (YAML); soft-default from priority for new drafts.
+
+### Architecture & tests
+
+- **Safety-first pass** — Vitest pure-module suite (\`npm test\`); zero-regression Scheduler/docs cleanup; no YAML key renames.
+
 ## 1.0.3
 
 ### Features
