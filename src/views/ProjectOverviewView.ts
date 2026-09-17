@@ -26,9 +26,9 @@ import type ProjectsEnginePlugin from "../main";
 import { activeTaskStatuses, projectStatusLabel, toWikiLink } from "../models/types";
 import {
 	createPrince2Stage,
-	ensurePrince2Registers,
 	readProjectStages,
 } from "../services/governance";
+import { ensurePrince2DocumentStructure } from "../services/prince2Templates";
 import {
 	buildProjectDocumentsTree,
 	tasksFolderBasename,
@@ -737,17 +737,18 @@ export class ProjectOverviewView extends ItemView {
 		}
 
 		const actions = section.createDiv({ cls: "pe-inline-row" });
-		this.cta(actions, "Ensure registers", false, () => {
+		this.cta(actions, "Ensure PRINCE2 docs", false, () => {
 			void (async () => {
 				const folder = project.file.parent?.path ?? "";
-				await ensurePrince2Registers(
-					this.app.vault,
-					folder,
-					toWikiLink(project.file.basename),
-					project.name,
-					this.plugin.settings.scaffoldRegistersFolder,
-				);
-				new Notice("PRINCE2 registers ready");
+				await ensurePrince2DocumentStructure({
+					vault: this.app.vault,
+					projectFolder: folder,
+					projectLink: toWikiLink(project.file.basename),
+					projectName: project.name,
+					initiationFolderName: this.plugin.settings.scaffoldInitiationFolder,
+					registersFolderName: this.plugin.settings.scaffoldRegistersFolder,
+				});
+				new Notice("PRINCE2 document templates ready");
 				await this.loadProject();
 			})();
 		});
@@ -873,14 +874,14 @@ export class ProjectOverviewView extends ItemView {
 			return;
 		}
 		try {
-			const folder = project.file.parent?.path ?? "";
-			await ensurePrince2Registers(
-				this.app.vault,
-				folder,
-				toWikiLink(project.file.basename),
-				project.name,
-				this.plugin.settings.scaffoldRegistersFolder,
-			);
+			await ensurePrince2DocumentStructure({
+				vault: this.app.vault,
+				projectFolder: project.file.parent?.path ?? "",
+				projectLink: toWikiLink(project.file.basename),
+				projectName: project.name,
+				initiationFolderName: this.plugin.settings.scaffoldInitiationFolder,
+				registersFolderName: this.plugin.settings.scaffoldRegistersFolder,
+			});
 			const path = registerIndexPath(registersFolder, kind);
 			const file = this.app.vault.getAbstractFileByPath(path);
 			if (file instanceof TFile) {

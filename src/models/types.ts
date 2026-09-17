@@ -62,7 +62,9 @@ export type EntityType =
 	| "prince2-stage"
 	| "prince2-register"
 	/** Single Risk / Issue / Quality row note under Registers/. */
-	| "prince2-register-entry";
+	| "prince2-register-entry"
+	/** PRINCE2 Initiation / guidance templates (Project Brief, PID, …). */
+	| "prince2-document";
 
 /**
  * Governance model selected when a project is created.

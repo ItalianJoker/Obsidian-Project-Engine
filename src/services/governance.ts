@@ -1,28 +1,27 @@
 /**
- * Governance helpers for Semplificato linear flow and PRINCE2 stages/registers.
+ * Governance helpers for Semplificato linear flow and PRINCE2 stages.
  *
  * PRINCE2 end-of-stage milestones are written as task notes with
  * `is_stage_boundary: true` so {@link Scheduler} treats them as formal blocks.
- * Formal register **index** notes live under Registers/; operational **entry**
- * notes (Risk / Issue / Quality) are created on demand via `registerIo`.
+ * Formal document / register templates live in `prince2Templates`.
  */
 
 import type { TFile, Vault } from "obsidian";
 import type {
 	GovernanceModel,
 	IsoDate,
-	Prince2RegisterKind,
 	Prince2Stage,
 	SemplificatoStatus,
 	TaskId,
 	WikiLink,
 } from "../models/types";
 import { toWikiLink } from "../models/types";
-import { buildGraphLinksSection, buildMarkdownNote, splitFrontmatter } from "./frontmatter";
+import { buildMarkdownNote, splitFrontmatter } from "./frontmatter";
 import {
-	buildOperationalRegisterIndexMarkdown,
-	isOperationalRegisterKind,
-} from "./registerIo";
+	ensurePrince2DocumentStructure,
+	ensurePrince2Registers,
+	PRINCE2_REGISTERS,
+} from "./prince2Templates";
 import {
 	blankTaskDraft,
 	buildTaskMarkdown,
@@ -31,6 +30,9 @@ import {
 	uniqueTaskPath,
 } from "./taskIo";
 import { ensureFolder, joinVaultPath, processNote, sanitiseNoteBasename, writeNoteAtomic } from "./vaultIo";
+
+/** Re-export register helpers for existing Overview / scaffold call sites. */
+export { ensurePrince2Registers, PRINCE2_REGISTERS };
 
 /** Ordered Semplificato statuses for the lean board. */
 export const SEMPLIFICATO_STATUSES: SemplificatoStatus[] = [
@@ -54,47 +56,6 @@ export const SEMPLIFICATO_LABELS: Record<SemplificatoStatus, string> = {
  */
 export function governanceDisplayLabel(model: GovernanceModel): string {
 	return model === "Semplificato" ? "Simplified" : model;
-}
-
-/**
- * Formal PRINCE2 register kinds with display titles.
- */
-export const PRINCE2_REGISTERS: { kind: Prince2RegisterKind; title: string }[] = [
-	{ kind: "business-case", title: "Business Case" },
-	{ kind: "risk-register", title: "Risk Register" },
-	{ kind: "issue-change-log", title: "Issue & Change Log" },
-	{ kind: "quality-register", title: "Quality Register" },
-	{ kind: "work-package", title: "Work Packages" },
-];
-
-/**
- * Create the formal register notes for a PRINCE2 project (idempotent).
- *
- * @param registersFolderName - Subfolder under the project folder (default `Registers`).
- */
-export async function ensurePrince2Registers(
-	vault: Vault,
-	projectFolder: string,
-	projectLink: WikiLink,
-	projectName: string,
-	registersFolderName = "Registers",
-): Promise<TFile[]> {
-	const registersFolder = joinVaultPath(
-		projectFolder,
-		registersFolderName.trim() || "Registers",
-	);
-	await ensureFolder(vault, registersFolder);
-	const created: TFile[] = [];
-	for (const register of PRINCE2_REGISTERS) {
-		const path = joinVaultPath(registersFolder, `${register.title}.md`);
-		const existing = vault.getAbstractFileByPath(path);
-		if (existing) {
-			continue;
-		}
-		const markdown = buildRegisterMarkdown(register.kind, register.title, projectLink, projectName);
-		created.push(await writeNoteAtomic(vault, path, markdown));
-	}
-	return created;
 }
 
 /**
@@ -234,87 +195,21 @@ export async function scaffoldGovernance(args: {
 	projectFile: TFile;
 	projectId: string;
 	projectName: string;
+	initiationFolderName?: string;
+	registersFolderName?: string;
 }): Promise<void> {
 	if (args.governance !== "PRINCE2") {
 		return;
 	}
 	const folder = args.projectFile.parent?.path ?? "";
-	await ensurePrince2Registers(
-		args.vault,
-		folder,
-		toWikiLink(args.projectFile.basename),
-		args.projectName,
-	);
-}
-
-function buildRegisterMarkdown(
-	kind: Prince2RegisterKind,
-	title: string,
-	projectLink: WikiLink,
-	projectName: string,
-): string {
-	if (isOperationalRegisterKind(kind)) {
-		return buildOperationalRegisterIndexMarkdown(kind, title, projectLink, projectName);
-	}
-
-	const data: Record<string, unknown> = {
-		pe_type: "prince2-register",
-		register_kind: kind,
-		name: title,
-		project: projectLink,
-	};
-
-	let body = `# ${title}\n\nProject: ${projectLink} (${projectName})\n\n`;
-
-	switch (kind) {
-		case "business-case":
-			body += [
-				"## Summary",
-				"",
-				"",
-				"## Reasons",
-				"",
-				"",
-				"## Options",
-				"",
-				"",
-				"## Expected benefits",
-				"",
-				"",
-				"## Expected disbenefits",
-				"",
-				"",
-				"## Timescale",
-				"",
-				"",
-				"## Costs",
-				"",
-				"",
-				"## Investment appraisal",
-				"",
-				"",
-				"## Major risks",
-				"",
-				"",
-				buildGraphLinksSection([{ label: "Project", wikiLink: projectLink }]),
-			].join("\n");
-			break;
-		case "work-package":
-			body += [
-				"## Work packages",
-				"",
-				"Create work-package notes or link stage work packages from the project note.",
-				"Avoid empty stub rows — add packages when work is authorised.",
-				"",
-				buildGraphLinksSection([{ label: "Project", wikiLink: projectLink }]),
-			].join("\n");
-			break;
-		default:
-			body += buildGraphLinksSection([{ label: "Project", wikiLink: projectLink }]);
-			break;
-	}
-
-	return buildMarkdownNote(data, body);
+	await ensurePrince2DocumentStructure({
+		vault: args.vault,
+		projectFolder: folder,
+		projectLink: toWikiLink(args.projectFile.basename),
+		projectName: args.projectName,
+		initiationFolderName: args.initiationFolderName,
+		registersFolderName: args.registersFolderName,
+	});
 }
 
 /**
