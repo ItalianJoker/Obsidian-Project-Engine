@@ -37,6 +37,7 @@ import { ConfirmModal } from "../ui/ConfirmModal";
 import { mountIconPicker } from "../ui/IconPicker";
 import { loadProjectRows, type ProjectRow } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
+import { openTaskListTemplateModal } from "./TaskListTemplateModal";
 
 interface TeamChip {
 	name: string;
@@ -460,23 +461,47 @@ export class ProjectEditor {
 	}
 
 	/**
-	 * Assign an Entity-as-a-Note task-list template (wikilink stored on save).
-	 * Use {@link applyTemplate} to materialise tasks under Tasks/.
+	 * Assign a task-list template (wikilink on save). Apply separately via
+	 * {@link applyTemplate} so existing Tasks/ notes are not overwritten silently.
 	 */
 	private addTaskListTemplatePicker(): void {
-		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
-		wrap.createEl("label", { text: "Task list template", cls: "pe-label" });
+		const wrap = this.rootEl!.createDiv({ cls: "pe-field pe-template-assign" });
+		wrap.createEl("label", {
+			text: "Assign task list template",
+			cls: "pe-label",
+		});
 		wrap.createEl("p", {
 			cls: "pe-help",
-			text: "Optional. Saving assigns the template; click Apply template… to create task notes under Tasks/.",
+			text: "Optional. Create templates in Settings → Task list templates first, then assign here. Save stores the link; click Apply template… to generate task notes under Tasks/.",
 		});
+
+		const templates = this.plugin.indexer.list("task-list-template");
+		if (templates.length === 0) {
+			const empty = wrap.createDiv({ cls: "pe-template-empty" });
+			empty.createEl("p", {
+				cls: "pe-help",
+				text: "No templates yet. Create one in Settings, then return here to assign it.",
+			});
+			const createBtn = empty.createEl("button", {
+				text: "Create template…",
+				cls: "pe-secondary pe-touch-target",
+				attr: { type: "button" },
+			});
+			createBtn.addEventListener("click", () => {
+				openTaskListTemplateModal(this.plugin);
+			});
+		}
+
 		const input = wrap.createEl("input", {
 			cls: "pe-input pe-touch-target",
 			attr: {
 				type: "text",
-				placeholder: "Search templates… (optional)",
+				placeholder:
+					templates.length === 0
+						? "Create a template in Settings first…"
+						: "Search and assign a template…",
 				spellcheck: "false",
-				"aria-label": "Task list template",
+				"aria-label": "Assign task list template",
 			},
 		});
 		input.value = this.form.taskListTemplate;

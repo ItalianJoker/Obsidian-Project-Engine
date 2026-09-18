@@ -40,7 +40,7 @@ import {
 } from "../src/services/timeLogs";
 import { isValidHttpUrl, isValidTeamsChannelUrl } from "../src/services/urls";
 import { joinVaultPath, parentFolder, sanitiseNoteBasename } from "../src/services/vaultIo";
-import { isWikiLink, toWikiLink, wikiLinkLabel, wikiLinkTarget, eisenhowerFromPriority, resolveEisenhowerFlags } from "../src/models/types";
+import { isWikiLink, toWikiLink, wikiLinkLabel, wikiLinkTarget, isUrgentFromPriority, priorityForUrgentState, resolveEisenhowerFlags } from "../src/models/types";
 import { fuzzyScore } from "../src/views/suggest";
 
 describe("urls", () => {
@@ -237,30 +237,36 @@ describe("governance / wiki / fuzzy / URI", () => {
 		});
 	});
 
-	it("soft-defaults Eisenhower flags from priority", () => {
-		expect(eisenhowerFromPriority("urgent")).toEqual({
-			important: true,
-			urgent: true,
-		});
-		expect(eisenhowerFromPriority("high")).toEqual({
-			important: true,
-			urgent: false,
-		});
-		expect(eisenhowerFromPriority("low")).toEqual({
-			important: false,
-			urgent: false,
-		});
+	it("derives Eisenhower Urgent from Priority; Important from YAML only", () => {
+		expect(isUrgentFromPriority("urgent")).toBe(true);
+		expect(isUrgentFromPriority("high")).toBe(true);
+		expect(isUrgentFromPriority("medium")).toBe(false);
+		expect(isUrgentFromPriority("low")).toBe(false);
+		expect(isUrgentFromPriority("none")).toBe(false);
+
+		expect(priorityForUrgentState("low", true)).toBe("high");
+		expect(priorityForUrgentState("high", false)).toBe("medium");
+		expect(priorityForUrgentState("urgent", true)).toBe("urgent");
+		expect(priorityForUrgentState("medium", false)).toBe("medium");
+
+		// Explicit Important + Priority-derived Urgent (legacy YAML urgent ignored).
 		expect(
 			resolveEisenhowerFlags({
 				important: true,
 				urgent: false,
-				priority: "none",
+				priority: "high",
 			}),
-		).toEqual({ important: true, urgent: false });
+		).toEqual({ important: true, urgent: true });
 		expect(
 			resolveEisenhowerFlags({
 				important: null,
-				urgent: null,
+				urgent: true,
+				priority: "none",
+			}),
+		).toEqual({ important: false, urgent: false });
+		expect(
+			resolveEisenhowerFlags({
+				important: true,
 				priority: "urgent",
 			}),
 		).toEqual({ important: true, urgent: true });

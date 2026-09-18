@@ -520,17 +520,20 @@ export interface Task {
 	/** Delivery priority for the task dashboard. @remarks YAML: `priority` */
 	priority: TaskPriority;
 	/**
-	 * Eisenhower “important” flag for the matrix view.
-	 * `null` means the YAML key is absent (soft-infer from {@link priority} for display only).
+	 * Eisenhower “Important” flag for the matrix view.
+	 * Urgent is **not** stored — derived from {@link priority} via
+	 * {@link isUrgentFromPriority} (`high` | `urgent` → Urgent).
+	 * `null` means the YAML key is absent (treated as not important).
 	 * @remarks YAML: `important`
 	 */
 	important: boolean | null;
 	/**
-	 * Eisenhower “urgent” flag for the matrix view.
-	 * `null` means the YAML key is absent (soft-infer from {@link priority} for display only).
-	 * @remarks YAML: `urgent`
+	 * @deprecated Legacy YAML `urgent` from older PE versions. Ignored for
+	 * matrix placement (Priority is the source of truth). Still parsed so
+	 * notes load safely; new writes omit / strip this key.
+	 * @remarks YAML: `urgent` (legacy only)
 	 */
-	urgent: boolean | null;
+	urgent?: boolean | null;
 	/** Zero-duration checkpoint (also used for PRINCE2 stage boundaries). */
 	isMilestone: boolean;
 	/** When true, later stages cannot start until this task ends. */
@@ -869,6 +872,79 @@ export const DEFAULT_PROJECT_ICON = "clipboard-list";
 export const DEFAULT_PROJECT_COLOR = "#f97316";
 
 /**
+ * Stable Eisenhower quadrant ids (Important × Urgent matrix cells).
+ *
+ * - `iu` — Important + Urgent  
+ * - `inu` — Important + Not urgent  
+ * - `niu` — Not important + Urgent  
+ * - `ninu` — Not important + Not urgent  
+ */
+export type EisenhowerQuadrantId = "iu" | "inu" | "niu" | "ninu";
+
+/**
+ * One Eisenhower quadrant’s user-facing labels (Settings → Eisenhower).
+ */
+export interface EisenhowerQuadrantLabel {
+	/** Short heading shown on the quadrant card (example: `Do first`). */
+	title: string;
+	/** Legend under the title (example: `Important · Urgent`). */
+	subtitle: string;
+}
+
+/**
+ * Customisable labels for all four Eisenhower quadrants.
+ */
+export interface EisenhowerQuadrantLabels {
+	/** Important + Urgent. */
+	iu: EisenhowerQuadrantLabel;
+	/** Important + Not urgent. */
+	inu: EisenhowerQuadrantLabel;
+	/** Not important + Urgent. */
+	niu: EisenhowerQuadrantLabel;
+	/** Not important + Not urgent. */
+	ninu: EisenhowerQuadrantLabel;
+}
+
+/**
+ * English defaults for the Eisenhower matrix quadrant labels.
+ */
+export const DEFAULT_EISENHOWER_LABELS: EisenhowerQuadrantLabels = {
+	iu: { title: "Do first", subtitle: "Important · Urgent" },
+	inu: { title: "Schedule", subtitle: "Important · Not urgent" },
+	niu: { title: "Delegate", subtitle: "Not important · Urgent" },
+	ninu: { title: "Eliminate", subtitle: "Not important · Not urgent" },
+};
+
+/**
+ * Merge partial/saved Eisenhower labels onto English defaults (safe migrate).
+ */
+export function mergeEisenhowerLabels(
+	partial?: Partial<EisenhowerQuadrantLabels> | null,
+): EisenhowerQuadrantLabels {
+	const mergeOne = (
+		id: EisenhowerQuadrantId,
+		fallback: EisenhowerQuadrantLabel,
+	): EisenhowerQuadrantLabel => {
+		const raw = partial?.[id];
+		const title =
+			typeof raw?.title === "string" && raw.title.trim()
+				? raw.title.trim()
+				: fallback.title;
+		const subtitle =
+			typeof raw?.subtitle === "string" && raw.subtitle.trim()
+				? raw.subtitle.trim()
+				: fallback.subtitle;
+		return { title, subtitle };
+	};
+	return {
+		iu: mergeOne("iu", DEFAULT_EISENHOWER_LABELS.iu),
+		inu: mergeOne("inu", DEFAULT_EISENHOWER_LABELS.inu),
+		niu: mergeOne("niu", DEFAULT_EISENHOWER_LABELS.niu),
+		ninu: mergeOne("ninu", DEFAULT_EISENHOWER_LABELS.ninu),
+	};
+}
+
+/**
  * Persisted plugin settings (`data.json`).
  */
 export interface ProjectsEngineSettings {
@@ -970,6 +1046,12 @@ export interface ProjectsEngineSettings {
 	kanbanShowSubtasks: boolean;
 	/** Show a short description preview on Board cards. */
 	kanbanShowDescriptionPreview: boolean;
+	/**
+	 * Display labels for the four Eisenhower matrix quadrants.
+	 * Stable ids: `iu` / `inu` / `niu` / `ninu`. Title is the heading; subtitle
+	 * is the Important × Urgent legend under it.
+	 */
+	eisenhowerLabels: EisenhowerQuadrantLabels;
 	/** Cascade dependent dates when a task’s schedule changes. */
 	autoSchedule: boolean;
 	/** When auto-schedule is on, pull dependents earlier on early finish. */
@@ -1021,6 +1103,12 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	lineBorders: "horizontal",
 	kanbanShowSubtasks: false,
 	kanbanShowDescriptionPreview: false,
+	eisenhowerLabels: {
+		iu: { ...DEFAULT_EISENHOWER_LABELS.iu },
+		inu: { ...DEFAULT_EISENHOWER_LABELS.inu },
+		niu: { ...DEFAULT_EISENHOWER_LABELS.niu },
+		ninu: { ...DEFAULT_EISENHOWER_LABELS.ninu },
+	},
 	autoSchedule: true,
 	pullForwardOnEarlyFinish: false,
 	saveTaskOnClose: true,
@@ -1078,44 +1166,70 @@ export function activeTaskStatuses(
 }
 
 /**
- * Soft Eisenhower defaults inferred from {@link TaskPriority} for new tasks
- * (and for display when YAML lacks explicit `important` / `urgent`).
+ * Whether Priority maps to **Urgent** on the Eisenhower matrix.
  *
- * - `urgent` priority → important + urgent
- * - `high` → important only
- * - everything else → neither
+ * **Rule (documented in Settings help + task editor):**
+ * - `high` or `urgent` priority → Urgent
+ * - `none`, `low`, or `medium` → Not urgent
+ *
+ * There is no separate YAML `urgent` flag going forward.
+ */
+export function isUrgentFromPriority(priority: TaskPriority): boolean {
+	return priority === "high" || priority === "urgent";
+}
+
+/**
+ * Soft-default for the Important checkbox on brand-new drafts only.
+ * Urgent always comes from Priority via {@link isUrgentFromPriority}.
+ *
+ * @deprecated Prefer setting `important: false` on new drafts and using
+ * {@link resolveEisenhowerFlags}. Kept for tests / migration helpers.
  */
 export function eisenhowerFromPriority(priority: TaskPriority): {
 	important: boolean;
 	urgent: boolean;
 } {
-	if (priority === "urgent") {
-		return { important: true, urgent: true };
-	}
-	if (priority === "high") {
-		return { important: true, urgent: false };
-	}
-	return { important: false, urgent: false };
+	return {
+		important: false,
+		urgent: isUrgentFromPriority(priority),
+	};
 }
 
 /**
- * Effective Eisenhower flags for matrix placement.
- * Prefer explicit frontmatter booleans; otherwise soft-infer from priority
- * without rewriting the note until the user edits or drags.
+ * Effective Eisenhower placement: Important from YAML (default false when
+ * unset); Urgent always from Priority. Legacy YAML `urgent` is ignored.
  */
 export function resolveEisenhowerFlags(task: {
 	important: boolean | null;
-	urgent: boolean | null;
 	priority: TaskPriority;
+	/** Legacy field — ignored for placement. */
+	urgent?: boolean | null;
 }): { important: boolean; urgent: boolean } {
-	if (task.important != null && task.urgent != null) {
-		return { important: task.important, urgent: task.urgent };
-	}
-	const soft = eisenhowerFromPriority(task.priority);
 	return {
-		important: task.important ?? soft.important,
-		urgent: task.urgent ?? soft.urgent,
+		important: task.important === true,
+		urgent: isUrgentFromPriority(task.priority),
 	};
+}
+
+/**
+ * Priority to write when a matrix drag requires a specific Urgent state.
+ *
+ * - Need Urgent and current is not → raise to `high`
+ * - Need Not urgent and current is Urgent → lower to `medium`
+ * - Otherwise keep the existing priority
+ */
+export function priorityForUrgentState(
+	current: TaskPriority,
+	wantUrgent: boolean,
+): TaskPriority {
+	const isUrgent = isUrgentFromPriority(current);
+	if (wantUrgent && !isUrgent) {
+		return "high";
+	}
+	if (!wantUrgent && isUrgent) {
+		return "medium";
+	}
+	return current;
 }
 
 // ---------------------------------------------------------------------------

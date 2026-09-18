@@ -14,6 +14,7 @@ import { Notice, Plugin, TFile } from "obsidian";
 import { CommandStack, Scheduler } from "./engine/Scheduler";
 import { EntityIndexer } from "./engine/Indexer";
 import { DEFAULT_SETTINGS, type CustomFieldEntityKind, type ProjectsEngineSettings } from "./models/types";
+import { mergeEisenhowerLabels } from "./models/types";
 import { splitFrontmatter } from "./services/frontmatter";
 import { scaffoldProjectTree } from "./services/projectScaffold";
 import { applyAssignedTaskListTemplate } from "./services/taskListTemplates";
@@ -294,6 +295,7 @@ export default class ProjectsEnginePlugin extends Plugin {
 			...saved,
 			projectStatuses: DEFAULT_SETTINGS.projectStatuses.map((item) => ({ ...item })),
 			taskStatuses: DEFAULT_SETTINGS.taskStatuses.map((item) => ({ ...item })),
+			eisenhowerLabels: mergeEisenhowerLabels(saved?.eisenhowerLabels),
 			customFieldSchemas: [],
 		};
 		if (saved?.customFieldSchemas && Array.isArray(saved.customFieldSchemas)) {

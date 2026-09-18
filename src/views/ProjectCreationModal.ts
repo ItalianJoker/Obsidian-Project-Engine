@@ -27,6 +27,7 @@ import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from "../models/types";
 import { mountIconPicker } from "../ui/IconPicker";
 import { loadProjectRows } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
+import { openTaskListTemplateModal } from "./TaskListTemplateModal";
 
 interface TeamChip {
 	name: string;
@@ -314,23 +315,47 @@ export class ProjectCreationModal extends Modal {
 	}
 
 	/**
-	 * Optional fuzzy picker for an Entity-as-a-Note task-list template.
-	 * Applied after scaffold when the field is set.
+	 * Assign a task-list template created in Settings.
+	 * Empty-state help when the catalogue has no templates yet.
 	 */
 	private addTaskListTemplatePicker(): void {
-		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
-		wrap.createEl("label", { text: "Task list template", cls: "pe-label" });
+		const wrap = this.contentEl.createDiv({ cls: "pe-field pe-template-assign" });
+		wrap.createEl("label", {
+			text: "Assign task list template",
+			cls: "pe-label",
+		});
 		wrap.createEl("p", {
 			cls: "pe-help",
-			text: "Optional. When set, creates the template’s tasks under Tasks/ after scaffold. Manage templates in Settings or via the Create task list template command.",
+			text: "Optional starter checklist for this project. Create templates first in Settings → Task list templates (or the Create task list template command), then pick one here. On create, tasks are generated under Tasks/ after the folder scaffold.",
 		});
+
+		const templates = this.plugin.indexer.list("task-list-template");
+		if (templates.length === 0) {
+			const empty = wrap.createDiv({ cls: "pe-template-empty" });
+			empty.createEl("p", {
+				cls: "pe-help",
+				text: "No templates yet. Create one in Settings, then return here to assign it.",
+			});
+			const createBtn = empty.createEl("button", {
+				text: "Create template…",
+				cls: "pe-secondary pe-touch-target",
+				attr: { type: "button" },
+			});
+			createBtn.addEventListener("click", () => {
+				openTaskListTemplateModal(this.plugin);
+			});
+		}
+
 		const input = wrap.createEl("input", {
 			cls: "pe-input pe-touch-target",
 			attr: {
 				type: "text",
-				placeholder: "Search templates… (optional)",
+				placeholder:
+					templates.length === 0
+						? "Create a template in Settings first…"
+						: "Search and assign a template…",
 				spellcheck: "false",
-				"aria-label": "Task list template",
+				"aria-label": "Assign task list template",
 			},
 		});
 		input.value = this.form.taskListTemplate;

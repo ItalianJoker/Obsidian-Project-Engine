@@ -34,7 +34,6 @@ function task(
 		status: "backlog",
 		priority: "none",
 		important: null,
-		urgent: null,
 		isMilestone: false,
 		isStageBoundary: false,
 		filePath: `${partial.id}.md`,
