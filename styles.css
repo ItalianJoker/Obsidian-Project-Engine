@@ -203,15 +203,25 @@
 }
 
 
+/* Template editor task rows: match pe-field / pe-custom-fields rhythm. */
+.pe-template-task-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin: 0;
+}
+
 .pe-template-task-row {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	/* Title → status/priority/hours/actions (was 6px — too tight). */
+	gap: 10px;
 }
 
 .pe-template-task-row .pe-inline-row {
 	flex-wrap: wrap;
 	align-items: center;
+	gap: 8px;
 }
 
 .pe-actions {
@@ -307,6 +317,14 @@
 
 /* Dense tables → stacked cards on small displays (foundation for later views). */
 @media (max-width: 720px) {
+	.pe-template-task-list {
+		gap: 14px;
+	}
+
+	.pe-template-task-row {
+		gap: 12px;
+	}
+
 	.projects-engine-modal {
 		width: 100vw;
 		max-width: 100vw;
