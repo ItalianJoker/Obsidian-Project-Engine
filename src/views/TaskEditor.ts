@@ -20,7 +20,6 @@ import type {
 import {
 	activeTaskStatuses,
 	defaultTaskStatusId,
-	eisenhowerFromPriority,
 	resolveEisenhowerFlags,
 	toWikiLink,
 } from "../models/types";
@@ -122,7 +121,6 @@ export class TaskEditor {
 		} else {
 			const placeholderId = `${projectId}#T-pending`;
 			const priority: TaskPriority = "none";
-			const soft = eisenhowerFromPriority(priority);
 			this.draft = blankTaskDraft({
 				id: placeholderId,
 				projectId,
@@ -132,9 +130,8 @@ export class TaskEditor {
 				status: defaultTaskStatusId(plugin.settings.taskStatuses),
 				priority,
 			});
-			// blankTaskDraft already applies soft Eisenhower defaults; keep explicit for clarity.
-			this.draft.important = soft.important;
-			this.draft.urgent = soft.urgent;
+			// Important defaults false; Urgent comes from Priority (none → not urgent).
+			this.draft.important = false;
 		}
 	}
 
@@ -305,6 +302,10 @@ export class TaskEditor {
 	private addPriority(): void {
 		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
 		wrap.createEl("label", { text: "Priority", cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Also drives Eisenhower Urgent: High or Urgent priority = Urgent; None / Low / Medium = Not urgent.",
+		});
 		const select = wrap.createEl("select", {
 			cls: "pe-input pe-touch-target",
 			attr: { "aria-label": "Priority" },
@@ -315,54 +316,44 @@ export class TaskEditor {
 		select.value = this.draft.priority;
 		select.addEventListener("change", () => {
 			this.draft.priority = select.value as TaskPriority;
-			// Soft-default Eisenhower only when the user has not set explicit flags yet.
-			if (this.draft.important == null || this.draft.urgent == null) {
-				const soft = eisenhowerFromPriority(this.draft.priority);
-				if (this.draft.important == null) this.draft.important = soft.important;
-				if (this.draft.urgent == null) this.draft.urgent = soft.urgent;
-			}
+			// Refresh Eisenhower help row so the derived Urgent hint stays accurate.
+			this.refreshEisenhowerHint();
 		});
 	}
 
 	/**
-	 * Explicit Important / Urgent checkboxes for the Eisenhower matrix.
-	 * Stored as YAML `important` / `urgent`; matrix DnD updates the same fields.
+	 * Important toggle for the Eisenhower matrix. Urgent is derived from Priority
+	 * (`high` | `urgent` → Urgent) — no separate Urgent checkbox.
 	 */
 	private addEisenhowerFlags(): void {
-		const wrap = this.rootEl!.createDiv({ cls: "pe-field pe-flag-row pe-eisenhower-flags" });
-		wrap.createEl("label", { text: "Eisenhower", cls: "pe-label" });
-		wrap.createEl("p", {
-			cls: "pe-help",
-			text: "Used by the Eisenhower matrix. New tasks soft-default from Priority; dragging a card persists these flags.",
+		const wrap = this.rootEl!.createDiv({
+			cls: "pe-field pe-flag-row pe-eisenhower-flags",
 		});
-
-		const effective = resolveEisenhowerFlags({
-			important: this.draft.important,
-			urgent: this.draft.urgent,
-			priority: this.draft.priority,
-		});
+		this.eisenhowerHintEl = wrap.createEl("p", { cls: "pe-help" });
+		this.refreshEisenhowerHint();
 
 		const important = wrap.createEl("label", { cls: "pe-check-label pe-touch-target" });
 		const importantCb = important.createEl("input", { attr: { type: "checkbox" } });
-		importantCb.checked = this.draft.important ?? effective.important;
+		importantCb.checked = this.draft.important === true;
 		important.createSpan({ text: "Important" });
 		importantCb.addEventListener("change", () => {
 			this.draft.important = importantCb.checked;
-			if (this.draft.urgent == null) {
-				this.draft.urgent = effective.urgent;
-			}
 		});
+	}
 
-		const urgent = wrap.createEl("label", { cls: "pe-check-label pe-touch-target" });
-		const urgentCb = urgent.createEl("input", { attr: { type: "checkbox" } });
-		urgentCb.checked = this.draft.urgent ?? effective.urgent;
-		urgent.createSpan({ text: "Urgent" });
-		urgentCb.addEventListener("change", () => {
-			this.draft.urgent = urgentCb.checked;
-			if (this.draft.important == null) {
-				this.draft.important = effective.important;
-			}
+	private eisenhowerHintEl: HTMLElement | null = null;
+
+	/** Update the derived-Urgent explanation under the Important checkbox. */
+	private refreshEisenhowerHint(): void {
+		if (!this.eisenhowerHintEl) return;
+		const flags = resolveEisenhowerFlags({
+			important: this.draft.important,
+			priority: this.draft.priority,
 		});
+		const urgentLabel = flags.urgent ? "Urgent" : "Not urgent";
+		this.eisenhowerHintEl.setText(
+			`Toggle Important for the matrix. Urgent is derived from Priority (currently ${urgentLabel} because Priority is “${this.draft.priority}”). Rule: High or Urgent → Urgent; None / Low / Medium → Not urgent.`,
+		);
 	}
 
 	/**
@@ -1050,7 +1041,6 @@ function taskToDraft(task: Task): TaskDraft {
 		status: task.status,
 		priority: task.priority,
 		important: task.important,
-		urgent: task.urgent,
 		isMilestone: task.isMilestone,
 		isStageBoundary: task.isStageBoundary,
 		stageId: task.stageId,

@@ -37,6 +37,7 @@ Il plugin include:
 | Project Type | `project-type` | `Projects/Entities/Project Types/` |
 | Technology | `technology` | `Projects/Entities/Technologies/` |
 | Stakeholder | `stakeholder` | `Projects/Entities/Stakeholders/` |
+| Task list template | `task-list-template` | `Projects/Entities/Task List Templates/` |
 | Task | `task` | `Projects/{ID} - {Name}/Tasks/` |
 
 Nel YAML i riferimenti sono **wikilink tra virgolette** (`"[[Acme Corp]]"`). Ogni nota PE con `pe_type` riceve anche **`tags`** Obsidian (`projects-engine`, il `pe_type`, e dove noto `pe/<project-id>`) più le proprietà YAML, così Properties / Tags / Bases / filtri Graph funzionano nativamente. Uno **Stakeholder** può puntare a un Customer (`customer`) e essere referenziato da uno o più Project (`stakeholders`); l’associazione vale a livello progetto, cliente, o entrambi (wikilink nei due sensi). Il corpo della nota ripete i link in una sezione **Links**, così Graph View genera cluster anche quando l’indicizzazione YAML è limitata. Le note create da Overview → Documents usano lo stesso schema (`project: "[[…]]"` + **Links** → Project; task e stage idem). Non servono plugin di terze parti per il grafo.
@@ -63,6 +64,7 @@ Modale mobile-ready che raccoglie e valida:
 - **Technologies**, **Team** (ruolo opzionale), **Stakeholders** (progetto e/o cliente)
 - **Commesse** (chip multipli), **budget in giorni (giornate)**, **Project URL**
 - **`teams_channel_url`** — URL Teams / deep link `msteams://`, con pulsante di avvio rapido
+- **Task list template** (opzionale) — assegna un template Entity-as-a-Note; applicato in `Tasks/` dopo lo scaffold
 
 Le scritture usano solo `vault.process` (sicure con Obsidian Sync / iCloud).
 
@@ -87,6 +89,15 @@ In Settings → **Board → Task board columns** si configurano le colonne Kanba
 **Semplificato** — flusso lineare **Backlog → In Progress → Review → Done** (personalizzabile). Board Kanban lean, time log, giorni effettivi vs budget, vista tabella con fallback card/accordion su schermi stretti (&lt;720px).
 
 **PRINCE2** — Management Stages con Stage Boundary. Alla creazione (o da Portafoglio) vengono generati i registri: Business Case, Risk Register, Issue & Change Log, Quality Register, Work Packages. I milestone di fine stage (`is_stage_boundary`) sono **blocchi formali** nello scheduler: lo stage successivo non parte finché il boundary non è chiuso.
+
+
+### Template di task list
+
+1. **Crea** un template: Settings → Task list templates → **Create template**, oppure comando *Create task list template*. Nota Entity-as-a-Note con `pe_type: task-list-template` e albero YAML `tasks` (gerarchia via `children`).
+2. **Assegna** al progetto: nel wizard di creazione o in Edit project, campo *Task list template* (fuzzy). YAML: `task_list_template: "[[Nome]]"`.
+3. **Applica**: in creazione, se assegnato, genera le note sotto `Tasks/` dopo lo scaffold. In Edit, usa **Apply template…** (conferma se `Tasks/` non è vuota). Ogni task ha tags/properties Graph-ready.
+
+I progetti senza template restano invariati.
 
 ### Task, dipendenze e scheduling
 
@@ -296,6 +307,7 @@ The plugin ships with:
 | Project Type | `project-type` | `Projects/Entities/Project Types/` |
 | Technology | `technology` | `Projects/Entities/Technologies/` |
 | Stakeholder | `stakeholder` | `Projects/Entities/Stakeholders/` |
+| Task list template | `task-list-template` | `Projects/Entities/Task List Templates/` |
 | Task | `task` | `Projects/{ID} - {Name}/Tasks/` |
 
 YAML stores **quoted wikilinks** (`"[[Acme Corp]]"`). Every PE note with `pe_type` also gets Obsidian **`tags`** (`projects-engine`, the `pe_type`, and when known `pe/<project-id>`) plus YAML properties so Properties / Tags / Bases / Graph filters work natively. A **Stakeholder** may wikilink a Customer (`customer`) and be referenced from one or more Projects (`stakeholders`); association is valid at project level, customer level, or both. The note body repeats links in a **Links** section so Graph View still clusters when YAML property indexing is limited. Notes created from Overview → Documents use the same pattern (`project: "[[…]]"` + **Links** → Project; tasks and stages likewise). No third-party graph plugin is required.
@@ -322,6 +334,7 @@ Mobile-ready modal that collects and validates:
 - **Technologies**, **Team** (optional role), **Stakeholders** (project and/or customer)
 - **Work orders** (multi chips), **budget in days**, **Project URL**
 - **`teams_channel_url`** — Teams URL / `msteams://` deep link with quick-launch button
+- **Task list template** (optional) — assign an Entity-as-a-Note template; applied into `Tasks/` after scaffold
 
 All content writes go through `vault.process` only (safe with Obsidian Sync / iCloud).
 
@@ -346,6 +359,15 @@ Settings → **Board → Task board columns**: configure Kanban / task status co
 **Semplificato** — linear flow **Backlog → In Progress → Review → Done** (customisable). Lean Kanban, time logs, actual vs budget days, table view with card/accordion fallback below 720px.
 
 **PRINCE2** — Management Stages with Stage Boundaries. On create (or from Portfolio) the plugin scaffolds Business Case, Risk Register, Issue & Change Log, Quality Register, and Work Packages. End-of-stage milestones (`is_stage_boundary`) are **formal scheduler blocks**: later stages cannot start until the boundary finishes.
+
+
+### Task list templates
+
+1. **Create** a template: Settings → Task list templates → **Create template**, or the *Create task list template* command. Entity-as-a-Note with `pe_type: task-list-template` and a YAML `tasks` tree (hierarchy via `children`).
+2. **Assign** to a project: Create project wizard or Edit project → *Task list template* (fuzzy). YAML: `task_list_template: "[[Name]]"`.
+3. **Apply**: on create (when assigned), materialises notes under `Tasks/` after scaffold. On edit, use **Apply template…** (confirms if `Tasks/` already has notes). Generated tasks include Obsidian tags + properties + Graph Links.
+
+Projects without a template are unchanged.
 
 ### Tasks, dependencies, and scheduling
 

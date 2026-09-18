@@ -17,7 +17,7 @@ import type {
 	TimeLog,
 	WikiLink,
 } from "../models/types";
-import { eisenhowerFromPriority, toWikiLink, wikiLinkTarget } from "../models/types";
+import { toWikiLink, wikiLinkTarget } from "../models/types";
 import { buildGraphLinksSection, buildMarkdownNote, splitFrontmatter } from "./frontmatter";
 import {
 	computeEffortRollup,
@@ -58,11 +58,14 @@ export interface TaskDraft {
 	status: TaskStatus;
 	priority: TaskPriority;
 	/**
-	 * Explicit Eisenhower flags (`null` = not yet written to YAML).
-	 * New drafts soft-default from {@link priority} via {@link eisenhowerFromPriority}.
+	 * Explicit Eisenhower Important flag (`null` = unset → treated as false).
+	 * Urgent is derived from {@link priority} (`high` | `urgent`), not stored.
 	 */
 	important: boolean | null;
-	urgent: boolean | null;
+	/**
+	 * @deprecated Legacy only; not written on save. Prefer Priority for Urgent.
+	 */
+	urgent?: boolean | null;
 	isMilestone: boolean;
 	isStageBoundary: boolean;
 	stageId?: string;
@@ -111,7 +114,6 @@ export function blankTaskDraft(args: {
 	priority?: TaskPriority;
 }): TaskDraft {
 	const priority = args.priority ?? "none";
-	const eisenhower = eisenhowerFromPriority(priority);
 	return {
 		id: args.id,
 		title: "",
@@ -130,8 +132,7 @@ export function blankTaskDraft(args: {
 		timeLogs: [],
 		status: args.status ?? "backlog",
 		priority,
-		important: eisenhower.important,
-		urgent: eisenhower.urgent,
+		important: false,
 		isMilestone: false,
 		isStageBoundary: false,
 		stageId: args.stageId,
@@ -194,6 +195,7 @@ export function parseTaskNote(
 		status: parseTaskStatus(data.status),
 		priority: parsePriority(data.priority),
 		important: readOptionalBoolean(data.important),
+		// Legacy YAML `urgent` — parsed for safe loads, ignored for placement.
 		urgent: readOptionalBoolean(data.urgent),
 		isMilestone: data.is_milestone === true,
 		isStageBoundary: data.is_stage_boundary === true,
@@ -242,14 +244,13 @@ export function buildTaskMarkdown(draft: TaskDraft, hoursPerManday: number): str
 		is_stage_boundary: draft.isStageBoundary,
 		custom_fields: draft.customFields,
 	};
-	// Persist Eisenhower flags whenever the draft has an explicit boolean
-	// (new tasks soft-default from priority; matrix drags always set both).
+	// Persist Important when explicitly set. Never write YAML `urgent` —
+	// Urgent is derived from Priority (`high` | `urgent`). Strip legacy key.
 	if (draft.important != null) {
 		frontmatter.important = draft.important;
 	}
-	if (draft.urgent != null) {
-		frontmatter.urgent = draft.urgent;
-	}
+	// Intentionally omit / strip legacy `urgent` on every write.
+	delete frontmatter.urgent;
 	if (draft.stageId) frontmatter.stage_id = draft.stageId;
 	if (draft.stageSequence != null) frontmatter.stage_sequence = draft.stageSequence;
 	if (draft.workPackageId) frontmatter.work_package_id = draft.workPackageId;

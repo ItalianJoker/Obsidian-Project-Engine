@@ -1,23 +1,26 @@
 /**
  * Eisenhower matrix SubView — four quadrants of Important × Urgent.
  *
- * Quadrants:
+ * Quadrants (default English labels; customisable in Settings → Eisenhower):
  * 1. Important + Urgent
  * 2. Important + Not urgent
  * 3. Not important + Urgent
  * 4. Not important + Not urgent
  *
- * Task notes store explicit `important` / `urgent` booleans in frontmatter.
- * When those keys are missing, placement soft-infers from `priority` via
- * {@link resolveEisenhowerFlags} without rewriting until the user drags or edits.
- * Dragging between quadrants persists both flags through {@link PersistEisenhowerCommand}.
+ * Task notes store an explicit `important` boolean. **Urgent** is derived from
+ * Priority (`high` | `urgent` → Urgent; otherwise Not urgent) — no YAML `urgent`.
+ * Legacy `urgent` keys are ignored for placement. Dragging between quadrants
+ * updates Important and may adjust Priority via {@link PersistEisenhowerCommand}.
  */
 
 import { Notice, TFile, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
 import {
+	priorityForUrgentState,
 	resolveEisenhowerFlags,
 	toWikiLink,
+	type EisenhowerQuadrantId,
+	type EisenhowerQuadrantLabels,
 	type Task,
 } from "../../models/types";
 import { formatDuePill, formatDisplayDateTime, isOverdue, effectiveDue } from "../../services/dateFormat";
@@ -27,8 +30,7 @@ import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
 
-/** Stable quadrant ids used as `data-quadrant` drop targets. */
-export type EisenhowerQuadrantId = "iu" | "inu" | "niu" | "ninu";
+export type { EisenhowerQuadrantId };
 
 interface EisenhowerQuadrant {
 	id: EisenhowerQuadrantId;
@@ -38,36 +40,34 @@ interface EisenhowerQuadrant {
 	urgent: boolean;
 }
 
-const QUADRANTS: EisenhowerQuadrant[] = [
-	{
-		id: "iu",
-		title: "Do first",
-		subtitle: "Important · Urgent",
-		important: true,
-		urgent: true,
-	},
-	{
-		id: "inu",
-		title: "Schedule",
-		subtitle: "Important · Not urgent",
-		important: true,
-		urgent: false,
-	},
-	{
-		id: "niu",
-		title: "Delegate",
-		subtitle: "Not important · Urgent",
-		important: false,
-		urgent: true,
-	},
-	{
-		id: "ninu",
-		title: "Eliminate",
-		subtitle: "Not important · Not urgent",
-		important: false,
-		urgent: false,
-	},
+const QUADRANT_FLAGS: {
+	id: EisenhowerQuadrantId;
+	important: boolean;
+	urgent: boolean;
+}[] = [
+	{ id: "iu", important: true, urgent: true },
+	{ id: "inu", important: true, urgent: false },
+	{ id: "niu", important: false, urgent: true },
+	{ id: "ninu", important: false, urgent: false },
 ];
+
+/**
+ * Build the four matrix cells from Settings labels.
+ */
+export function buildEisenhowerQuadrants(
+	labels: EisenhowerQuadrantLabels,
+): EisenhowerQuadrant[] {
+	return QUADRANT_FLAGS.map((flags) => {
+		const label = labels[flags.id];
+		return {
+			id: flags.id,
+			title: label.title,
+			subtitle: label.subtitle,
+			important: flags.important,
+			urgent: flags.urgent,
+		};
+	});
+}
 
 const DRAG_MIME = "application/x-projects-engine-eisenhower";
 
@@ -105,7 +105,7 @@ export class EisenhowerSubView implements SubView {
 		if (tasks.filter((t) => t.projectId === project.id).length === 0) {
 			new EmptyState(container)
 				.setTitle("Eisenhower matrix is empty")
-				.setBody("Add tasks, then drag cards between quadrants (Important × Urgent).")
+				.setBody("Add tasks, then drag cards between quadrants.")
 				.setAction("+ Add task", () => {
 					void openTaskEditor(plugin, {
 						projectId: project.id,
@@ -115,6 +115,7 @@ export class EisenhowerSubView implements SubView {
 			return;
 		}
 
+		const quadrants = buildEisenhowerQuadrants(plugin.settings.eisenhowerLabels);
 		const matrix = container.createDiv({ cls: "pe-eisenhower" });
 		const byId = new Map(projectTasks.map((task) => [task.id, task] as const));
 		const enableHtml5 = typeof window !== "undefined" && window.innerWidth >= 720;
@@ -123,15 +124,15 @@ export class EisenhowerSubView implements SubView {
 
 		const onDrop = (taskId: string, quadrantId: EisenhowerQuadrantId): void => {
 			const task = byId.get(taskId);
-			const quadrant = QUADRANTS.find((item) => item.id === quadrantId);
+			const quadrant = quadrants.find((item) => item.id === quadrantId);
 			if (!task || !quadrant) {
 				new Notice("Task not found on this matrix");
 				return;
 			}
 			const current = resolveEisenhowerFlags(task);
 			if (current.important === quadrant.important && current.urgent === quadrant.urgent) {
-				// Still persist if YAML lacked explicit flags so soft inference becomes stored.
-				if (task.important != null && task.urgent != null) {
+				// Still persist if Important was unset, so placement becomes explicit.
+				if (task.important != null) {
 					return;
 				}
 			}
@@ -141,7 +142,7 @@ export class EisenhowerSubView implements SubView {
 			});
 		};
 
-		for (const quadrant of QUADRANTS) {
+		for (const quadrant of quadrants) {
 			const cell = matrix.createDiv({
 				cls: `pe-eisenhower-quadrant pe-eisenhower-quadrant--${quadrant.id}`,
 			});
@@ -217,15 +218,16 @@ export class EisenhowerSubView implements SubView {
 			new Notice("Task file missing");
 			return;
 		}
+		const nextPriority = priorityForUrgentState(task.priority, quadrant.urgent);
 		this.props.plugin.commandStack.execute(
 			new PersistEisenhowerCommand(
 				this.props.app.vault,
 				file,
-				{ important: task.important, urgent: task.urgent },
-				{ important: quadrant.important, urgent: quadrant.urgent },
+				{ important: task.important, priority: task.priority },
+				{ important: quadrant.important, priority: nextPriority },
 			),
 		);
-		new Notice(`Moved to ${quadrant.subtitle}`);
+		new Notice(`Moved to ${quadrant.title}`);
 	}
 
 	private wireQuadrantDrop(

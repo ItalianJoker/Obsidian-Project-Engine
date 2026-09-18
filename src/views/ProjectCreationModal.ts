@@ -27,6 +27,7 @@ import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from "../models/types";
 import { mountIconPicker } from "../ui/IconPicker";
 import { loadProjectRows } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
+import { openTaskListTemplateModal } from "./TaskListTemplateModal";
 
 interface TeamChip {
 	name: string;
@@ -59,6 +60,8 @@ interface CreationForm {
 	icon: string;
 	color: string;
 	parentProjectId: string;
+	/** Optional task-list template note basename (Entity-as-a-Note). */
+	taskListTemplate: string;
 }
 
 /**
@@ -112,6 +115,7 @@ export class ProjectCreationModal extends Modal {
 			icon: DEFAULT_PROJECT_ICON,
 			color: DEFAULT_PROJECT_COLOR,
 			parentProjectId: "",
+			taskListTemplate: "",
 		};
 	}
 
@@ -149,6 +153,8 @@ export class ProjectCreationModal extends Modal {
 		this.addParentProjectField();
 
 		this.addGovernanceToggle();
+
+		this.addTaskListTemplatePicker();
 
 		this.addEntityPicker("Customer *", "customer", (name) => {
 			this.form.customer = name;
@@ -306,6 +312,67 @@ export class ProjectCreationModal extends Modal {
 
 		makeButton("Semplificato");
 		makeButton("PRINCE2");
+	}
+
+	/**
+	 * Assign a task-list template created in Settings.
+	 * Empty-state help when the catalogue has no templates yet.
+	 */
+	private addTaskListTemplatePicker(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field pe-template-assign" });
+		wrap.createEl("label", {
+			text: "Assign task list template",
+			cls: "pe-label",
+		});
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Optional starter checklist for this project. Create templates first in Settings → Task list templates (or the Create task list template command), then pick one here. On create, tasks are generated under Tasks/ after the folder scaffold.",
+		});
+
+		const templates = this.plugin.indexer.list("task-list-template");
+		if (templates.length === 0) {
+			const empty = wrap.createDiv({ cls: "pe-template-empty" });
+			empty.createEl("p", {
+				cls: "pe-help",
+				text: "No templates yet. Create one in Settings, then return here to assign it.",
+			});
+			const createBtn = empty.createEl("button", {
+				text: "Create template…",
+				cls: "pe-secondary pe-touch-target",
+				attr: { type: "button" },
+			});
+			createBtn.addEventListener("click", () => {
+				openTaskListTemplateModal(this.plugin);
+			});
+		}
+
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: {
+				type: "text",
+				placeholder:
+					templates.length === 0
+						? "Create a template in Settings first…"
+						: "Search and assign a template…",
+				spellcheck: "false",
+				"aria-label": "Assign task list template",
+			},
+		});
+		input.value = this.form.taskListTemplate;
+		const suggest = new EntitySuggest(
+			this.app,
+			input,
+			() => this.plugin.indexer.list("task-list-template"),
+			(suggestion) => {
+				const name = suggestionName(suggestion);
+				input.value = name;
+				this.form.taskListTemplate = name;
+			},
+		);
+		this.suggests.push(suggest);
+		input.addEventListener("input", () => {
+			this.form.taskListTemplate = input.value.trim();
+		});
 	}
 
 	private addEntityPicker(
@@ -825,6 +892,10 @@ export class ProjectCreationModal extends Modal {
 			created: now,
 			updated: now,
 		};
+		const templateName = this.form.taskListTemplate.trim();
+		if (templateName) {
+			frontmatter.task_list_template = toWikiLink(templateName);
+		}
 
 		const graphLinks = buildGraphLinksSection([
 			{ label: "Customer", wikiLink: customer },
@@ -832,6 +903,9 @@ export class ProjectCreationModal extends Modal {
 			...technologies.map((wikiLink) => ({ label: "Technology", wikiLink })),
 			...team.map((item) => ({ label: "Team", wikiLink: item.member })),
 			...stakeholders.map((wikiLink) => ({ label: "Stakeholder", wikiLink })),
+			...(templateName
+				? [{ label: "Task list template", wikiLink: toWikiLink(templateName) }]
+				: []),
 		]);
 
 		const teamsBlock = this.form.teamsChannelUrl.trim()

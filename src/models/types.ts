@@ -64,7 +64,12 @@ export type EntityType =
 	/** Single Risk / Issue / Quality row note under Registers/. */
 	| "prince2-register-entry"
 	/** PRINCE2 Initiation / guidance templates (Project Brief, PID, …). */
-	| "prince2-document";
+	| "prince2-document"
+	/**
+	 * Reusable task-list blueprint (Entity-as-a-Note).
+	 * Assigned to projects via YAML `task_list_template` wikilink.
+	 */
+	| "task-list-template";
 
 /**
  * Governance model selected when a project is created.
@@ -515,17 +520,20 @@ export interface Task {
 	/** Delivery priority for the task dashboard. @remarks YAML: `priority` */
 	priority: TaskPriority;
 	/**
-	 * Eisenhower “important” flag for the matrix view.
-	 * `null` means the YAML key is absent (soft-infer from {@link priority} for display only).
+	 * Eisenhower “Important” flag for the matrix view.
+	 * Urgent is **not** stored — derived from {@link priority} via
+	 * {@link isUrgentFromPriority} (`high` | `urgent` → Urgent).
+	 * `null` means the YAML key is absent (treated as not important).
 	 * @remarks YAML: `important`
 	 */
 	important: boolean | null;
 	/**
-	 * Eisenhower “urgent” flag for the matrix view.
-	 * `null` means the YAML key is absent (soft-infer from {@link priority} for display only).
-	 * @remarks YAML: `urgent`
+	 * @deprecated Legacy YAML `urgent` from older PE versions. Ignored for
+	 * matrix placement (Priority is the source of truth). Still parsed so
+	 * notes load safely; new writes omit / strip this key.
+	 * @remarks YAML: `urgent` (legacy only)
 	 */
-	urgent: boolean | null;
+	urgent?: boolean | null;
 	/** Zero-duration checkpoint (also used for PRINCE2 stage boundaries). */
 	isMilestone: boolean;
 	/** When true, later stages cannot start until this task ends. */
@@ -544,7 +552,8 @@ export interface Task {
  * Project record created by {@link ProjectCreationModal}.
  *
  * @remarks YAML `pe_type: project`. Wikilink fields: `customer`, `project_type`,
- * `technologies`, `team[].member`, `stakeholders`. Teams deep link: `teams_channel_url`.
+ * `technologies`, `team[].member`, `stakeholders`, optional `task_list_template`.
+ * Teams deep link: `teams_channel_url`.
  */
 export interface Project {
 	id: string;
@@ -559,6 +568,16 @@ export interface Project {
 	 * @remarks YAML: `stakeholders`
 	 */
 	stakeholders: WikiLink[];
+	/**
+	 * Optional task-list template note assigned to this project.
+	 * @remarks YAML: `task_list_template` (wikilink to `pe_type: task-list-template`)
+	 */
+	taskListTemplate?: WikiLink;
+	/**
+	 * ISO timestamp of the last successful template apply (create or “Apply template…”).
+	 * @remarks YAML: `task_list_template_applied`
+	 */
+	taskListTemplateApplied?: IsoDateTime;
 	/** Work-order / commessa codes (example: `COM-2026-01`). @remarks YAML: `work_orders` */
 	workOrders: string[];
 	/**
@@ -596,6 +615,52 @@ export interface Project {
 	createdAt: IsoDateTime;
 	updatedAt: IsoDateTime;
 	customFields: CustomFieldMap;
+}
+
+// ---------------------------------------------------------------------------
+// Task list templates (Entity-as-a-Note blueprints)
+// ---------------------------------------------------------------------------
+
+/**
+ * Frontmatter discriminator for task-list template notes.
+ *
+ * @remarks YAML `pe_type: task-list-template`
+ */
+export const TASK_LIST_TEMPLATE_PE_TYPE = "task-list-template" as const;
+
+/**
+ * One node in a task-list template tree (arbitrary depth via {@link children}).
+ *
+ * Persisted under YAML `tasks` on the template note. When applied, each node
+ * becomes a real `pe_type: task` note under the project’s `Tasks/` folder.
+ */
+export interface TaskListTemplateItem {
+	/** Task title written to the generated note. */
+	title: string;
+	/** Optional status id from Settings task columns (default: first open status). */
+	status?: TaskStatus;
+	/** Optional priority (default: `none`). */
+	priority?: TaskPriority;
+	/** Optional planned effort in hours. */
+	estimateHours?: number;
+	/** Optional body notes copied onto the generated task. */
+	notes?: string;
+	/** Nested subtasks (parent/child wired on apply). */
+	children?: TaskListTemplateItem[];
+}
+
+/**
+ * Parsed task-list template (Entity-as-a-Note).
+ *
+ * @remarks YAML `pe_type: task-list-template`. Relationship: projects store
+ * `task_list_template: "[[Template Name]]"`.
+ */
+export interface TaskListTemplate {
+	name: string;
+	description?: string;
+	tasks: TaskListTemplateItem[];
+	filePath: string;
+	wikiLink: WikiLink;
 }
 
 // ---------------------------------------------------------------------------
@@ -807,6 +872,79 @@ export const DEFAULT_PROJECT_ICON = "clipboard-list";
 export const DEFAULT_PROJECT_COLOR = "#f97316";
 
 /**
+ * Stable Eisenhower quadrant ids (Important × Urgent matrix cells).
+ *
+ * - `iu` — Important + Urgent  
+ * - `inu` — Important + Not urgent  
+ * - `niu` — Not important + Urgent  
+ * - `ninu` — Not important + Not urgent  
+ */
+export type EisenhowerQuadrantId = "iu" | "inu" | "niu" | "ninu";
+
+/**
+ * One Eisenhower quadrant’s user-facing labels (Settings → Eisenhower).
+ */
+export interface EisenhowerQuadrantLabel {
+	/** Short heading shown on the quadrant card (example: `Do first`). */
+	title: string;
+	/** Legend under the title (example: `Important · Urgent`). */
+	subtitle: string;
+}
+
+/**
+ * Customisable labels for all four Eisenhower quadrants.
+ */
+export interface EisenhowerQuadrantLabels {
+	/** Important + Urgent. */
+	iu: EisenhowerQuadrantLabel;
+	/** Important + Not urgent. */
+	inu: EisenhowerQuadrantLabel;
+	/** Not important + Urgent. */
+	niu: EisenhowerQuadrantLabel;
+	/** Not important + Not urgent. */
+	ninu: EisenhowerQuadrantLabel;
+}
+
+/**
+ * English defaults for the Eisenhower matrix quadrant labels.
+ */
+export const DEFAULT_EISENHOWER_LABELS: EisenhowerQuadrantLabels = {
+	iu: { title: "Do first", subtitle: "Important · Urgent" },
+	inu: { title: "Schedule", subtitle: "Important · Not urgent" },
+	niu: { title: "Delegate", subtitle: "Not important · Urgent" },
+	ninu: { title: "Eliminate", subtitle: "Not important · Not urgent" },
+};
+
+/**
+ * Merge partial/saved Eisenhower labels onto English defaults (safe migrate).
+ */
+export function mergeEisenhowerLabels(
+	partial?: Partial<EisenhowerQuadrantLabels> | null,
+): EisenhowerQuadrantLabels {
+	const mergeOne = (
+		id: EisenhowerQuadrantId,
+		fallback: EisenhowerQuadrantLabel,
+	): EisenhowerQuadrantLabel => {
+		const raw = partial?.[id];
+		const title =
+			typeof raw?.title === "string" && raw.title.trim()
+				? raw.title.trim()
+				: fallback.title;
+		const subtitle =
+			typeof raw?.subtitle === "string" && raw.subtitle.trim()
+				? raw.subtitle.trim()
+				: fallback.subtitle;
+		return { title, subtitle };
+	};
+	return {
+		iu: mergeOne("iu", DEFAULT_EISENHOWER_LABELS.iu),
+		inu: mergeOne("inu", DEFAULT_EISENHOWER_LABELS.inu),
+		niu: mergeOne("niu", DEFAULT_EISENHOWER_LABELS.niu),
+		ninu: mergeOne("ninu", DEFAULT_EISENHOWER_LABELS.ninu),
+	};
+}
+
+/**
  * Persisted plugin settings (`data.json`).
  */
 export interface ProjectsEngineSettings {
@@ -827,6 +965,12 @@ export interface ProjectsEngineSettings {
 	projectTypesFolder: string;
 	technologiesFolder: string;
 	stakeholdersFolder: string;
+	/**
+	 * Vault folder for Entity-as-a-Note task-list templates
+	 * (`pe_type: task-list-template`).
+	 * @example `"Projects/Entities/Task List Templates"`
+	 */
+	taskListTemplatesFolder: string;
 	/**
 	 * Legacy / fallback global tasks folder. New tasks are written under each
 	 * project’s scaffolded Tasks subfolder; this path remains for older notes
@@ -902,6 +1046,12 @@ export interface ProjectsEngineSettings {
 	kanbanShowSubtasks: boolean;
 	/** Show a short description preview on Board cards. */
 	kanbanShowDescriptionPreview: boolean;
+	/**
+	 * Display labels for the four Eisenhower matrix quadrants.
+	 * Stable ids: `iu` / `inu` / `niu` / `ninu`. Title is the heading; subtitle
+	 * is the Important × Urgent legend under it.
+	 */
+	eisenhowerLabels: EisenhowerQuadrantLabels;
 	/** Cascade dependent dates when a task’s schedule changes. */
 	autoSchedule: boolean;
 	/** When auto-schedule is on, pull dependents earlier on early finish. */
@@ -931,6 +1081,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	projectTypesFolder: "Projects/Entities/Project Types",
 	technologiesFolder: "Projects/Entities/Technologies",
 	stakeholdersFolder: "Projects/Entities/Stakeholders",
+	taskListTemplatesFolder: "Projects/Entities/Task List Templates",
 	tasksFolder: "Projects/Tasks",
 	scaffoldTasksFolder: "Tasks",
 	scaffoldInitiationFolder: "Initiation",
@@ -952,6 +1103,12 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	lineBorders: "horizontal",
 	kanbanShowSubtasks: false,
 	kanbanShowDescriptionPreview: false,
+	eisenhowerLabels: {
+		iu: { ...DEFAULT_EISENHOWER_LABELS.iu },
+		inu: { ...DEFAULT_EISENHOWER_LABELS.inu },
+		niu: { ...DEFAULT_EISENHOWER_LABELS.niu },
+		ninu: { ...DEFAULT_EISENHOWER_LABELS.ninu },
+	},
 	autoSchedule: true,
 	pullForwardOnEarlyFinish: false,
 	saveTaskOnClose: true,
@@ -1009,44 +1166,70 @@ export function activeTaskStatuses(
 }
 
 /**
- * Soft Eisenhower defaults inferred from {@link TaskPriority} for new tasks
- * (and for display when YAML lacks explicit `important` / `urgent`).
+ * Whether Priority maps to **Urgent** on the Eisenhower matrix.
  *
- * - `urgent` priority → important + urgent
- * - `high` → important only
- * - everything else → neither
+ * **Rule (documented in Settings help + task editor):**
+ * - `high` or `urgent` priority → Urgent
+ * - `none`, `low`, or `medium` → Not urgent
+ *
+ * There is no separate YAML `urgent` flag going forward.
+ */
+export function isUrgentFromPriority(priority: TaskPriority): boolean {
+	return priority === "high" || priority === "urgent";
+}
+
+/**
+ * Soft-default for the Important checkbox on brand-new drafts only.
+ * Urgent always comes from Priority via {@link isUrgentFromPriority}.
+ *
+ * @deprecated Prefer setting `important: false` on new drafts and using
+ * {@link resolveEisenhowerFlags}. Kept for tests / migration helpers.
  */
 export function eisenhowerFromPriority(priority: TaskPriority): {
 	important: boolean;
 	urgent: boolean;
 } {
-	if (priority === "urgent") {
-		return { important: true, urgent: true };
-	}
-	if (priority === "high") {
-		return { important: true, urgent: false };
-	}
-	return { important: false, urgent: false };
+	return {
+		important: false,
+		urgent: isUrgentFromPriority(priority),
+	};
 }
 
 /**
- * Effective Eisenhower flags for matrix placement.
- * Prefer explicit frontmatter booleans; otherwise soft-infer from priority
- * without rewriting the note until the user edits or drags.
+ * Effective Eisenhower placement: Important from YAML (default false when
+ * unset); Urgent always from Priority. Legacy YAML `urgent` is ignored.
  */
 export function resolveEisenhowerFlags(task: {
 	important: boolean | null;
-	urgent: boolean | null;
 	priority: TaskPriority;
+	/** Legacy field — ignored for placement. */
+	urgent?: boolean | null;
 }): { important: boolean; urgent: boolean } {
-	if (task.important != null && task.urgent != null) {
-		return { important: task.important, urgent: task.urgent };
-	}
-	const soft = eisenhowerFromPriority(task.priority);
 	return {
-		important: task.important ?? soft.important,
-		urgent: task.urgent ?? soft.urgent,
+		important: task.important === true,
+		urgent: isUrgentFromPriority(task.priority),
 	};
+}
+
+/**
+ * Priority to write when a matrix drag requires a specific Urgent state.
+ *
+ * - Need Urgent and current is not → raise to `high`
+ * - Need Not urgent and current is Urgent → lower to `medium`
+ * - Otherwise keep the existing priority
+ */
+export function priorityForUrgentState(
+	current: TaskPriority,
+	wantUrgent: boolean,
+): TaskPriority {
+	const isUrgent = isUrgentFromPriority(current);
+	if (wantUrgent && !isUrgent) {
+		return "high";
+	}
+	if (!wantUrgent && isUrgent) {
+		return "medium";
+	}
+	return current;
 }
 
 // ---------------------------------------------------------------------------

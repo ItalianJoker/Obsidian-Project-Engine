@@ -19,6 +19,8 @@ import type {
 	TimeDisplayFormat,
 } from "./models/types";
 import { DEFAULT_PROJECT_STATUSES, DEFAULT_TASK_STATUSES } from "./models/types";
+import { openTaskListTemplateModal } from "./views/TaskListTemplateModal";
+import { ensureTaskListTemplatesFolder } from "./services/taskListTemplates";
 
 const ENTITY_KINDS: { id: CustomFieldEntityKind; label: string }[] = [
 	{ id: "customer", label: "Customer" },
@@ -66,8 +68,10 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		this.renderTable();
 		this.renderGantt();
 		this.renderBoard();
+		this.renderEisenhower();
 		this.renderScheduling();
 		this.renderPaths();
+		this.renderTaskListTemplates();
 		this.renderScaffold();
 		this.renderIdentifiers();
 		this.renderTimeModel();
@@ -496,6 +500,66 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		});
 	}
 
+	/**
+	 * Eisenhower matrix — quadrant labels + Priority→Urgent mapping help.
+	 */
+	private renderEisenhower(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Eisenhower" });
+		containerEl.createEl("p", {
+			cls: "setting-item-description",
+			text: "Matrix placement: Important is a task checkbox; Urgent is derived from Priority (High or Urgent → Urgent; None / Low / Medium → Not urgent). Customise the four quadrant titles and legends below.",
+		});
+
+		const labels = this.plugin.settings.eisenhowerLabels;
+		const rows: { id: keyof typeof labels; legend: string }[] = [
+			{ id: "iu", legend: "Important + Urgent" },
+			{ id: "inu", legend: "Important + Not urgent" },
+			{ id: "niu", legend: "Not important + Urgent" },
+			{ id: "ninu", legend: "Not important + Not urgent" },
+		];
+
+		for (const row of rows) {
+			const current = labels[row.id];
+			new Setting(containerEl)
+				.setName(row.legend)
+				.setDesc("Title (heading) and subtitle (legend under the heading).")
+				.addText((text) => {
+					text.inputEl.addClass("pe-touch-target");
+					text.setPlaceholder("Title").setValue(current.title).onChange(async (value) => {
+						const trimmed = value.trim() || current.title;
+						this.plugin.settings.eisenhowerLabels = {
+							...this.plugin.settings.eisenhowerLabels,
+							[row.id]: {
+								...this.plugin.settings.eisenhowerLabels[row.id],
+								title: trimmed,
+							},
+						};
+						await this.plugin.saveSettings();
+						this.plugin.refreshOpenViews();
+					});
+				})
+				.addText((text) => {
+					text.inputEl.addClass("pe-touch-target");
+					text
+						.setPlaceholder("Subtitle")
+						.setValue(current.subtitle)
+						.onChange(async (value) => {
+							const trimmed = value.trim() || current.subtitle;
+							this.plugin.settings.eisenhowerLabels = {
+								...this.plugin.settings.eisenhowerLabels,
+								[row.id]: {
+									...this.plugin.settings.eisenhowerLabels[row.id],
+									subtitle: trimmed,
+								},
+							};
+							await this.plugin.saveSettings();
+							this.plugin.refreshOpenViews();
+						});
+				});
+		}
+	}
+
 	/** Scheduling — auto-schedule toggles (dotpm Scheduling). */
 	private renderScheduling(): void {
 		const { containerEl } = this;
@@ -549,6 +613,37 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			"Projects/Tasks",
 			"Fallback scan path for older task notes outside a project folder.",
 		);
+	}
+
+	/**
+	 * Task-list template catalogue (Entity-as-a-Note) + create shortcut.
+	 * Flat button row (no card) per PE settings UX.
+	 */
+	private renderTaskListTemplates(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Task list templates" });
+		containerEl.createEl("p", {
+			cls: "setting-item-description",
+			text: "Step 1: create a template here (or via the Create task list template command). Step 2: on Create / Edit project, assign it with “Assign task list template”. Step 3: on create it applies automatically; on edit use Apply template… Notes use pe_type: task-list-template under the folder below.",
+		});
+
+		this.addFolderSetting(
+			"Task list templates folder",
+			"taskListTemplatesFolder",
+			"Projects/Entities/Task List Templates",
+		);
+
+		new Setting(containerEl)
+			.setName("New task list template")
+			.setDesc("Opens the template editor. Starter hierarchy is included; customise freely.")
+			.addButton((button) => {
+				button.setButtonText("Create template").onClick(() => {
+					void ensureTaskListTemplatesFolder(
+						this.app.vault,
+						this.plugin.settings,
+					).then(() => openTaskListTemplateModal(this.plugin));
+				});
+			});
 	}
 
 	/** Per-project scaffold subfolder names. */
@@ -661,6 +756,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			| "projectTypesFolder"
 			| "technologiesFolder"
 			| "stakeholdersFolder"
+			| "taskListTemplatesFolder"
 			| "tasksFolder",
 		placeholder: string,
 		desc?: string,

@@ -30,6 +30,11 @@ export interface ProjectRow {
 	color: string;
 	/** Optional parent project id (YAML `parent_project`). */
 	parentProjectId: string | null;
+	/**
+	 * Optional assigned task-list template wikilink (YAML `task_list_template`).
+	 * Empty string when unset.
+	 */
+	taskListTemplate: string;
 }
 
 /**
@@ -64,6 +69,8 @@ export function loadProjectRows(app: App): ProjectRow[] {
 				typeof fm.parent_project === "string" && fm.parent_project.trim()
 					? fm.parent_project.trim()
 					: null,
+			taskListTemplate:
+				typeof fm.task_list_template === "string" ? fm.task_list_template : "",
 		});
 	}
 	return rows.sort((a, b) => a.id.localeCompare(b.id));

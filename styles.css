@@ -183,6 +183,37 @@
 	min-width: 0;
 }
 
+.pe-template-assign {
+	padding: 10px 0 4px;
+}
+
+.pe-template-empty {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0 0 10px;
+	padding: 10px 12px;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-secondary);
+}
+
+.pe-template-empty .pe-help {
+	margin: 0;
+}
+
+
+.pe-template-task-row {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.pe-template-task-row .pe-inline-row {
+	flex-wrap: wrap;
+	align-items: center;
+}
+
 .pe-actions {
 	justify-content: flex-end;
 	margin-top: 0;
@@ -2569,14 +2600,24 @@
 	margin: 0 0 4px;
 }
 
+/**
+ * Section titles: top border acts as the divider. Extra padding-top keeps the
+ * title clear of the separator (Luca feedback: scaffold → identifiers was cramped).
+ */
 .projects-engine-settings h3 {
-	margin: 28px 0 10px;
-	padding-top: 4px;
+	margin: 32px 0 12px;
+	padding-top: 20px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
 .projects-engine-settings h3:first-of-type {
+	margin-top: 16px;
+	padding-top: 0;
 	border-top: none;
+}
+
+.projects-engine-settings h4 {
+	margin: 20px 0 8px;
 }
 
 .pe-settings-lead {

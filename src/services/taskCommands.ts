@@ -6,7 +6,14 @@
  */
 
 import type { TFile, Vault } from "obsidian";
-import type { DatePatch, EngineCommand, IsoDate, SchedulableTask, TaskId } from "../models/types";
+import type {
+	DatePatch,
+	EngineCommand,
+	IsoDate,
+	SchedulableTask,
+	TaskId,
+	TaskPriority,
+} from "../models/types";
 import { buildMarkdownNote, splitFrontmatter } from "./frontmatter";
 import { processNote } from "./vaultIo";
 
@@ -132,8 +139,13 @@ export class PersistStatusCommand implements EngineCommand {
 }
 
 /**
- * Snapshot + restore Eisenhower `important` / `urgent` flags (matrix quadrant moves).
- * Always writes explicit booleans so soft priority inference is replaced by persisted fields.
+ * Snapshot + restore Eisenhower matrix moves.
+ *
+ * Placement rule:
+ * - **Important** — explicit YAML `important`
+ * - **Urgent** — derived from Priority (`high` | `urgent`); never written as YAML `urgent`
+ *
+ * Writes `important` + adjusted `priority`, and strips any legacy `urgent` key.
  */
 export class PersistEisenhowerCommand implements EngineCommand {
 	public readonly description: string;
@@ -141,21 +153,21 @@ export class PersistEisenhowerCommand implements EngineCommand {
 	constructor(
 		private readonly vault: Vault,
 		private readonly file: TFile,
-		private readonly previous: { important: boolean | null; urgent: boolean | null },
-		private readonly next: { important: boolean; urgent: boolean },
+		private readonly previous: { important: boolean | null; priority: TaskPriority },
+		private readonly next: { important: boolean; priority: TaskPriority },
 	) {
-		this.description = `Eisenhower → important=${next.important}, urgent=${next.urgent}`;
+		this.description = `Eisenhower → important=${next.important}, priority=${next.priority}`;
 	}
 
 	public execute(): void {
-		void this.write(this.next.important, this.next.urgent);
+		void this.write(this.next.important, this.next.priority);
 	}
 
 	public undo(): void {
-		void this.write(this.previous.important, this.previous.urgent);
+		void this.write(this.previous.important, this.previous.priority);
 	}
 
-	private async write(important: boolean | null, urgent: boolean | null): Promise<void> {
+	private async write(important: boolean | null, priority: TaskPriority): Promise<void> {
 		await processNote(this.vault, this.file, (current) => {
 			const { data, body } = splitFrontmatter(current);
 			if (important == null) {
@@ -163,11 +175,9 @@ export class PersistEisenhowerCommand implements EngineCommand {
 			} else {
 				data.important = important;
 			}
-			if (urgent == null) {
-				delete data.urgent;
-			} else {
-				data.urgent = urgent;
-			}
+			data.priority = priority;
+			// Strip obsolete YAML urgent — Priority is the source of truth for Urgent.
+			delete data.urgent;
 			return buildMarkdownNote(data, body);
 		});
 	}
