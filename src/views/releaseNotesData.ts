@@ -7,6 +7,14 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.0.6
+
+### Features
+
+- **Task list templates** — assignable customizable templates from Settings / Create–Edit project / Apply template….
+- **Settings spacing** — clearer vertical rhythm in the settings pane.
+- **Eisenhower** — custom quadrant labels; Urgent from Priority only; Important as checkbox (legacy \`urgent\` YAML ignored for placement).
+
 ## 1.0.5
 
 ### Features

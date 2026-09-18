@@ -1,5 +1,23 @@
 # Release notes — Projects Engine
 
+## 1.0.6 — Task list templates, Settings, Eisenhower
+
+**IT:** Template di lista task assegnabili e personalizzabili; spacing Settings più chiaro; etichette Eisenhower personalizzabili; Urgent derivato solo da Priority (Important resta checkbox).
+
+**EN:** Assignable customizable task list templates; clearer Settings spacing; custom Eisenhower quadrant labels; Urgent derived from Priority only (Important remains a checkbox).
+
+### Features
+
+- **Task list templates** — create templates (Settings / command), assign on Create / Edit project, apply on create or via Apply template….
+- **Eisenhower** — custom quadrant titles/legends in Settings; Urgent from Priority (`high` | `urgent`); Important only as explicit flag (no YAML `urgent` for placement).
+- **Settings spacing** — improved vertical rhythm in the settings pane.
+
+### Breaking Changes
+
+- **None** for existing notes. Eisenhower placement ignores legacy `urgent` YAML; Urgency follows Priority.
+
+---
+
 ## 1.0.5 — PRINCE2 operational registers
 
 **IT:** Registri operativi PRINCE2 (Risk, Issue & Change, Quality) con template lean nello scaffold; widget Overview + toggle in Settings. **Tag e proprietà YAML** nativi su ogni nota PE (`tags` + `pe_type` + **Links**) per Graph / Properties / Bases. Pass safety-first + copertura Vitest.
