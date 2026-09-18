@@ -2,7 +2,7 @@
 
 Obsidian.md plugin for Project Portfolio, Governance, and Delivery Management in Markdown.
 
-Version **1.0.6** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
+Version **1.0.7** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
 
 Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT); domain features and branding remain Projects Engine. See `NOTICE`.
 
@@ -204,7 +204,7 @@ Campi task rilevanti: `blocked_by`, `blocking`, `start_date`, `end_date`, `durat
 
 Requisiti: Obsidian **1.5.0+** (desktop e mobile). Node.js 18+ solo per build da sorgente.
 
-Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.0.6`
+Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.0.7`
 
 #### 1. Installazione utente (copia dei file)
 
@@ -476,7 +476,7 @@ Scheduler-relevant task fields: `blocked_by`, `blocking`, `start_date`, `end_dat
 
 Requirements: Obsidian **1.5.0+** (desktop and mobile). Node.js 18+ only for from-source builds.
 
-Id: `projects-engine` · Name: **Projects Engine** · Version: `1.0.6`
+Id: `projects-engine` · Name: **Projects Engine** · Version: `1.0.7`
 
 #### 1. End-user install (copy the plugin files)
 

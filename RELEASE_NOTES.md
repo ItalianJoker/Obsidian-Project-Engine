@@ -1,5 +1,21 @@
 # Release notes — Projects Engine
 
+## 1.0.7 — Template editor spacing
+
+**IT:** Spacing più arioso nell’editor dei template di lista task (Settings).
+
+**EN:** Clearer spacing on the task list template editor (Settings).
+
+### Fixes
+
+- **Template editor spacing** — improved vertical rhythm and field separation in the task list template editor UI.
+
+### Breaking Changes
+
+- **None.**
+
+---
+
 ## 1.0.6 — Task list templates, Settings, Eisenhower
 
 **IT:** Template di lista task assegnabili e personalizzabili; spacing Settings più chiaro; etichette Eisenhower personalizzabili; Urgent derivato solo da Priority (Important resta checkbox).

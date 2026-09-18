@@ -7,6 +7,12 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.0.7
+
+### Fixes
+
+- **Template editor spacing** — clearer vertical rhythm on the task list template editor in Settings.
+
 ## 1.0.6
 
 ### Features
