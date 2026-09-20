@@ -92,9 +92,14 @@ export function wireKanbanCardDnD(
 		if (event.button !== 0) {
 			return;
 		}
-		// Don't start a drag from nested buttons (Edit / status fallback).
+		// Don't start a drag from nested buttons / selects (edit pencil, status).
 		const target = event.target;
-		if (target instanceof HTMLElement && target.closest("button")) {
+		if (
+			target instanceof HTMLElement &&
+			(target.closest("button") ||
+				target.closest("select") ||
+				target.closest(".pe-task-title-row"))
+		) {
 			return;
 		}
 		active = true;

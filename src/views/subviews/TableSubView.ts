@@ -37,6 +37,7 @@ import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
 import { markCompletedConfirmMessage } from "../../services/taskStatusUi";
+import { mountTaskTitleControls } from "../taskTitleControls";
 
 /**
  * Workspace task filters (combinable with free-text search).
@@ -224,18 +225,12 @@ export class TableSubView implements SubView {
 			treeInner.createSpan({ cls: "pe-task-chevron-spacer" });
 		}
 
-		const titleBtn = treeInner.createEl("button", {
-			text: task.title || task.id,
-			cls: "pe-link-button pe-task-title pe-touch-target",
-			attr: { type: "button" },
-		});
-		titleBtn.addEventListener("click", () => {
-			void openTaskEditor(plugin, {
-				projectId: project.id,
-				projectLink: toWikiLink(project.file.basename),
-				existing: task,
-				parentId: task.parentId,
-			});
+		mountTaskTitleControls(treeInner, {
+			plugin,
+			project,
+			task,
+			titleClass: "pe-link-button pe-task-title pe-touch-target",
+			titleAsButton: true,
 		});
 
 		const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });

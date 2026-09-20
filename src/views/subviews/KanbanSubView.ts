@@ -28,6 +28,7 @@ import { wireKanbanCardDnD, wireKanbanColumnDrop } from "../kanbanDnD";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
+import { mountTaskTitleControls } from "../taskTitleControls";
 
 export interface KanbanSubViewProps {
 	app: App;
@@ -138,9 +139,13 @@ export class KanbanSubView implements SubView {
 			for (const task of inColumn) {
 				const card = cards.createDiv({ cls: "pe-kanban-card pe-touch-target" });
 
-				card.createEl("div", {
-					text: task.title || task.id,
-					cls: "pe-kanban-card-title",
+				const titleWrap = card.createDiv({ cls: "pe-kanban-card-head" });
+				mountTaskTitleControls(titleWrap, {
+					plugin,
+					project,
+					task,
+					titleClass: "pe-kanban-card-title pe-touch-target",
+					titleAsButton: false,
 				});
 
 				if (showPreview) {
@@ -175,21 +180,6 @@ export class KanbanSubView implements SubView {
 				}
 
 				const actions = card.createDiv({ cls: "pe-kanban-card-actions" });
-				const edit = actions.createEl("button", {
-					text: "Edit",
-					cls: "pe-kanban-edit pe-secondary pe-touch-target",
-					attr: { type: "button" },
-				});
-				edit.addEventListener("click", (event) => {
-					event.stopPropagation();
-					void openTaskEditor(plugin, {
-						projectId: project.id,
-						projectLink: toWikiLink(project.file.basename),
-						existing: task,
-						parentId: task.parentId,
-					});
-				});
-
 				if (isMobile) {
 					const select = actions.createEl("select", {
 						cls: "pe-kanban-status-fallback pe-input pe-touch-target",
