@@ -1390,6 +1390,11 @@
 	min-height: 120px;
 }
 
+.pe-table-subview {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
 .pe-task-table .pe-link-button {
 	min-height: 32px;
 	box-shadow: none;
@@ -2086,14 +2091,14 @@
  * ============================================================================= */
 
 .pe-task-dashboard .pe-task-check-col {
-	width: 40px;
+	width: 28px;
 	text-align: center;
-	padding-inline: 10px;
+	padding-inline: 4px;
 }
 
 .pe-task-reorder-col {
-	width: 36px;
-	padding-inline: 4px;
+	width: 24px;
+	padding-inline: 2px;
 	vertical-align: middle;
 }
 
@@ -2108,12 +2113,14 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 22px;
+	width: 18px;
+	height: 14px;
+	min-width: 18px;
+	min-height: 14px;
 	padding: 0;
 	margin: 0;
 	border: none;
-	border-radius: 4px;
+	border-radius: 3px;
 	background: transparent;
 	color: var(--text-muted);
 	cursor: pointer;
@@ -2132,15 +2139,18 @@
 }
 
 .pe-task-reorder-btn svg {
-	width: 14px;
-	height: 14px;
+	width: 11px;
+	height: 11px;
 }
 
 .pe-task-checkbox {
 	accent-color: var(--interactive-accent);
 	cursor: pointer;
-	width: 18px;
-	height: 18px;
+	width: 14px;
+	height: 14px;
+	min-width: 14px;
+	min-height: 14px;
+	margin: 0;
 }
 
 .pe-task-status-select {
@@ -3178,35 +3188,84 @@
 
 .pe-inline-datetime .pe-datetime-controls {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 4px;
+	flex-wrap: nowrap;
+	gap: 6px;
 	align-items: center;
+	min-width: max-content;
 }
 
 .pe-inline-datetime .pe-picker-combo {
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
+	flex: 0 0 auto;
+	min-width: 0;
+}
+
+/* Compact table density: do not inherit the 44px touch-target floor. */
+.pe-inline-datetime .pe-input.pe-touch-target,
+.pe-inline-datetime .pe-date-text,
+.pe-inline-datetime .pe-time-text,
+.pe-inline-datetime .pe-native-date,
+.pe-inline-datetime .pe-native-time {
+	min-height: 28px;
+	min-width: 0;
+	width: auto;
+	box-sizing: border-box;
 }
 
 .pe-inline-datetime .pe-date-text,
 .pe-inline-datetime .pe-time-text {
-	min-width: 6.5rem;
-	max-width: 7.5rem;
-	padding: 4px 6px;
+	flex: 0 0 auto;
+	min-width: 11ch;
+	width: 11ch;
+	max-width: none;
+	padding: 2px 6px;
 	font-size: 0.8em;
+}
+
+.pe-inline-datetime .pe-time-text {
+	min-width: 9.5ch;
+	width: 9.5ch;
 }
 
 .pe-inline-datetime .pe-native-date,
 .pe-inline-datetime .pe-native-time {
-	width: 2rem;
-	min-width: 2rem;
+	flex: 0 0 auto;
+	width: 1.75rem;
+	min-width: 1.75rem;
+	max-width: 1.75rem;
+	min-height: 28px;
 	padding: 2px;
 	font-size: 0.75em;
 }
 
 .pe-task-due-cell,
 .pe-task-scheduled-cell {
-	min-width: 11rem;
+	min-width: 18rem;
+	overflow: visible;
+	white-space: nowrap;
+}
+
+.pe-task-due-cell .pe-inline-datetime,
+.pe-task-scheduled-cell .pe-inline-datetime {
+	overflow: visible;
+}
+
+.pe-task-row--expired {
+	background: color-mix(in srgb, var(--text-error, #ef4444) 7%, transparent);
+}
+
+.pe-task-due-cell.is-expired,
+.pe-task-scheduled-cell.is-expired {
+	background: color-mix(in srgb, var(--text-warning, var(--text-error, #ef4444)) 14%, transparent);
+}
+
+.pe-task-due-cell.is-expired .pe-date-text,
+.pe-task-due-cell.is-expired .pe-time-text,
+.pe-task-scheduled-cell.is-expired .pe-date-text,
+.pe-task-scheduled-cell.is-expired .pe-time-text {
+	color: var(--text-error, #ef4444);
+	border-color: color-mix(in srgb, var(--text-error, #ef4444) 45%, var(--background-modifier-border));
 }
 

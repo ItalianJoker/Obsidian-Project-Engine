@@ -8,6 +8,7 @@ import {
 	formatDisplayDate,
 	formatDisplayDateTime,
 	formatDisplayTime,
+	isExpiredDateTime,
 	isOverdue,
 	joinDateTime,
 	parseDisplayDate,
@@ -71,6 +72,18 @@ describe("format + overdue", () => {
 		expect(isOverdue("2026-09-16", today)).toBe(true);
 		expect(isOverdue("2026-09-17", today)).toBe(false);
 		expect(isOverdue(null, today)).toBe(false);
+	});
+
+	it("isExpiredDateTime handles date-only and date-time", () => {
+		const utcToday = new Date(Date.UTC(2026, 8, 17, 12, 0, 0));
+		expect(isExpiredDateTime("2026-09-16", utcToday)).toBe(true);
+		expect(isExpiredDateTime("2026-09-17", utcToday)).toBe(false);
+		expect(isExpiredDateTime(null, utcToday)).toBe(false);
+		expect(isExpiredDateTime("", utcToday)).toBe(false);
+
+		const localNoon = new Date(2026, 8, 17, 12, 0, 0);
+		expect(isExpiredDateTime("2026-09-17T09:00", localNoon)).toBe(true);
+		expect(isExpiredDateTime("2026-09-17T15:00", localNoon)).toBe(false);
 	});
 
 	it("effectiveDue prefers due over endDate", () => {

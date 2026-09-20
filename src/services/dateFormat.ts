@@ -282,6 +282,37 @@ export function isOverdue(iso: string | null | undefined, today: Date = new Date
 }
 
 /**
+ * True when a due/scheduled value is in the past (incomplete-task highlight).
+ *
+ * - Date-only (`YYYY-MM-DD`): same rule as {@link isOverdue} (UTC calendar day
+ *   strictly before today).
+ * - Date-time (`YYYY-MM-DDTHH:mm`): wall-clock local datetime is before `now`.
+ */
+export function isExpiredDateTime(
+	iso: string | null | undefined,
+	now: Date = new Date(),
+): boolean {
+	if (!iso?.trim()) {
+		return false;
+	}
+	try {
+		const { date, time } = splitDateTime(iso);
+		if (!date || !isValidYmd(date)) {
+			return false;
+		}
+		if (time) {
+			const [y, m, d] = date.split("-").map((part) => Number.parseInt(part, 10));
+			const [hh, mm] = time.split(":").map((part) => Number.parseInt(part, 10));
+			const target = new Date(y!, (m ?? 1) - 1, d!, hh ?? 0, mm ?? 0, 0, 0);
+			return target.getTime() < now.getTime();
+		}
+		return isOverdue(date, now);
+	} catch {
+		return false;
+	}
+}
+
+/**
  * Effective due value for UI: prefer `due`, else legacy `end_date`.
  */
 export function effectiveDue(task: { due?: string | null; endDate?: string | null }): string | null {
