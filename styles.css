@@ -3205,13 +3205,15 @@
 
 .pe-inline-datetime .pe-datetime-controls {
 	display: flex;
+	flex-direction: column;
 	flex-wrap: nowrap;
 	gap: 6px;
-	align-items: center;
+	align-items: stretch;
 	min-width: max-content;
 }
 
 .pe-inline-datetime .pe-picker-combo {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
@@ -3247,56 +3249,54 @@
 }
 
 /*
- * Icon-only native pickers (Due/Scheduled): keep v1.0.9 density and center the
- * calendar/clock glyph. Do not set `color: transparent` — Chromium paints
- * `::-webkit-calendar-picker-indicator` with the input color, so transparent
- * makes the icon invisible (regression from v1.1.0 centering).
+ * Due/Scheduled: Lucide calendar/clock buttons open a visually hidden native
+ * date/time input via showPicker/click. Do not rely on Chromium’s
+ * ::-webkit-calendar-picker-indicator (theme color/filter is unreliable).
  */
-.pe-inline-datetime .pe-native-date,
-.pe-inline-datetime .pe-native-time {
-	flex: 0 0 auto;
-	position: relative;
+.pe-inline-datetime .pe-native-picker-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.pe-inline-datetime .pe-picker-icon-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 1.75rem;
-	min-width: 1.75rem;
-	max-width: 1.75rem;
-	min-height: 28px;
+	flex: 0 0 auto;
+	width: 28px;
 	height: 28px;
+	min-width: 28px;
+	min-height: 28px;
 	padding: 0;
-	font-size: 0.75em;
-	color: var(--text-muted);
-	overflow: hidden;
-}
-
-/* Hide ISO edit segments so only the picker icon is visible in the compact button. */
-.pe-inline-datetime .pe-native-date::-webkit-datetime-edit,
-.pe-inline-datetime .pe-native-time::-webkit-datetime-edit,
-.pe-inline-datetime .pe-native-date::-webkit-inner-spin-button,
-.pe-inline-datetime .pe-native-time::-webkit-inner-spin-button {
-	display: none;
-}
-
-.pe-inline-datetime .pe-native-date::-webkit-calendar-picker-indicator,
-.pe-inline-datetime .pe-native-time::-webkit-calendar-picker-indicator {
-	position: absolute;
-	inset: 0;
-	width: auto;
-	height: auto;
 	margin: 0;
-	padding: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-modifier-form-field, var(--background-secondary));
+	color: var(--text-muted);
 	cursor: pointer;
-	opacity: 1;
-	background-position: center center;
-	background-repeat: no-repeat;
-	background-size: 14px 14px;
+	box-shadow: none;
 }
 
-/* Native indicator glyphs are dark; invert on Obsidian dark themes. */
-.theme-dark .pe-inline-datetime .pe-native-date::-webkit-calendar-picker-indicator,
-.theme-dark .pe-inline-datetime .pe-native-time::-webkit-calendar-picker-indicator {
-	filter: invert(1);
+.pe-inline-datetime .pe-picker-icon-btn:hover,
+.pe-inline-datetime .pe-picker-icon-btn:focus-visible {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+	border-color: var(--background-modifier-border-hover, var(--background-modifier-border));
+}
+
+.pe-inline-datetime .pe-picker-icon-btn svg {
+	width: 14px;
+	height: 14px;
+	display: block;
 }
 
 .pe-task-due-cell,

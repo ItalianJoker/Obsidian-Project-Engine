@@ -1,8 +1,13 @@
 /**
  * Task-editor date / time controls: native calendar + clock pickers synced with
  * Settings-format text fields (default DD/MM/YYYY + 24h). YAML stays ISO.
+ *
+ * Dashboard/Table inline cells use explicit Lucide calendar/clock buttons that
+ * open the native picker (`showPicker` / click fallback) — Chromium’s
+ * `::-webkit-calendar-picker-indicator` is unreliable under Obsidian themes.
  */
 
+import { setIcon } from "obsidian";
 import type { DateDisplayFormat, TimeDisplayFormat } from "../models/types";
 import {
 	dateFormatPlaceholder,
@@ -66,6 +71,7 @@ export function mountDateTimeField(parent: HTMLElement, options: DateTimeFieldOp
 		timeFormat: options.timeFormat,
 		includeTime: options.includeTime,
 		onChange: options.onChange,
+		compactLucidePickers: false,
 	});
 }
 
@@ -75,6 +81,9 @@ export function mountDateTimeField(parent: HTMLElement, options: DateTimeFieldOp
  * Same Settings-aware text + native calendar/clock pairing as
  * {@link mountDateTimeField}, without the outer field label / help chrome.
  * YAML stays ISO; display follows plugin date/time formats.
+ *
+ * Inline cells use Lucide calendar/clock buttons that open the hidden native
+ * inputs — visible glyphs that work under dark Obsidian themes.
  *
  * @param parent — Table cell (or wrapper) that receives the controls.
  * @param options — Value, formats, and change handler.
@@ -91,6 +100,7 @@ export function mountInlineDateTime(
 		timeFormat: options.timeFormat,
 		includeTime: true,
 		onChange: options.onChange,
+		compactLucidePickers: true,
 	});
 }
 
@@ -101,6 +111,33 @@ interface DateTimeControlsOptions {
 	timeFormat: TimeDisplayFormat;
 	includeTime: boolean;
 	onChange: (value: string | null) => void;
+	/**
+	 * When true (Dashboard/Table), hide native date/time chrome and mount Lucide
+	 * calendar/clock buttons that open the native picker.
+	 */
+	compactLucidePickers: boolean;
+}
+
+/**
+ * Open the browser/OS date or time picker for `input`.
+ *
+ * Prefers `HTMLInputElement.showPicker()` (Chromium/Electron). Falls back to
+ * focus + click when `showPicker` is missing or throws (e.g. policy).
+ *
+ * Exported for unit tests.
+ */
+export function openNativePicker(input: HTMLInputElement): void {
+	const withPicker = input as HTMLInputElement & { showPicker?: () => void };
+	if (typeof withPicker.showPicker === "function") {
+		try {
+			withPicker.showPicker();
+			return;
+		} catch {
+			// NotAllowedError or unsupported — fall through to click.
+		}
+	}
+	input.focus();
+	input.click();
 }
 
 /**
@@ -110,7 +147,8 @@ function mountDateTimeControls(
 	parent: HTMLElement,
 	options: DateTimeControlsOptions,
 ): void {
-	const { ariaLabel, dateFormat, timeFormat, includeTime, onChange } = options;
+	const { ariaLabel, dateFormat, timeFormat, includeTime, onChange, compactLucidePickers } =
+		options;
 	const controls = parent.createDiv({ cls: "pe-datetime-controls" });
 	const parts = splitDateTime(options.value);
 
@@ -127,14 +165,26 @@ function mountDateTimeControls(
 	dateText.value = parts.date ? formatDisplayDate(parts.date, dateFormat) : "";
 
 	const nativeDate = dateCombo.createEl("input", {
-		cls: "pe-input pe-touch-target pe-native-date",
+		cls: compactLucidePickers
+			? "pe-input pe-touch-target pe-native-date pe-native-picker-hidden"
+			: "pe-input pe-touch-target pe-native-date",
 		attr: {
 			type: "date",
 			"aria-label": `${ariaLabel} calendar`,
 			title: "Open calendar",
+			tabindex: compactLucidePickers ? "-1" : "0",
 		},
 	});
 	nativeDate.value = parts.date;
+
+	if (compactLucidePickers) {
+		mountLucidePickerButton(dateCombo, {
+			icon: "calendar",
+			title: "Open calendar",
+			ariaLabel: `${ariaLabel} calendar`,
+			input: nativeDate,
+		});
+	}
 
 	let timeText: HTMLInputElement | null = null;
 	let nativeTime: HTMLInputElement | null = null;
@@ -153,14 +203,26 @@ function mountDateTimeControls(
 		timeText.value = parts.time ? formatDisplayTime(parts.time, timeFormat) : "";
 
 		nativeTime = timeCombo.createEl("input", {
-			cls: "pe-input pe-touch-target pe-native-time",
+			cls: compactLucidePickers
+				? "pe-input pe-touch-target pe-native-time pe-native-picker-hidden"
+				: "pe-input pe-touch-target pe-native-time",
 			attr: {
 				type: "time",
 				"aria-label": `${ariaLabel} time picker (optional)`,
 				title: "Open time picker",
+				tabindex: compactLucidePickers ? "-1" : "0",
 			},
 		});
 		nativeTime.value = parts.time;
+
+		if (compactLucidePickers) {
+			mountLucidePickerButton(timeCombo, {
+				icon: "clock",
+				title: "Open time picker",
+				ariaLabel: `${ariaLabel} time picker (optional)`,
+				input: nativeTime,
+			});
+		}
 	}
 
 	const syncFromControls = (source: "text" | "native"): void => {
@@ -232,4 +294,35 @@ function mountDateTimeControls(
 		nativeTime.addEventListener("change", () => syncFromControls("native"));
 		nativeTime.addEventListener("input", () => syncFromControls("native"));
 	}
+}
+
+interface LucidePickerButtonOptions {
+	icon: string;
+	title: string;
+	ariaLabel: string;
+	input: HTMLInputElement;
+}
+
+/**
+ * Compact Lucide affordance that opens the paired native date/time input.
+ */
+function mountLucidePickerButton(
+	parent: HTMLElement,
+	options: LucidePickerButtonOptions,
+): HTMLButtonElement {
+	const btn = parent.createEl("button", {
+		cls: "pe-picker-icon-btn",
+		attr: {
+			type: "button",
+			title: options.title,
+			"aria-label": options.ariaLabel,
+		},
+	});
+	setIcon(btn, options.icon);
+	btn.addEventListener("click", (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		openNativePicker(options.input);
+	});
+	return btn;
 }
