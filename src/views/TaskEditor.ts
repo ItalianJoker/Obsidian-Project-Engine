@@ -1027,6 +1027,7 @@ function taskToDraft(task: Task): TaskDraft {
 		projectId: task.projectId,
 		parentId: task.parentId,
 		childIds: [...task.childIds],
+		sortOrder: task.sortOrder,
 		blockedBy: [...task.blockedBy],
 		blocking: [...task.blocking],
 		startDate: task.startDate,

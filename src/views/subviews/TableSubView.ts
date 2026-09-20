@@ -29,6 +29,12 @@ import {
 	notifyTaskDeleted,
 } from "../../services/taskDelete";
 import { loadAllTasks, patchTaskFrontmatter } from "../../services/taskIo";
+import {
+	canReorderTask,
+	compareTasksBySortOrder,
+	planSiblingReorder,
+	type TaskReorderDirection,
+} from "../../services/taskOrder";
 import { formatHours } from "../../services/timeLogs";
 import { ConfirmModal } from "../../ui/ConfirmModal";
 import { EmptyState } from "../../ui/EmptyState";
@@ -107,6 +113,7 @@ export class TableSubView implements SubView {
 		const head = thead.createEl("tr");
 		for (const label of [
 			"",
+			"",
 			"TASK",
 			"STATUS",
 			"PRIORITY",
@@ -157,7 +164,7 @@ export class TableSubView implements SubView {
 		byParent: Map<TaskId | null, Task[]>,
 	): Array<{ task: Task; depth: number; hasChildren: boolean }> {
 		for (const list of byParent.values()) {
-			list.sort((a, b) => a.title.localeCompare(b.title));
+			list.sort(compareTasksBySortOrder);
 		}
 		const out: Array<{ task: Task; depth: number; hasChildren: boolean }> = [];
 		const visit = (parentId: TaskId | null, depth: number): void => {
@@ -182,8 +189,45 @@ export class TableSubView implements SubView {
 		dateFormat: import("../../models/types").DateDisplayFormat,
 		timeFormat: import("../../models/types").TimeDisplayFormat,
 	): void {
-		const { plugin, project } = this.props;
+		const { plugin, project, tasks } = this.props;
+		const projectTasks = tasks.filter((item) => item.projectId === project.id);
 		const tr = tbody.createEl("tr", { cls: "pe-task-row" });
+
+		const reorderTd = tr.createEl("td", {
+			cls: "pe-task-reorder-col",
+			attr: { "data-label": "Order" },
+		});
+		const reorder = reorderTd.createDiv({ cls: "pe-task-reorder" });
+		const canUp = canReorderTask(projectTasks, task.id, "up");
+		const canDown = canReorderTask(projectTasks, task.id, "down");
+		const upBtn = reorder.createEl("button", {
+			cls: "pe-task-reorder-btn pe-touch-target",
+			attr: {
+				type: "button",
+				title: "Move up",
+				"aria-label": `Move ${task.title || task.id} up`,
+			},
+		});
+		setIcon(upBtn, "chevron-up");
+		upBtn.disabled = !canUp;
+		upBtn.addEventListener("click", (event) => {
+			event.stopPropagation();
+			void this.reorderTask(task, "up");
+		});
+		const downBtn = reorder.createEl("button", {
+			cls: "pe-task-reorder-btn pe-touch-target",
+			attr: {
+				type: "button",
+				title: "Move down",
+				"aria-label": `Move ${task.title || task.id} down`,
+			},
+		});
+		setIcon(downBtn, "chevron-down");
+		downBtn.disabled = !canDown;
+		downBtn.addEventListener("click", (event) => {
+			event.stopPropagation();
+			void this.reorderTask(task, "down");
+		});
 
 		const checkTd = tr.createEl("td", { cls: "pe-task-check-col" });
 		const statuses = plugin.settings.taskStatuses;
@@ -449,6 +493,41 @@ export class TableSubView implements SubView {
 				hooks?.onCancel?.();
 			},
 		}).open();
+	}
+
+	/**
+	 * Move a task one step among its siblings. Writes dense `sort_order` on
+	 * siblings and rewrites the parent’s `child_ids` when nested.
+	 */
+	private async reorderTask(task: Task, direction: TaskReorderDirection): Promise<void> {
+		const { app, plugin, project, tasks } = this.props;
+		const projectTasks = tasks.filter((item) => item.projectId === project.id);
+		const patches = planSiblingReorder(projectTasks, task.id, direction);
+		if (patches.length === 0) {
+			return;
+		}
+		try {
+			for (const patch of patches) {
+				const file = app.vault.getAbstractFileByPath(patch.filePath);
+				if (!(file instanceof TFile)) {
+					continue;
+				}
+				await patchTaskFrontmatter(app.vault, file, (data) => {
+					if (patch.sortOrder != null) {
+						data.sort_order = patch.sortOrder;
+					}
+					if (patch.childIds) {
+						data.child_ids = patch.childIds;
+					}
+				});
+			}
+			new Notice(direction === "up" ? "Moved up" : "Moved down");
+			plugin.refreshOpenViews();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			new Notice(`Could not reorder task: ${message}`);
+			this.render();
+		}
 	}
 
 	/**

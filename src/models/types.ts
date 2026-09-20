@@ -471,6 +471,12 @@ export interface Task {
 	projectId: string;
 	parentId: TaskId | null;
 	childIds: TaskId[];
+	/**
+	 * Manual sibling order within the same parent (Dashboard / Table reorder).
+	 * Lower values appear first. Missing → sorted after numbered siblings, then by title.
+	 * @remarks YAML: `sort_order`
+	 */
+	sortOrder: number | null;
 	/** Canonical predecessor list. @remarks YAML: `blocked_by` */
 	blockedBy: TaskId[];
 	/** Reverse index of dependents. @remarks YAML: `blocking` */
