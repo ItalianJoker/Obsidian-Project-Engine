@@ -7,6 +7,14 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.0.9
+
+### Fixes
+
+- **Reorder / checkbox density** — smaller ↑/↓ and Complete checkbox; narrower check/reorder columns.
+- **Due / Scheduled layout** — wider cells, nowrap controls, compact pickers; Table horizontal scroll.
+- **Expired highlight** — overdue Due/Scheduled warning tint on incomplete rows.
+
 ## 1.0.8
 
 ### Features

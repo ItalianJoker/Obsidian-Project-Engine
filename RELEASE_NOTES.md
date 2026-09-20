@@ -1,5 +1,23 @@
 # Release notes — Projects Engine
 
+## 1.0.9 — Task table controls polish
+
+**IT:** Controlli reorder/checkbox più piccoli; Due/Scheduled senza clipping; evidenziazione scaduti su Dashboard/Table.
+
+**EN:** Smaller reorder/checkbox controls; Due/Scheduled layout without clipping; expired date highlight on Dashboard/Table.
+
+### Fixes
+
+- **Reorder / checkbox density** — smaller ↑/↓ and Complete checkbox (no 44px touch-target floor); narrower check/reorder columns.
+- **Due / Scheduled layout** — wider cells, nowrap controls, compact pickers sized to Settings date/time formats; horizontal scroll on Table subview.
+- **Expired highlight** — incomplete rows with overdue Due/Scheduled get warning tint; date-only uses UTC calendar day, date-time uses local wall clock.
+
+### Breaking Changes
+
+- **None.**
+
+---
+
 ## 1.0.8 — Completed tasks, detail/edit, Last Update
 
 **IT:** Checkbox Completed funzionante con conferma e Done bloccato; dettaglio task al click sul nome e matita per edit; campi inline su Dashboard/Table; riordino sibling; colonna Last Update sul portfolio.
