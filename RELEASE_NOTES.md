@@ -1,5 +1,21 @@
 # Release notes — Projects Engine
 
+## 1.1.2 — Lucide calendar/clock buttons for Due/Scheduled pickers
+
+**IT:** Pulsanti Lucide calendario/orologio per i picker Due/Scheduled su Dashboard/Table.
+
+**EN:** Lucide calendar/clock buttons for Due/Scheduled pickers on Dashboard/Table.
+
+### Fixes
+
+- **Due/Scheduled Lucide pickers** — explicit Lucide `calendar` / `clock` buttons open the native date/time picker (`showPicker()` with focus+click fallback); natives stay visually hidden so dark themes no longer show a low-contrast empty square.
+
+### Breaking Changes
+
+- **None.**
+
+---
+
 ## 1.1.1 — Task table header alignment + Due/Scheduled picker icons
 
 **IT:** Allineamento header/righe tabella task; icone Due/Scheduled di nuovo visibili.
