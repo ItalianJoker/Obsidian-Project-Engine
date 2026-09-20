@@ -101,7 +101,7 @@ export class TableSubView implements SubView {
 						? "Add a task to plan delivery for this project."
 						: "Clear search or change status / priority filters.",
 				)
-				.setAction("+ Add task", () => this.openNewTask());
+				.setAction("New task", () => this.openNewTask());
 			return;
 		}
 
@@ -150,10 +150,15 @@ export class TableSubView implements SubView {
 		// cannot overlap the Documents section that follows on Overview.
 		const addRow = container.createDiv({ cls: "pe-task-add-row" });
 		const addBtn = addRow.createEl("button", {
-			cls: "pe-task-add pe-link-button pe-touch-target",
-			attr: { type: "button" },
+			cls: "pe-task-add pe-touch-target",
+			attr: {
+				type: "button",
+				"aria-label": "New task in this project",
+				title: "New task",
+			},
 		});
-		addBtn.createSpan({ text: "+ Add task" });
+		setIcon(addBtn, "plus");
+		addBtn.createSpan({ text: "New task", cls: "pe-task-add-label" });
 		addBtn.addEventListener("click", () => this.openNewTask());
 	}
 
@@ -300,7 +305,7 @@ export class TableSubView implements SubView {
 				}
 				this.render();
 			});
-		} else {
+		} else if (depth > 0) {
 			treeInner.createSpan({ cls: "pe-task-chevron-spacer" });
 		}
 

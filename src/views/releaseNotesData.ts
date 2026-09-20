@@ -7,6 +7,13 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.2.3
+
+### Improvements & Polish
+
+- **Table spacing & padding** — Unified cell padding (10px 12px) across tables, removed bloated min-width on Due/Scheduled, and aligned all data column gaps to 24px (matching Assignee to Due).
+- **New task button styling** — Restyled "+ Add task" to a button matching "New note" with Lucide plus icon and theme styling.
+
 ## 1.2.2
 
 ### Fixes

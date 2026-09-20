@@ -450,12 +450,12 @@
 
 .pe-project-list th,
 .pe-project-list td {
-	padding: 12px 14px;
+	padding: 10px 12px;
 }
 
 .pe-project-list td:last-child,
 .pe-project-list th:last-child {
-	padding-inline: 14px;
+	padding-inline: 12px;
 	white-space: nowrap;
 }
 
@@ -1595,8 +1595,9 @@
 }
 
 .pe-task-dashboard thead th.pe-task-row-actions {
-	width: 2.5rem;
-	padding-inline: 4px;
+	width: auto;
+	padding-inline: 12px;
+	text-align: center;
 }
 
 /*
@@ -2178,17 +2179,17 @@
 }
 
 .pe-task-tree-cell {
-	min-width: 200px;
-	padding: 8px 12px;
+	min-width: 160px;
+	padding: 10px 12px;
 }
 
 .pe-task-tree-inner {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	padding: 2px 4px 2px calc(var(--pe-tree-depth, 0) * 16px + 4px);
+	padding: 0 0 0 calc(var(--pe-tree-depth, 0) * 16px);
 	position: relative;
-	min-height: 36px;
+	min-height: 32px;
 	box-sizing: border-box;
 }
 
@@ -2331,7 +2332,7 @@
  */
 .pe-task-add-row {
 	display: block;
-	padding: 8px 4px 12px 12px;
+	padding: 10px 12px;
 	position: relative;
 	z-index: 0;
 }
@@ -2339,31 +2340,32 @@
 .pe-task-add {
 	display: inline-flex;
 	align-items: center;
-	color: var(--text-muted);
-	font-size: var(--font-ui-smaller);
-	padding: 8px 12px !important;
-	margin: 0;
-	border-radius: 6px;
-	border: none !important;
-	box-shadow: none !important;
-	background: transparent !important;
-	min-width: 0;
+	gap: 6px;
+	padding: 4px 10px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: 0.85rem;
 	min-height: 36px;
-	width: auto;
-	max-width: max-content;
-	position: static;
 }
 
 .pe-task-add:hover {
-	color: var(--interactive-accent);
-	background: var(--background-modifier-hover) !important;
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
 	text-decoration: none;
 }
 
+.pe-task-add .svg-icon {
+	width: 16px;
+	height: 16px;
+}
+
 .pe-task-row-actions {
-	width: 44px;
+	width: auto;
 	text-align: center;
-	padding-inline: 4px;
+	padding: 10px 12px;
 	white-space: nowrap;
 }
 
@@ -3277,7 +3279,8 @@
 
 .pe-task-due-cell,
 .pe-task-scheduled-cell {
-	min-width: 18rem;
+	min-width: 7.5rem;
+	width: max-content;
 	overflow: visible;
 	white-space: nowrap;
 }

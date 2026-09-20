@@ -1,5 +1,19 @@
 # Release notes — Projects Engine
 
+## 1.2.3 — Table spacing optimization & New task button styling
+
+**IT:** Ottimizzazione e uniformazione dei padding e spazi nelle tabelle (allineati allo spazio tra Assignee e Due); adeguato il pulsante "New task" allo stile visivo di "New note".
+
+**EN:** Optimized and unified padding and spacing across table views (matching the spacing between Assignee and Due); restyled "New task" button to match "New note".
+
+### Improvements & Polish
+
+- **Table spacing & padding** — Unified all table cells across views (`.pe-table`, `.pe-project-list`, `.pe-task-tree-cell`) to `10px 12px` padding. Removed obsolete `min-width: 18rem` on Due and Scheduled columns, eliminating dead space and establishing equal ~24px spacing between all data controls.
+- **Root task tree alignment** — Removed unnecessary 18px chevron spacer on root tasks without children, bringing checkbox and edit icon into consistent ~24px spacing.
+- **New task button styling** — Replaced plain text "+ Add task" with a structured button matching "New note" (`.pe-docs-tree-add`), complete with Lucide `plus` icon, border, theme background, and rounded corners.
+
+---
+
 ## 1.2.2 — Remove stray vertical line in task table
 
 **IT:** Rimossa la linea verticale spuria che appariva prima dell'icona di modifica nelle righe della tabella dei task.
