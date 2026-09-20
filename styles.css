@@ -3229,15 +3229,46 @@
 	width: 9.5ch;
 }
 
+/* Icon-only native pickers: keep v1.0.9 density, center calendar/clock glyphs. */
 .pe-inline-datetime .pe-native-date,
 .pe-inline-datetime .pe-native-time {
 	flex: 0 0 auto;
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	width: 1.75rem;
 	min-width: 1.75rem;
 	max-width: 1.75rem;
 	min-height: 28px;
-	padding: 2px;
+	height: 28px;
+	padding: 0;
 	font-size: 0.75em;
+	color: transparent;
+	overflow: hidden;
+}
+
+/* Hide ISO edit segments so only the picker icon is visible in the compact button. */
+.pe-inline-datetime .pe-native-date::-webkit-datetime-edit,
+.pe-inline-datetime .pe-native-time::-webkit-datetime-edit,
+.pe-inline-datetime .pe-native-date::-webkit-inner-spin-button,
+.pe-inline-datetime .pe-native-time::-webkit-inner-spin-button {
+	display: none;
+}
+
+.pe-inline-datetime .pe-native-date::-webkit-calendar-picker-indicator,
+.pe-inline-datetime .pe-native-time::-webkit-calendar-picker-indicator {
+	position: absolute;
+	inset: 0;
+	width: auto;
+	height: auto;
+	margin: 0;
+	padding: 0;
+	cursor: pointer;
+	opacity: 1;
+	background-position: center center;
+	background-repeat: no-repeat;
+	background-size: 14px 14px;
 }
 
 .pe-task-due-cell,
