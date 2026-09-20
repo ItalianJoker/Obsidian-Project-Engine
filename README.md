@@ -10,7 +10,7 @@ Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.co
 
 ## Italiano
 
-> **Generato con Cursor** — questo repository è stato sviluppato con [Cursor](https://cursor.com).
+> **Sviluppato con Antigravity e Cursor** — questo repository è stato sviluppato con [Antigravity](https://deepmind.google) e [Cursor](https://cursor.com).
 
 ### Panoramica e valore
 
@@ -291,7 +291,7 @@ Nessuna dipendenza runtime npm: il plugin usa solo l’API Obsidian e API web na
 
 ## English
 
-> **Generated with Cursor** — this repository was built with [Cursor](https://cursor.com).
+> **Built with Antigravity and Cursor** — this repository was developed with [Antigravity](https://deepmind.google) and [Cursor](https://cursor.com).
 
 ### Overview and value
 
