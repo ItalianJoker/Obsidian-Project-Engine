@@ -6,18 +6,23 @@
  * quirks to paint the label over the Documents section on Overview.
  */
 
-import { Notice, setIcon, type App } from "obsidian";
+import { Notice, TFile, setIcon, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../../main";
 import {
+	activeTaskStatuses,
+	completedTaskStatusId,
+	defaultTaskStatusId,
+	isCompletedTaskStatus,
+	reopenTaskStatusId,
 	taskStatusLabel as resolveTaskStatusLabel,
 	type Task,
 	type TaskId,
 	type TaskPriority,
 	type TaskStatus,
-	type TaskStatusOption,
 } from "../../models/types";
 import { toWikiLink, wikiLinkTarget } from "../../models/types";
 import { formatDisplayDateTime, formatDuePill, isOverdue, effectiveDue } from "../../services/dateFormat";
+import { PersistStatusCommand } from "../../services/taskCommands";
 import {
 	collectTaskSubtreeIds,
 	deleteTaskConfirmMessage,
@@ -164,13 +169,28 @@ export class TableSubView implements SubView {
 		const tr = tbody.createEl("tr", { cls: "pe-task-row" });
 
 		const checkTd = tr.createEl("td", { cls: "pe-task-check-col" });
+		const statuses = plugin.settings.taskStatuses;
+		const completedId = completedTaskStatusId(statuses);
+		const completed = isCompletedTaskStatus(task.status, statuses);
 		const checkbox = checkTd.createEl("input", {
 			type: "checkbox",
-			cls: "pe-task-checkbox",
-			attr: { "aria-label": `Select ${task.title || task.id}` },
+			cls: "pe-task-checkbox pe-touch-target",
+			attr: {
+				"aria-label": completed
+					? `Mark ${task.title || task.id} as not completed`
+					: `Mark ${task.title || task.id} as completed`,
+			},
 		});
-		checkbox.checked = task.status === "done";
-		checkbox.disabled = true;
+		checkbox.checked = completed;
+		checkbox.addEventListener("click", (event) => {
+			event.stopPropagation();
+		});
+		checkbox.addEventListener("change", () => {
+			const next = checkbox.checked
+				? completedId
+				: reopenTaskStatusId(statuses);
+			void this.setTaskStatus(task, next);
+		});
 
 		const titleTd = tr.createEl("td", { cls: "pe-task-tree-cell", attr: { "data-label": "Task" } });
 		titleTd.style.setProperty("--pe-tree-depth", String(depth));
@@ -208,13 +228,30 @@ export class TableSubView implements SubView {
 		});
 
 		const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
-		const statusLabel = taskStatusLabel(task.status, this.props.plugin.settings.taskStatuses);
-		const statusColor = statusColorVar(task.status, this.props.plugin.settings.taskStatuses);
-		const statusChip = statusTd.createSpan({
-			text: statusLabel,
-			cls: `pe-status-chip pe-status-chip--task pe-status--${task.status}`,
+		const statusSelect = statusTd.createEl("select", {
+			cls: "pe-input pe-touch-target pe-task-status-select",
+			attr: { "aria-label": `Status for ${task.title || task.id}` },
 		});
-		statusChip.style.setProperty("--pe-status-color", statusColor);
+		const statusOptions = [...activeTaskStatuses(statuses)];
+		if (task.status && !statusOptions.some((item) => item.id === task.status)) {
+			const archived = statuses.find((item) => item.id === task.status);
+			statusOptions.push(
+				archived ?? { id: task.status, label: task.status },
+			);
+		}
+		for (const option of statusOptions) {
+			statusSelect.createEl("option", {
+				text: option.label,
+				attr: { value: option.id },
+			});
+		}
+		statusSelect.value = task.status || defaultTaskStatusId(statuses);
+		statusSelect.addEventListener("click", (event) => {
+			event.stopPropagation();
+		});
+		statusSelect.addEventListener("change", () => {
+			void this.setTaskStatus(task, statusSelect.value);
+		});
 
 		const priorityTd = tr.createEl("td", { attr: { "data-label": "Priority" } });
 		priorityTd.createSpan({
@@ -288,6 +325,35 @@ export class TableSubView implements SubView {
 	}
 
 	/**
+	 * Persist a status change through `vault.process`, then refresh open views.
+	 * Awaits the write so Dashboard / Table / Board reload the new YAML.
+	 */
+	private async setTaskStatus(task: Task, nextStatus: string): Promise<void> {
+		if (task.status === nextStatus) {
+			return;
+		}
+		const { app, plugin } = this.props;
+		const file = app.vault.getAbstractFileByPath(task.filePath);
+		if (!(file instanceof TFile)) {
+			new Notice("Task file missing");
+			this.render();
+			return;
+		}
+		const command = new PersistStatusCommand(app.vault, file, task.status, nextStatus);
+		plugin.commandStack.execute(command);
+		try {
+			await command.settled();
+			const label = resolveTaskStatusLabel(plugin.settings.taskStatuses, nextStatus);
+			new Notice(`Status → ${label}`);
+			plugin.refreshOpenViews();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			new Notice(`Could not update status: ${message}`);
+			this.render();
+		}
+	}
+
+	/**
 	 * Confirm then delete the task note (+ nested subtasks). Reloads open PE views.
 	 */
 	private confirmDeleteTask(task: Task): void {
@@ -357,34 +423,6 @@ function groupByParent(tasks: Task[]): Map<TaskId | null, Task[]> {
 		byParent.set(key, list);
 	}
 	return byParent;
-}
-
-function taskStatusLabel(status: TaskStatus, statuses: readonly TaskStatusOption[]): string {
-	return resolveTaskStatusLabel(statuses, status);
-}
-
-function statusColorVar(status: TaskStatus, statuses: readonly TaskStatusOption[]): string {
-	const hit = statuses.find((item) => item.id === status);
-	if (hit?.color) {
-		return hit.color;
-	}
-	// Legacy fallbacks when Settings still use classic ids without colours.
-	switch (status) {
-		case "backlog":
-			return "var(--text-muted)";
-		case "in-progress":
-			return "#a855f7";
-		case "review":
-			return "#94a3b8";
-		case "done":
-			return "#22c55e";
-		case "blocked":
-			return "#ef4444";
-		case "cancelled":
-			return "#64748b";
-		default:
-			return "var(--interactive-accent)";
-	}
 }
 
 function priorityLabel(priority: TaskPriority): string {

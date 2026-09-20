@@ -245,9 +245,14 @@ export class KanbanSubView implements SubView {
 			new Notice("Task file missing");
 			return;
 		}
-		this.props.plugin.commandStack.execute(
-			new PersistStatusCommand(this.props.app.vault, file, task.status, status),
+		const command = new PersistStatusCommand(
+			this.props.app.vault,
+			file,
+			task.status,
+			status,
 		);
+		this.props.plugin.commandStack.execute(command);
+		await command.settled();
 		new Notice(`Moved to ${taskStatusLabel(columns, status)}`);
 	}
 }

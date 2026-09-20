@@ -1166,6 +1166,80 @@ export function activeTaskStatuses(
 }
 
 /**
+ * Well-known completion status ids (English + common renames / Italian Completato).
+ * Used when Settings still carry classic ids or users rename the Done column.
+ */
+const COMPLETED_TASK_STATUS_IDS = new Set([
+	"done",
+	"completed",
+	"complete",
+	"completato",
+]);
+
+/**
+ * Labels that count as “completed” when ids were renamed away from classic `done`.
+ */
+const COMPLETED_TASK_STATUS_LABEL = /^(done|complete[d]?|completato)$/i;
+
+/**
+ * Resolve the Settings-driven status id that means “Completed” / Done.
+ *
+ * Order:
+ * 1. Known completion ids present in Settings (`done`, `completed`, …)
+ * 2. Active status whose label is Done / Completed / Completato
+ * 3. Last active Board column (classic Backlog → … → Done layout)
+ * 4. Fallback `"done"`
+ */
+export function completedTaskStatusId(
+	statuses: readonly TaskStatusOption[],
+): string {
+	for (const id of COMPLETED_TASK_STATUS_IDS) {
+		if (statuses.some((item) => item.id === id)) {
+			return id;
+		}
+	}
+	const active = activeTaskStatuses(statuses);
+	const byLabel = active.find((item) =>
+		COMPLETED_TASK_STATUS_LABEL.test(item.label.trim()),
+	);
+	if (byLabel) {
+		return byLabel.id;
+	}
+	return active[active.length - 1]?.id ?? statuses[statuses.length - 1]?.id ?? "done";
+}
+
+/**
+ * Whether a task status id should show as checked / completed in table UIs.
+ */
+export function isCompletedTaskStatus(
+	status: string,
+	statuses: readonly TaskStatusOption[],
+): boolean {
+	const normalised = status.trim().toLowerCase();
+	if (!normalised) {
+		return false;
+	}
+	if (COMPLETED_TASK_STATUS_IDS.has(normalised)) {
+		return true;
+	}
+	return status === completedTaskStatusId(statuses);
+}
+
+/**
+ * Status to restore when unchecking the Completed checkbox (first non-completed
+ * active column, typically Backlog).
+ */
+export function reopenTaskStatusId(statuses: readonly TaskStatusOption[]): string {
+	const completed = completedTaskStatusId(statuses);
+	const open = activeTaskStatuses(statuses).find((item) => item.id !== completed);
+	if (open) {
+		return open.id;
+	}
+	const any = statuses.find((item) => item.id !== completed);
+	return any?.id ?? "backlog";
+}
+
+/**
  * Whether Priority maps to **Urgent** on the Eisenhower matrix.
  *
  * **Rule (documented in Settings help + task editor):**

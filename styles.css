@@ -2086,7 +2086,16 @@
 
 .pe-task-checkbox {
 	accent-color: var(--interactive-accent);
-	cursor: default;
+	cursor: pointer;
+	width: 18px;
+	height: 18px;
+}
+
+.pe-task-status-select {
+	min-width: 7.5rem;
+	max-width: 11rem;
+	padding: 4px 8px;
+	font-size: 0.85em;
 }
 
 .pe-task-tree-cell {
