@@ -1582,6 +1582,23 @@
 	font-weight: 600;
 }
 
+/* Header control columns share body widths so labels line up with cells. */
+.pe-task-dashboard thead th.pe-task-reorder-col,
+.pe-task-dashboard thead th.pe-task-check-col {
+	padding-inline: 2px;
+}
+
+.pe-task-dashboard thead th.pe-task-check-col {
+	padding-inline: 4px;
+	text-align: center;
+	width: 28px;
+}
+
+.pe-task-dashboard thead th.pe-task-row-actions {
+	width: 2.5rem;
+	padding-inline: 4px;
+}
+
 /*
  * Projects Dashboard inset — pad the root leaf wrapper so horizontal gutters
  * cannot be cancelled by child width:100% tables or dual-class padding:0 rules.
@@ -3229,7 +3246,12 @@
 	width: 9.5ch;
 }
 
-/* Icon-only native pickers: keep v1.0.9 density, center calendar/clock glyphs. */
+/*
+ * Icon-only native pickers (Due/Scheduled): keep v1.0.9 density and center the
+ * calendar/clock glyph. Do not set `color: transparent` — Chromium paints
+ * `::-webkit-calendar-picker-indicator` with the input color, so transparent
+ * makes the icon invisible (regression from v1.1.0 centering).
+ */
 .pe-inline-datetime .pe-native-date,
 .pe-inline-datetime .pe-native-time {
 	flex: 0 0 auto;
@@ -3244,7 +3266,7 @@
 	height: 28px;
 	padding: 0;
 	font-size: 0.75em;
-	color: transparent;
+	color: var(--text-muted);
 	overflow: hidden;
 }
 
@@ -3269,6 +3291,12 @@
 	background-position: center center;
 	background-repeat: no-repeat;
 	background-size: 14px 14px;
+}
+
+/* Native indicator glyphs are dark; invert on Obsidian dark themes. */
+.theme-dark .pe-inline-datetime .pe-native-date::-webkit-calendar-picker-indicator,
+.theme-dark .pe-inline-datetime .pe-native-time::-webkit-calendar-picker-indicator {
+	filter: invert(1);
 }
 
 .pe-task-due-cell,
