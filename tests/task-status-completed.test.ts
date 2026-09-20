@@ -1,70 +1,79 @@
 /**
- * Regression: Completed / Done mapping + PersistStatusCommand vault.process write.
+ * Regression: locked Done status + PersistStatusCommand vault.process write.
  *
- * Table / Dashboard checkboxes must resolve the configurable Done column
- * (including renamed labels like Completato) and persist YAML `status` before
- * views refresh. Completing via checkbox confirms first; uncheck reopens to
- * the first non-completed column (usually Backlog) without a second confirm.
+ * Done (id `done`) is required: label may be renamed (Completato); archive /
+ * remove / id change are blocked. Checkbox / confirm always target `done`.
  */
 import { describe, expect, it } from "vitest";
 import {
 	DEFAULT_TASK_STATUSES,
+	LOCKED_DONE_TASK_STATUS_ID,
 	completedTaskStatusId,
+	ensureDoneTaskStatus,
 	isCompletedTaskStatus,
+	isLockedDoneTaskStatus,
+	lockedDoneStatusNotice,
 	reopenTaskStatusId,
-	type TaskStatusOption,
 } from "../src/models/types";
 import { PersistStatusCommand } from "../src/services/taskCommands";
 import { markCompletedConfirmMessage } from "../src/services/taskStatusUi";
 import { splitFrontmatter } from "../src/services/frontmatter";
 import { TFile, type Vault } from "obsidian";
 
-describe("completed task status helpers", () => {
-	it("maps default Done column as completed", () => {
+describe("locked Done task status", () => {
+	it("always targets id done for completed checkbox / confirm", () => {
+		expect(completedTaskStatusId()).toBe(LOCKED_DONE_TASK_STATUS_ID);
+		expect(completedTaskStatusId(DEFAULT_TASK_STATUSES)).toBe("done");
+		expect(isCompletedTaskStatus("done")).toBe(true);
+		expect(isCompletedTaskStatus("backlog")).toBe(false);
+		expect(isLockedDoneTaskStatus({ id: "done" })).toBe(true);
+		expect(isLockedDoneTaskStatus({ id: "backlog" })).toBe(false);
+	});
+
+	it("ensures done exists and cannot stay archived", () => {
+		const missing = ensureDoneTaskStatus([
+			{ id: "backlog", label: "Backlog" },
+			{ id: "in-progress", label: "In Progress" },
+		]);
+		expect(missing.some((s) => s.id === "done" && s.archived !== true)).toBe(true);
+
+		const archived = ensureDoneTaskStatus([
+			{ id: "backlog", label: "Backlog" },
+			{ id: "done", label: "Completato", color: "#22c55e", archived: true },
+		]);
+		const done = archived.find((s) => s.id === "done");
+		expect(done?.archived).toBe(false);
+		expect(done?.label).toBe("Completato");
+	});
+
+	it("migrates legacy completato id onto locked done while keeping the label", () => {
+		const migrated = ensureDoneTaskStatus([
+			{ id: "backlog", label: "Backlog" },
+			{ id: "completato", label: "Completato", color: "#22c55e" },
+		]);
+		expect(migrated.filter((s) => s.id === "done")).toHaveLength(1);
+		expect(migrated.find((s) => s.id === "done")?.label).toBe("Completato");
+		expect(migrated.some((s) => s.id === "completato")).toBe(false);
+	});
+
+	it("reopens to first non-done column", () => {
 		const statuses = DEFAULT_TASK_STATUSES.map((item) => ({ ...item }));
-		expect(completedTaskStatusId(statuses)).toBe("done");
-		expect(isCompletedTaskStatus("done", statuses)).toBe(true);
-		expect(isCompletedTaskStatus("backlog", statuses)).toBe(false);
 		expect(reopenTaskStatusId(statuses)).toBe("backlog");
 	});
 
-	it("treats Completato label / completato id as completed when Done was renamed", () => {
-		const renamed: TaskStatusOption[] = [
-			{ id: "backlog", label: "Backlog" },
-			{ id: "in-progress", label: "In Progress" },
-			{ id: "completato", label: "Completato", color: "#22c55e" },
-		];
-		expect(completedTaskStatusId(renamed)).toBe("completato");
-		expect(isCompletedTaskStatus("completato", renamed)).toBe(true);
-		expect(reopenTaskStatusId(renamed)).toBe("backlog");
-	});
-
-	it("resolves completion by Done / Completed label when id was customised", () => {
-		const custom: TaskStatusOption[] = [
-			{ id: "todo", label: "To do" },
-			{ id: "shipped", label: "Done", color: "#22c55e" },
-		];
-		expect(completedTaskStatusId(custom)).toBe("shipped");
-		expect(isCompletedTaskStatus("shipped", custom)).toBe(true);
-	});
-
-	it("falls back to the last active board column", () => {
-		const custom: TaskStatusOption[] = [
-			{ id: "a", label: "Alpha" },
-			{ id: "b", label: "Beta" },
-			{ id: "z", label: "Zulu" },
-			{ id: "x", label: "Hidden", archived: true },
-		];
-		expect(completedTaskStatusId(custom)).toBe("z");
-	});
-
-	it("builds English complete-confirm copy with the configured label", () => {
+	it("exposes English lock notice and complete-confirm copy", () => {
+		expect(lockedDoneStatusNotice()).toContain("cannot be archived or removed");
 		expect(markCompletedConfirmMessage("Ship release", "Done")).toBe(
 			'Mark “Ship release” as completed?\n\nStatus will be set to Done.',
 		);
 		expect(markCompletedConfirmMessage("Ship release", "Completato")).toContain(
 			"Completato",
 		);
+	});
+
+	it("treats legacy completed ids on notes as checked until rewritten", () => {
+		expect(isCompletedTaskStatus("completato")).toBe(true);
+		expect(isCompletedTaskStatus("completed")).toBe(true);
 	});
 });
 

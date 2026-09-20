@@ -14,7 +14,7 @@ import { Notice, Plugin, TFile } from "obsidian";
 import { CommandStack, Scheduler } from "./engine/Scheduler";
 import { EntityIndexer } from "./engine/Indexer";
 import { DEFAULT_SETTINGS, type CustomFieldEntityKind, type ProjectsEngineSettings } from "./models/types";
-import { mergeEisenhowerLabels } from "./models/types";
+import { ensureDoneTaskStatus, mergeEisenhowerLabels } from "./models/types";
 import { splitFrontmatter } from "./services/frontmatter";
 import { scaffoldProjectTree } from "./services/projectScaffold";
 import { applyAssignedTaskListTemplate } from "./services/taskListTemplates";
@@ -335,6 +335,8 @@ export default class ProjectsEnginePlugin extends Plugin {
 				...item,
 			}));
 		}
+		// Locked Done: always present, never archived (label may be renamed).
+		this.settings.taskStatuses = ensureDoneTaskStatus(this.settings.taskStatuses);
 		if (this.settings.projectSurface !== "workspace") {
 			this.settings.projectSurface = "overview";
 		}
@@ -398,6 +400,7 @@ export default class ProjectsEnginePlugin extends Plugin {
 	}
 
 	public async saveSettings(): Promise<void> {
+		this.settings.taskStatuses = ensureDoneTaskStatus(this.settings.taskStatuses);
 		await this.saveData(this.settings);
 	}
 

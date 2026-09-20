@@ -157,6 +157,8 @@ export interface TaskStatusOption {
 /**
  * Default task board columns — classic Backlog → Done, plus archived blocked/cancelled
  * so older notes keep resolving without expanding the Board until the user un-archives them.
+ *
+ * The `done` column is locked: required, never archived/removed; label may be renamed.
  */
 export const DEFAULT_TASK_STATUSES: TaskStatusOption[] = [
 	{ id: "backlog", label: "Backlog", color: "#94a3b8" },
@@ -1166,77 +1168,131 @@ export function activeTaskStatuses(
 }
 
 /**
- * Well-known completion status ids (English + common renames / Italian Completato).
- * Used when Settings still carry classic ids or users rename the Done column.
+ * Stable id for the locked Completed / Done task column.
+ * Users may rename the **label** (e.g. Completato) but must not remove,
+ * archive, or change this id.
  */
-const COMPLETED_TASK_STATUS_IDS = new Set([
-	"done",
+export const LOCKED_DONE_TASK_STATUS_ID = "done";
+
+/**
+ * Default Done column inserted when Settings / migrations lack a completed status.
+ */
+export const DEFAULT_DONE_TASK_STATUS: TaskStatusOption = {
+	id: LOCKED_DONE_TASK_STATUS_ID,
+	label: "Done",
+	color: "#22c55e",
+};
+
+/**
+ * Legacy / renamed completion ids that migrate onto {@link LOCKED_DONE_TASK_STATUS_ID}.
+ */
+const LEGACY_COMPLETED_TASK_STATUS_IDS = new Set([
 	"completed",
 	"complete",
 	"completato",
 ]);
 
-/**
- * Labels that count as “completed” when ids were renamed away from classic `done`.
- */
-const COMPLETED_TASK_STATUS_LABEL = /^(done|complete[d]?|completato)$/i;
+const LEGACY_COMPLETED_TASK_STATUS_LABEL = /^(done|complete[d]?|completato)$/i;
 
 /**
- * Resolve the Settings-driven status id that means “Completed” / Done.
+ * True when this row is the locked Done / Completed column.
+ */
+export function isLockedDoneTaskStatus(status: Pick<TaskStatusOption, "id">): boolean {
+	return status.id === LOCKED_DONE_TASK_STATUS_ID;
+}
+
+/**
+ * Ensure Settings always contain a non-archived `done` column.
  *
- * Order:
- * 1. Known completion ids present in Settings (`done`, `completed`, …)
- * 2. Active status whose label is Done / Completed / Completato
- * 3. Last active Board column (classic Backlog → … → Done layout)
- * 4. Fallback `"done"`
+ * - Existing `done` → force un-archived (label / colour preserved)
+ * - Legacy completion id/label (completato, …) without `done` → rewrite id to `done`
+ * - Otherwise append {@link DEFAULT_DONE_TASK_STATUS}
+ */
+export function ensureDoneTaskStatus(
+	statuses: readonly TaskStatusOption[],
+): TaskStatusOption[] {
+	const next = statuses.map((item) => ({ ...item }));
+	const doneIndex = next.findIndex((item) => item.id === LOCKED_DONE_TASK_STATUS_ID);
+	if (doneIndex >= 0) {
+		const current = next[doneIndex]!;
+		next[doneIndex] = {
+			...current,
+			id: LOCKED_DONE_TASK_STATUS_ID,
+			label: current.label.trim() || DEFAULT_DONE_TASK_STATUS.label,
+			archived: false,
+			color: current.color ?? DEFAULT_DONE_TASK_STATUS.color,
+		};
+		return next;
+	}
+
+	const legacyIndex = next.findIndex(
+		(item) =>
+			LEGACY_COMPLETED_TASK_STATUS_IDS.has(item.id.toLowerCase()) ||
+			LEGACY_COMPLETED_TASK_STATUS_LABEL.test(item.label.trim()),
+	);
+	if (legacyIndex >= 0) {
+		const current = next[legacyIndex]!;
+		next[legacyIndex] = {
+			...current,
+			id: LOCKED_DONE_TASK_STATUS_ID,
+			label: current.label.trim() || DEFAULT_DONE_TASK_STATUS.label,
+			archived: false,
+			color: current.color ?? DEFAULT_DONE_TASK_STATUS.color,
+		};
+		return next;
+	}
+
+	next.push({ ...DEFAULT_DONE_TASK_STATUS });
+	return next;
+}
+
+/**
+ * Completed status id for checkbox / confirm → always the locked `done` column.
  */
 export function completedTaskStatusId(
-	statuses: readonly TaskStatusOption[],
+	_statuses?: readonly TaskStatusOption[],
 ): string {
-	for (const id of COMPLETED_TASK_STATUS_IDS) {
-		if (statuses.some((item) => item.id === id)) {
-			return id;
-		}
-	}
-	const active = activeTaskStatuses(statuses);
-	const byLabel = active.find((item) =>
-		COMPLETED_TASK_STATUS_LABEL.test(item.label.trim()),
-	);
-	if (byLabel) {
-		return byLabel.id;
-	}
-	return active[active.length - 1]?.id ?? statuses[statuses.length - 1]?.id ?? "done";
+	return LOCKED_DONE_TASK_STATUS_ID;
 }
 
 /**
  * Whether a task status id should show as checked / completed in table UIs.
+ * Accepts legacy ids on old notes until they are rewritten to `done`.
  */
 export function isCompletedTaskStatus(
 	status: string,
-	statuses: readonly TaskStatusOption[],
+	_statuses?: readonly TaskStatusOption[],
 ): boolean {
 	const normalised = status.trim().toLowerCase();
 	if (!normalised) {
 		return false;
 	}
-	if (COMPLETED_TASK_STATUS_IDS.has(normalised)) {
-		return true;
-	}
-	return status === completedTaskStatusId(statuses);
+	return (
+		normalised === LOCKED_DONE_TASK_STATUS_ID ||
+		LEGACY_COMPLETED_TASK_STATUS_IDS.has(normalised)
+	);
 }
 
 /**
- * Status to restore when unchecking the Completed checkbox (first non-completed
+ * Status to restore when unchecking the Completed checkbox (first non-done
  * active column, typically Backlog).
  */
 export function reopenTaskStatusId(statuses: readonly TaskStatusOption[]): string {
-	const completed = completedTaskStatusId(statuses);
-	const open = activeTaskStatuses(statuses).find((item) => item.id !== completed);
+	const open = activeTaskStatuses(statuses).find(
+		(item) => item.id !== LOCKED_DONE_TASK_STATUS_ID,
+	);
 	if (open) {
 		return open.id;
 	}
-	const any = statuses.find((item) => item.id !== completed);
+	const any = statuses.find((item) => item.id !== LOCKED_DONE_TASK_STATUS_ID);
 	return any?.id ?? "backlog";
+}
+
+/**
+ * English notice when the user tries to archive or remove the locked Done column.
+ */
+export function lockedDoneStatusNotice(): string {
+	return "Done is a required status and cannot be archived or removed. You can rename its label (for example to Completato).";
 }
 
 /**
