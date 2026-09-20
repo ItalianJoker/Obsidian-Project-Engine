@@ -85,7 +85,7 @@ export function mountTaskTitleControls(
 	const name = task.title.trim() || task.id;
 
 	const editBtn = row.createEl("button", {
-		cls: "pe-task-edit-icon pe-touch-target",
+		cls: "pe-task-edit-icon",
 		attr: {
 			type: "button",
 			title: "Edit task",

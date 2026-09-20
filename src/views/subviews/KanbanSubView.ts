@@ -144,7 +144,7 @@ export class KanbanSubView implements SubView {
 					plugin,
 					project,
 					task,
-					titleClass: "pe-kanban-card-title pe-touch-target",
+					titleClass: "pe-kanban-card-title",
 					titleAsButton: false,
 				});
 

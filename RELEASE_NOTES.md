@@ -1,5 +1,19 @@
 # Release notes — Projects Engine
 
+## 1.2.4 — Task edit button sizing, vertical alignment & Gantt refinements
+
+**IT:** Ridotta la dimensione del tasto di modifica del Task (altezza pari a una lettera maiuscola) e allineato verticalmente il testo al centro dell'icona nelle viste Gantt, Kanban ed Eisenhower; rimossi i punti elenco e perfezionati i padding nella vista Gantt.
+
+**EN:** Resized the task edit button (scaled to cap-height) and vertically centered task titles with the icon across Gantt, Kanban, and Eisenhower views; removed bullet dots and refined padding in Gantt view.
+
+### Improvements & Polish
+
+- **Task edit button sizing** — Reduced `.pe-task-edit-icon` to 16x16px with an 11px SVG pencil, matching standard uppercase cap-height, and removed forced 44px touch target overrides.
+- **Vertical title-icon alignment** — Removed `pe-touch-target` from card and timeline titles in Kanban, Eisenhower, and Gantt subviews. Enforced `align-items: center` and reset title min-heights so task names are precisely centered along the icon's horizontal axis.
+- **Gantt view polish** — Removed tree bullet dots (`.pe-gantt-tree-dot`), balanced container padding to a uniform 16px, and aligned label column rows to 100% height with zero top/bottom padding for clean vertical centering within 40px timeline lanes.
+
+---
+
 ## 1.2.3 — Table spacing optimization & New task button styling
 
 **IT:** Ottimizzazione e uniformazione dei padding e spazi nelle tabelle (allineati allo spazio tra Assignee e Due); adeguato il pulsante "New task" allo stile visivo di "New note".

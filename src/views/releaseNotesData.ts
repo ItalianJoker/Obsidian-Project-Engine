@@ -7,6 +7,14 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.2.4
+
+### Improvements & Polish
+
+- **Task edit button sizing** — Scaled the task edit button down to 16x16px (11px icon) to match uppercase letter cap-height and removed touch target bloat.
+- **Title vertical alignment** — Vertically centered task title text with the edit icon in Gantt, Kanban, and Eisenhower views.
+- **Gantt refinements** — Removed tree bullet dots, balanced view padding to 16px, and aligned row labels to 100% height with zero vertical padding for clean centering in 40px lanes.
+
 ## 1.2.3
 
 ### Improvements & Polish

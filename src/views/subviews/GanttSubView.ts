@@ -371,12 +371,11 @@ export class GanttSubView implements SubView {
 				label.createSpan({ cls: "pe-gantt-chevron-spacer" });
 			}
 
-			label.createSpan({ cls: "pe-gantt-tree-dot" });
 			mountTaskTitleControls(label, {
 				plugin: this.props.plugin,
 				project: this.props.project,
 				task: row.task,
-				titleClass: "pe-gantt-label-text pe-touch-target",
+				titleClass: "pe-gantt-label-text",
 				titleAsButton: false,
 			});
 

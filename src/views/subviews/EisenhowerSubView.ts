@@ -167,7 +167,7 @@ export class EisenhowerSubView implements SubView {
 					plugin,
 					project,
 					task,
-					titleClass: "pe-eisenhower-card-title pe-touch-target",
+					titleClass: "pe-eisenhower-card-title",
 					titleAsButton: false,
 				});
 
