@@ -7,6 +7,15 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.0.8
+
+### Features
+
+- **Completed checkbox** — Done toggle with confirm; locked Done status column.
+- **Task detail / edit** — name opens detail; pencil opens edit; no Markdown auto-open after save.
+- **Inline fields + reorder** — Status/Priority/Assignees/Due/Scheduled inline; sibling up/down; Search spacing.
+- **Last Update column** — portfolio list shows project last update (\`updated\` / mtime).
+
 ## 1.0.7
 
 ### Fixes

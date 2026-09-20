@@ -1,5 +1,25 @@
 # Release notes — Projects Engine
 
+## 1.0.8 — Completed tasks, detail/edit, Last Update
+
+**IT:** Checkbox Completed funzionante con conferma e Done bloccato; dettaglio task al click sul nome e matita per edit; campi inline su Dashboard/Table; riordino sibling; colonna Last Update sul portfolio.
+
+**EN:** Working Completed checkbox with confirm and locked Done; task detail on name click and pencil for edit; inline Dashboard/Table fields; sibling reorder; Last Update column on the portfolio list.
+
+### Features
+
+- **Completed checkbox** — enable Done toggle on Dashboard/Table; confirm before complete; Done status locked as required.
+- **Task detail / edit** — name opens read-only detail; pencil opens edit; no auto-open of Markdown after save.
+- **Inline task fields** — Status, Priority, Assignees, Due, Scheduled editable on Dashboard/Table; Search row spacing.
+- **Sibling reorder** — up/down controls persist `sort_order` (and parent `child_ids`).
+- **Last Update column** — portfolio Dashboard shows project last update from YAML `updated` (fallback file mtime).
+
+### Breaking Changes
+
+- **None.**
+
+---
+
 ## 1.0.7 — Template editor spacing
 
 **IT:** Spacing più arioso nell’editor dei template di lista task (Settings).
