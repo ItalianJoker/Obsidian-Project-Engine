@@ -35,6 +35,7 @@ import {
 	planSiblingReorder,
 	type TaskReorderDirection,
 } from "../../services/taskOrder";
+import { isExpiredDateTime } from "../../services/dateFormat";
 import { formatHours } from "../../services/timeLogs";
 import { ConfirmModal } from "../../ui/ConfirmModal";
 import { EmptyState } from "../../ui/EmptyState";
@@ -191,7 +192,17 @@ export class TableSubView implements SubView {
 	): void {
 		const { plugin, project, tasks } = this.props;
 		const projectTasks = tasks.filter((item) => item.projectId === project.id);
-		const tr = tbody.createEl("tr", { cls: "pe-task-row" });
+		const statuses = plugin.settings.taskStatuses;
+		const completedId = completedTaskStatusId(statuses);
+		const completed = isCompletedTaskStatus(task.status, statuses);
+		const dueExpired = !completed && isExpiredDateTime(task.due);
+		const scheduledExpired = !completed && isExpiredDateTime(task.scheduled);
+		const tr = tbody.createEl("tr", {
+			cls:
+				dueExpired || scheduledExpired
+					? "pe-task-row pe-task-row--expired"
+					: "pe-task-row",
+		});
 
 		const reorderTd = tr.createEl("td", {
 			cls: "pe-task-reorder-col",
@@ -201,7 +212,7 @@ export class TableSubView implements SubView {
 		const canUp = canReorderTask(projectTasks, task.id, "up");
 		const canDown = canReorderTask(projectTasks, task.id, "down");
 		const upBtn = reorder.createEl("button", {
-			cls: "pe-task-reorder-btn pe-touch-target",
+			cls: "pe-task-reorder-btn",
 			attr: {
 				type: "button",
 				title: "Move up",
@@ -215,7 +226,7 @@ export class TableSubView implements SubView {
 			void this.reorderTask(task, "up");
 		});
 		const downBtn = reorder.createEl("button", {
-			cls: "pe-task-reorder-btn pe-touch-target",
+			cls: "pe-task-reorder-btn",
 			attr: {
 				type: "button",
 				title: "Move down",
@@ -230,12 +241,9 @@ export class TableSubView implements SubView {
 		});
 
 		const checkTd = tr.createEl("td", { cls: "pe-task-check-col" });
-		const statuses = plugin.settings.taskStatuses;
-		const completedId = completedTaskStatusId(statuses);
-		const completed = isCompletedTaskStatus(task.status, statuses);
 		const checkbox = checkTd.createEl("input", {
 			type: "checkbox",
-			cls: "pe-task-checkbox pe-touch-target",
+			cls: "pe-task-checkbox",
 			attr: {
 				"aria-label": completed
 					? `Mark ${task.title || task.id} as not completed`
@@ -394,7 +402,9 @@ export class TableSubView implements SubView {
 		});
 
 		const dueTd = tr.createEl("td", {
-			cls: "pe-task-inline-cell pe-task-due-cell",
+			cls: dueExpired
+				? "pe-task-inline-cell pe-task-due-cell is-expired"
+				: "pe-task-inline-cell pe-task-due-cell",
 			attr: { "data-label": "Due date" },
 		});
 		mountInlineDateTime(dueTd, {
@@ -414,7 +424,9 @@ export class TableSubView implements SubView {
 		});
 
 		const scheduledTd = tr.createEl("td", {
-			cls: "pe-task-inline-cell pe-task-scheduled-cell",
+			cls: scheduledExpired
+				? "pe-task-inline-cell pe-task-scheduled-cell is-expired"
+				: "pe-task-inline-cell pe-task-scheduled-cell",
 			attr: { "data-label": "Scheduled" },
 		});
 		mountInlineDateTime(scheduledTd, {
