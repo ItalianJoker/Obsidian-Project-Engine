@@ -3,7 +3,8 @@
  *
  * Table / Dashboard checkboxes must resolve the configurable Done column
  * (including renamed labels like Completato) and persist YAML `status` before
- * views refresh.
+ * views refresh. Completing via checkbox confirms first; uncheck reopens to
+ * the first non-completed column (usually Backlog) without a second confirm.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -14,6 +15,7 @@ import {
 	type TaskStatusOption,
 } from "../src/models/types";
 import { PersistStatusCommand } from "../src/services/taskCommands";
+import { markCompletedConfirmMessage } from "../src/services/taskStatusUi";
 import { splitFrontmatter } from "../src/services/frontmatter";
 import { TFile, type Vault } from "obsidian";
 
@@ -54,6 +56,15 @@ describe("completed task status helpers", () => {
 			{ id: "x", label: "Hidden", archived: true },
 		];
 		expect(completedTaskStatusId(custom)).toBe("z");
+	});
+
+	it("builds English complete-confirm copy with the configured label", () => {
+		expect(markCompletedConfirmMessage("Ship release", "Done")).toBe(
+			'Mark “Ship release” as completed?\n\nStatus will be set to Done.',
+		);
+		expect(markCompletedConfirmMessage("Ship release", "Completato")).toContain(
+			"Completato",
+		);
 	});
 });
 

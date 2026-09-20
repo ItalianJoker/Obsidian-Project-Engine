@@ -14,12 +14,16 @@ export interface ConfirmModalOptions {
 	cancelLabel?: string;
 	dangerous?: boolean;
 	onConfirm: () => void | Promise<void>;
+	/** Called when the user cancels or dismisses without confirming. */
+	onCancel?: () => void;
 }
 
 /**
  * Simple confirm / cancel modal.
  */
 export class ConfirmModal extends Modal {
+	private settled = false;
+
 	constructor(
 		app: App,
 		private readonly options: ConfirmModalOptions,
@@ -40,7 +44,7 @@ export class ConfirmModal extends Modal {
 			cls: "pe-secondary pe-touch-target",
 			attr: { type: "button" },
 		});
-		cancel.addEventListener("click", () => this.close());
+		cancel.addEventListener("click", () => this.dismiss());
 		const confirm = actions.createEl("button", {
 			text: options.confirmLabel ?? "Confirm",
 			cls: `${options.dangerous ? "pe-danger" : "pe-primary"} pe-touch-target`,
@@ -48,6 +52,7 @@ export class ConfirmModal extends Modal {
 		});
 		confirm.addEventListener("click", () => {
 			void (async () => {
+				this.settled = true;
 				await options.onConfirm();
 				this.close();
 			})();
@@ -55,6 +60,15 @@ export class ConfirmModal extends Modal {
 	}
 
 	override onClose(): void {
+		if (!this.settled) {
+			this.settled = true;
+			this.options.onCancel?.();
+		}
 		this.contentEl.empty();
+	}
+
+	/** Cancel button path — closes and triggers {@link ConfirmModalOptions.onCancel}. */
+	private dismiss(): void {
+		this.close();
 	}
 }

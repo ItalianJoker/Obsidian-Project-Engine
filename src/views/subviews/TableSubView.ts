@@ -36,6 +36,7 @@ import { EmptyState } from "../../ui/EmptyState";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
+import { markCompletedConfirmMessage } from "../../services/taskStatusUi";
 
 /**
  * Workspace task filters (combinable with free-text search).
@@ -183,13 +184,23 @@ export class TableSubView implements SubView {
 		});
 		checkbox.checked = completed;
 		checkbox.addEventListener("click", (event) => {
+			// Keep visual state until confirm (complete) or until we apply reopen.
+			event.preventDefault();
 			event.stopPropagation();
-		});
-		checkbox.addEventListener("change", () => {
-			const next = checkbox.checked
-				? completedId
-				: reopenTaskStatusId(statuses);
-			void this.setTaskStatus(task, next);
+			if (completed) {
+				// Uncheck: no confirm — reopen to first non-completed column (usually Backlog).
+				checkbox.checked = false;
+				void this.setTaskStatus(task, reopenTaskStatusId(statuses));
+				return;
+			}
+			this.confirmMarkCompleted(task, completedId, {
+				onCancel: () => {
+					checkbox.checked = false;
+				},
+				onApplied: () => {
+					checkbox.checked = true;
+				},
+			});
 		});
 
 		const titleTd = tr.createEl("td", { cls: "pe-task-tree-cell", attr: { "data-label": "Task" } });
@@ -245,12 +256,22 @@ export class TableSubView implements SubView {
 				attr: { value: option.id },
 			});
 		}
-		statusSelect.value = task.status || defaultTaskStatusId(statuses);
+		const previousStatus = task.status || defaultTaskStatusId(statuses);
+		statusSelect.value = previousStatus;
 		statusSelect.addEventListener("click", (event) => {
 			event.stopPropagation();
 		});
 		statusSelect.addEventListener("change", () => {
-			void this.setTaskStatus(task, statusSelect.value);
+			const next = statusSelect.value;
+			if (next === completedId && !isCompletedTaskStatus(task.status, statuses)) {
+				this.confirmMarkCompleted(task, completedId, {
+					onCancel: () => {
+						statusSelect.value = previousStatus;
+					},
+				});
+				return;
+			}
+			void this.setTaskStatus(task, next);
 		});
 
 		const priorityTd = tr.createEl("td", { attr: { "data-label": "Priority" } });
@@ -322,6 +343,33 @@ export class TableSubView implements SubView {
 			event.stopPropagation();
 			this.confirmDeleteTask(task);
 		});
+	}
+
+	/**
+	 * Confirm before setting the configured Completed status (default Done).
+	 * Cancel leaves status and controls unchanged.
+	 */
+	private confirmMarkCompleted(
+		task: Task,
+		completedId: string,
+		hooks?: { onCancel?: () => void; onApplied?: () => void },
+	): void {
+		const { app, plugin } = this.props;
+		const label = resolveTaskStatusLabel(plugin.settings.taskStatuses, completedId);
+		const name = task.title.trim() || task.id;
+		new ConfirmModal(app, {
+			title: "Mark task completed?",
+			message: markCompletedConfirmMessage(name, label),
+			confirmLabel: `Mark as ${label}`,
+			cancelLabel: "Cancel",
+			onConfirm: async () => {
+				hooks?.onApplied?.();
+				await this.setTaskStatus(task, completedId);
+			},
+			onCancel: () => {
+				hooks?.onCancel?.();
+			},
+		}).open();
 	}
 
 	/**
