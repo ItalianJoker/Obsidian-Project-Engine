@@ -112,20 +112,30 @@ export class TableSubView implements SubView {
 		});
 		const thead = table.createEl("thead");
 		const head = thead.createEl("tr");
-		for (const label of [
-			"",
-			"",
-			"TASK",
-			"STATUS",
-			"PRIORITY",
-			"ASSIGNEES",
-			"DUE",
-			"SCHEDULED",
-			"PROGRESS",
-			"TIME",
-			"",
-		]) {
-			head.createEl("th", { text: label });
+		// Mirror body columns (reorder, check, …). Non-empty control headers
+		// avoid theme `th:empty { display:none }` collapsing those columns and
+		// shifting TASK/STATUS/… left over the controls.
+		const headerCells: Array<{ text: string; cls?: string; label?: string }> = [
+			{ text: "\u00a0", cls: "pe-task-reorder-col", label: "Order" },
+			{ text: "\u00a0", cls: "pe-task-check-col", label: "Complete" },
+			{ text: "TASK" },
+			{ text: "STATUS" },
+			{ text: "PRIORITY" },
+			{ text: "ASSIGNEES" },
+			{ text: "DUE" },
+			{ text: "SCHEDULED" },
+			{ text: "PROGRESS", cls: "pe-task-progress-col" },
+			{ text: "TIME", cls: "pe-task-time-col" },
+			{ text: "\u00a0", cls: "pe-task-row-actions", label: "Actions" },
+		];
+		for (const cell of headerCells) {
+			const th = head.createEl("th", {
+				text: cell.text,
+				cls: cell.cls,
+			});
+			if (cell.label) {
+				th.setAttr("aria-label", cell.label);
+			}
 		}
 
 		const tbody = table.createEl("tbody");
