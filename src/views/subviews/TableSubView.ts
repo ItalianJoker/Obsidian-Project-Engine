@@ -16,11 +16,13 @@ import {
 	reopenTaskStatusId,
 	taskStatusLabel as resolveTaskStatusLabel,
 	toWikiLink,
+	wikiLinkTarget,
 	type Task,
 	type TaskId,
 	type TaskPriority,
 	type TaskStatus,
 } from "../../models/types";
+import { ensureEntityNote } from "../../services/linkSync";
 import { PersistStatusCommand } from "../../services/taskCommands";
 import {
 	collectTaskSubtreeIds,
@@ -383,7 +385,7 @@ export class TableSubView implements SubView {
 			},
 		});
 		assigneeInput.value = task.assignee
-			? task.assignee.replace(/^\[\[/, "").replace(/\]\]$/, "")
+			? wikiLinkTarget(task.assignee)
 			: "";
 		const suggest = new EntitySuggest(
 			this.props.app,
@@ -393,23 +395,44 @@ export class TableSubView implements SubView {
 				const name =
 					suggestion.kind === "file" ? suggestion.entity.name : suggestion.name;
 				assigneeInput.value = name;
-				void this.patchTaskField(task, "Assignee", (data) => {
-					data.assignee = toWikiLink(name);
-				});
+				void (async () => {
+					await ensureEntityNote(
+						this.props.app.vault,
+						"stakeholder",
+						name,
+						this.props.plugin.settings.stakeholdersFolder,
+					);
+					await this.patchTaskField(task, "Assignee", (data) => {
+						data.assignee = toWikiLink(name);
+					});
+					this.props.plugin.indexer.rebuild();
+				})();
 			},
 		);
 		this.suggests.push(suggest);
 		assigneeInput.addEventListener("click", (event) => event.stopPropagation());
 		assigneeInput.addEventListener("change", () => {
 			const raw = assigneeInput.value.trim();
-			void this.patchTaskField(task, "Assignee", (data) => {
+			void (async () => {
 				if (raw) {
-					data.assignee = toWikiLink(raw);
+					await ensureEntityNote(
+						this.props.app.vault,
+						"stakeholder",
+						raw,
+						this.props.plugin.settings.stakeholdersFolder,
+					);
+					await this.patchTaskField(task, "Assignee", (data) => {
+						data.assignee = toWikiLink(raw);
+					});
+					this.props.plugin.indexer.rebuild();
 				} else {
-					delete data.assignee;
+					await this.patchTaskField(task, "Assignee", (data) => {
+						delete data.assignee;
+					});
 				}
-			});
+			})();
 		});
+
 
 		const dueTd = tr.createEl("td", {
 			cls: dueExpired

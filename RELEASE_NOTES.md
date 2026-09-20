@@ -1,5 +1,21 @@
 # Release notes — Projects Engine
 
+## 1.2.1 — Entity auto-creation, no auto-open on entity create & task detail standardization
+
+**IT:** Creazione automatica delle entità referenziate fuori dalla creazione del progetto; soppressione apertura automatica nota su creazione entità; uniformazione della vista dettaglio task con layout card e link interni.
+
+**EN:** Auto-creation of referenced entities outside project creation; suppressed automatic note opening on entity creation; standardized task detail view with card layout and interactive internal links.
+
+### Fixes & Improvements
+
+- **Auto-create referenced entities** — Creating or saving a Stakeholder with a new Customer (or Customer with new Stakeholders) automatically creates the referenced note in the vault and writes bidirectional wikilinks in both YAML frontmatter and the `## Links` section.
+- **No auto-open note on entity create** — Creating or editing an entity from any menu saves the note, refreshes the index, and notifies without forcing the Markdown file open in the Obsidian workspace.
+- **Task detail standardization** — Standardized `TaskDetailModal` with the entity card design (`ViewEntityModal`), featuring status/priority badges, quick Edit and Open note actions, clickable Project chip, clickable Assignee chip, and interactive chip navigation for Parent task, Subtasks, Blocked by, and Blocking dependencies.
+- **Table inline assignee auto-creation** — Setting an assignee directly from the task table inline input ensures the Stakeholder note exists in the vault.
+- **Codebase refactoring** — Consolidated link target resolution onto canonical `wikiLinkTarget` and unified entity note creation on `ensureEntityNote`.
+
+---
+
 ## 1.2.0 — View Entity in Dashboard, Stakeholder email & Team entity unification
 
 **IT:** Nuova sezione "View entity" nella dashboard di progetto; eliminazione entità Team e unificazione su Stakeholder; aggiunto campo email a Stakeholder.

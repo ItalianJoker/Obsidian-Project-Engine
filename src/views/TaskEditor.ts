@@ -24,6 +24,7 @@ import {
 	toWikiLink,
 } from "../models/types";
 import { CycleDetectedError } from "../engine/Scheduler";
+import { ensureEntityNote } from "../services/linkSync";
 import {
 	PersistCascadeCommand,
 	PersistDependencyCommand,
@@ -929,6 +930,25 @@ export class TaskEditor {
 			const cycle = this.plugin.scheduler.wouldCreateCycle(graph, blockerId, this.draft.id);
 			if (cycle) {
 				throw new CycleDetectedError([cycle]);
+			}
+		}
+
+		if (this.draft.assignee) {
+			await ensureEntityNote(
+				this.app.vault,
+				"stakeholder",
+				this.draft.assignee,
+				this.plugin.settings.stakeholdersFolder,
+			);
+		}
+		for (const log of this.draft.timeLogs) {
+			if (log.member) {
+				await ensureEntityNote(
+					this.app.vault,
+					"stakeholder",
+					log.member,
+					this.plugin.settings.stakeholdersFolder,
+				);
 			}
 		}
 

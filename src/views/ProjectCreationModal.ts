@@ -18,7 +18,7 @@ import {
 } from "../models/types";
 import { buildGraphLinksSection, buildMarkdownNote } from "../services/frontmatter";
 import { governanceDisplayLabel } from "../services/governance";
-import { appendEntityLink } from "../services/linkSync";
+import { appendEntityLink, ensureEntityNote } from "../services/linkSync";
 import { nextAvailableProjectId } from "../services/projectId";
 import { isValidHttpUrl, isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
 import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from "../services/vaultIo";
@@ -825,28 +825,7 @@ export class ProjectCreationModal extends Modal {
 		name: string,
 		folder: string,
 	): Promise<void> {
-		const basename = sanitiseNoteBasename(name);
-		if (!basename) {
-			return;
-		}
-		const existing = this.plugin.indexer.list(peType).some(
-			(item) => item.name.toLowerCase() === basename.toLowerCase(),
-		);
-		if (existing) {
-			return;
-		}
-		const path = joinVaultPath(folder, `${basename}.md`);
-		if (noteExists(this.app.vault, path)) {
-			return;
-		}
-		const markdown = buildMarkdownNote(
-			{
-				pe_type: peType,
-				name: basename,
-			},
-			`# ${basename}\n`,
-		);
-		await writeNoteAtomic(this.app.vault, path, markdown);
+		await ensureEntityNote(this.app.vault, peType, name, folder);
 	}
 
 	/**

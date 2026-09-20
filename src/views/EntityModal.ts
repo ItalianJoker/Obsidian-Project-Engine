@@ -13,9 +13,9 @@ import type {
 	EntityType,
 	WikiLink,
 } from "../models/types";
-import { toWikiLink } from "../models/types";
+import { toWikiLink, wikiLinkTarget } from "../models/types";
 import { buildGraphLinksSection, buildMarkdownNote, splitFrontmatter } from "../services/frontmatter";
-import { appendEntityLink } from "../services/linkSync";
+import { appendEntityLink, ensureEntityNote } from "../services/linkSync";
 import {
 	ensureFolder,
 	joinVaultPath,
@@ -369,7 +369,8 @@ export class EntityModal extends Modal {
 
 	private async submit(): Promise<void> {
 		const errors: string[] = [];
-		const name = sanitiseNoteBasename(this.form.name);
+		const cleanName = wikiLinkTarget(this.form.name.trim()).replace(/^\[+|\]+$/g, "").trim();
+		const name = sanitiseNoteBasename(cleanName);
 		if (!name) {
 			errors.push("Name is required");
 		}
@@ -383,6 +384,9 @@ export class EntityModal extends Modal {
 		}
 
 		try {
+			// Ensure referenced notes exist in vault before writing
+			await this.ensureReferencedEntities();
+
 			const file = this.existing
 				? await this.updateExisting(name)
 				: await this.createNew(name);
@@ -390,11 +394,59 @@ export class EntityModal extends Modal {
 			this.plugin.indexer.rebuild();
 			new Notice(`Saved ${ENTITY_META[this.kind].label} “${name}”`);
 			this.close();
-			await this.app.workspace.getLeaf(false).openFile(file);
+			// Note: user requested not opening note automatically when creating/editing from menus
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			new Notice(`Could not save: ${message}`);
 			this.showErrors([message]);
+		}
+	}
+
+	/**
+	 * Pre-create any referenced entities (Customer, Stakeholder, person custom fields)
+	 * so their notes exist and bidirectional links can be safely written.
+	 */
+	private async ensureReferencedEntities(): Promise<void> {
+		if (this.kind === "stakeholder") {
+			if (this.form.customer.trim()) {
+				await ensureEntityNote(
+					this.app.vault,
+					"customer",
+					this.form.customer.trim(),
+					this.plugin.settings.customersFolder,
+				);
+			}
+		}
+
+		if (this.kind === "customer") {
+			for (const stakeholder of this.form.stakeholders) {
+				if (stakeholder.trim()) {
+					await ensureEntityNote(
+						this.app.vault,
+						"stakeholder",
+						stakeholder.trim(),
+						this.plugin.settings.stakeholdersFolder,
+					);
+				}
+			}
+		}
+
+		if (this.customFields) {
+			const schemas = schemasForEntity(this.plugin.settings.customFieldSchemas, this.kind);
+			const values = this.customFields.toMap();
+			for (const schema of schemas) {
+				if (schema.type === "person") {
+					const val = values[schema.id];
+					if (typeof val === "string" && val.trim()) {
+						await ensureEntityNote(
+							this.app.vault,
+							"stakeholder",
+							val.trim(),
+							this.plugin.settings.stakeholdersFolder,
+						);
+					}
+				}
+			}
 		}
 	}
 
@@ -439,22 +491,37 @@ export class EntityModal extends Modal {
 			}
 			if (this.form.role.trim()) data.role = this.form.role.trim();
 			if (this.form.customer.trim()) {
-				const customerLink = toWikiLink(this.form.customer.trim());
-				data.customer = customerLink;
-				links.push({ label: "Customer", wikiLink: customerLink });
+				const cleanCustomer = wikiLinkTarget(this.form.customer.trim()).replace(/^\[+|\]+$/g, "").trim();
+				const customerBasename = sanitiseNoteBasename(cleanCustomer);
+				if (customerBasename) {
+					const customerLink = toWikiLink(customerBasename);
+					data.customer = customerLink;
+					links.push({ label: "Customer", wikiLink: customerLink });
+				}
 			}
-			const projects = this.form.projects.map((item) => toWikiLink(item));
+			const projects = this.form.projects
+				.map((item) => sanitiseNoteBasename(wikiLinkTarget(item).replace(/^\[+|\]+$/g, "").trim()))
+				.filter(Boolean)
+				.map((item) => toWikiLink(item));
 			data.projects = projects;
 			for (const wikiLink of projects) {
 				links.push({ label: "Project", wikiLink });
 			}
 		}
 		if (this.kind === "customer") {
-			const stakeholders = this.form.stakeholders.map((item) => toWikiLink(item));
-			data.stakeholders = stakeholders;
-			for (const wikiLink of stakeholders) {
-				links.push({ label: "Stakeholder", wikiLink });
+			const stakeholders: WikiLink[] = [];
+			for (const item of this.form.stakeholders) {
+				const clean = wikiLinkTarget(item.trim()).replace(/^\[+|\]+$/g, "").trim();
+				const basename = sanitiseNoteBasename(clean);
+				if (basename) {
+					const wikiLink = toWikiLink(basename);
+					if (!stakeholders.includes(wikiLink)) {
+						stakeholders.push(wikiLink);
+						links.push({ label: "Stakeholder", wikiLink });
+					}
+				}
 			}
+			data.stakeholders = stakeholders;
 		}
 
 		const body = [`# ${name}`, "", buildGraphLinksSection(links)].join("\n");
@@ -468,7 +535,9 @@ export class EntityModal extends Modal {
 		if (this.kind === "stakeholder") {
 			const stakeholderLink = toWikiLink(file.basename);
 			if (this.form.customer.trim()) {
-				const customerFile = this.resolveByBasename(
+				const customerFile = await ensureEntityNote(
+					this.app.vault,
+					"customer",
 					this.form.customer.trim(),
 					this.plugin.settings.customersFolder,
 				);
@@ -501,7 +570,9 @@ export class EntityModal extends Modal {
 		if (this.kind === "customer") {
 			const customerLink = toWikiLink(file.basename);
 			for (const name of this.form.stakeholders) {
-				const stakeholderFile = this.resolveByBasename(
+				const stakeholderFile = await ensureEntityNote(
+					this.app.vault,
+					"stakeholder",
 					name,
 					this.plugin.settings.stakeholdersFolder,
 				);
@@ -517,20 +588,6 @@ export class EntityModal extends Modal {
 				}
 			}
 		}
-	}
-
-	private resolveByBasename(name: string, folder: string): TFile | null {
-		const basename = sanitiseNoteBasename(name);
-		const path = joinVaultPath(folder, `${basename}.md`);
-		const file = this.app.vault.getAbstractFileByPath(path);
-		if (file instanceof TFile) {
-			return file;
-		}
-		return (
-			this.app.vault
-				.getMarkdownFiles()
-				.find((item) => item.basename.toLowerCase() === basename.toLowerCase()) ?? null
-		);
 	}
 
 	private resolveProject(name: string): TFile | null {

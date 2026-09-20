@@ -8,8 +8,9 @@
  */
 
 import { TFile, type Vault } from "obsidian";
-import { toWikiLink, wikiLinkTarget, type WikiLink } from "../models/types";
+import { toWikiLink, wikiLinkTarget, type EntityType, type WikiLink } from "../models/types";
 import { buildMarkdownNote, splitFrontmatter } from "./frontmatter";
+import { joinVaultPath, sanitiseNoteBasename, writeNoteAtomic } from "./vaultIo";
 
 /**
  * Add `wikiLink` to a YAML list or scalar field and to the note body Links section.
@@ -80,4 +81,51 @@ export function ensureBodyLink(body: string, label: string, wikiLink: WikiLink):
 	}
 	const trimmed = body.replace(/\s+$/, "");
 	return `${trimmed}\n\n## Links\n\n${line}\n`;
+}
+
+/**
+ * Ensure an Entity-as-a-Note file exists in the vault.
+ *
+ * If a note matching `name` already exists (either at folder/name.md or matching basename
+ * elsewhere in the vault), returns the existing TFile. Otherwise creates the note atomically
+ * with standard frontmatter (`pe_type`, `name`) and markdown body.
+ *
+ * @param vault - Active vault.
+ * @param peType - Entity type (customer, stakeholder, project-type, technology).
+ * @param name - Raw name or wikilink (e.g. "Acme" or "[[Acme]]").
+ * @param folder - Vault folder path for new notes of this kind.
+ */
+export async function ensureEntityNote(
+	vault: Vault,
+	peType: EntityType,
+	name: string,
+	folder: string,
+): Promise<TFile | null> {
+	const raw = name.trim();
+	if (!raw) return null;
+	const clean = wikiLinkTarget(raw).replace(/^\[+|\]+$/g, "").trim();
+	const basename = sanitiseNoteBasename(clean);
+	if (!basename) return null;
+
+	const targetPath = joinVaultPath(folder, `${basename}.md`);
+	const existing = vault.getAbstractFileByPath(targetPath);
+	if (existing instanceof TFile) {
+		return existing;
+	}
+
+	const vaultFile = vault
+		.getMarkdownFiles()
+		.find((item) => item.basename.toLowerCase() === basename.toLowerCase());
+	if (vaultFile instanceof TFile) {
+		return vaultFile;
+	}
+
+	const markdown = buildMarkdownNote(
+		{
+			pe_type: peType,
+			name: basename,
+		},
+		`# ${basename}\n`,
+	);
+	return writeNoteAtomic(vault, targetPath, markdown);
 }

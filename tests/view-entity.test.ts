@@ -7,10 +7,11 @@ import {
 	VIEW_ENTITY_KINDS,
 	VIEW_ENTITY_META,
 } from "../src/views/ViewEntityModal";
-import type { Stakeholder } from "../src/models/types";
+import { type Stakeholder, DEFAULT_SETTINGS } from "../src/models/types";
 import { EntityIndexer } from "../src/engine/Indexer";
-import { DEFAULT_SETTINGS } from "../src/models/types";
-import { TFile } from "obsidian";
+import { TFile, TFolder, type Vault } from "obsidian";
+import { ensureEntityNote, appendEntityLink } from "../src/services/linkSync";
+import { splitFrontmatter } from "../src/services/frontmatter";
 
 describe("ViewEntityModal metadata", () => {
 	it("contains exactly the 4 configured entity kinds without team-member", () => {
@@ -224,4 +225,159 @@ describe("Entity to project relationship resolution", () => {
 		expect(reactProjects[0]?.id).toBe("PRJ-01");
 	});
 });
+
+describe("ensureEntityNote and bidirectional link synchronization", () => {
+	it("creates a new entity note if it does not exist", async () => {
+		const files: Map<string, { file: TFile; content: string }> = new Map();
+		const folders: Set<string> = new Set();
+
+		const vault = {
+			getRoot: () => new TFolder(),
+			getAbstractFileByPath: (p: string) => files.get(p)?.file ?? null,
+			getMarkdownFiles: () => Array.from(files.values()).map((e) => e.file),
+			createFolder: async (p: string) => {
+				folders.add(p);
+				const f = new TFolder();
+				f.path = p;
+				return f;
+			},
+			create: async (p: string, content: string) => {
+				const f = new TFile();
+				f.path = p;
+				f.basename = p.split("/").pop()!.replace(/\.md$/, "");
+				files.set(p, { file: f, content });
+				return f;
+			},
+			process: async (f: TFile, fn: (cur: string) => string) => {
+				const entry = files.get(f.path) ?? { file: f, content: "" };
+				entry.content = fn(entry.content);
+				files.set(f.path, entry);
+				return entry.content;
+			},
+		} as unknown as Vault;
+
+		const created = await ensureEntityNote(
+			vault,
+			"customer",
+			"[[Acme Corp|Acme]]",
+			"Projects/Entities/Customers",
+		);
+
+		expect(created).not.toBeNull();
+		expect(created?.basename).toBe("Acme Corp");
+		const stored = files.get("Projects/Entities/Customers/Acme Corp.md");
+		expect(stored).toBeDefined();
+		const { data, body } = splitFrontmatter(stored!.content);
+		expect(data.pe_type).toBe("customer");
+		expect(data.name).toBe("Acme Corp");
+		expect(body).toContain("# Acme Corp");
+	});
+
+	it("returns existing note if it already exists in folder or elsewhere in vault", async () => {
+		const existingFile = new TFile();
+		existingFile.path = "OtherFolder/Existing Tech.md";
+		existingFile.basename = "Existing Tech";
+
+		const files: Map<string, { file: TFile; content: string }> = new Map([
+			[
+				existingFile.path,
+				{
+					file: existingFile,
+					content: "---\npe_type: technology\nname: Existing Tech\n---\n# Existing Tech",
+				},
+			],
+		]);
+
+		const vault = {
+			getAbstractFileByPath: (p: string) => files.get(p)?.file ?? null,
+			getMarkdownFiles: () => Array.from(files.values()).map((e) => e.file),
+		} as unknown as Vault;
+
+		const result = await ensureEntityNote(
+			vault,
+			"technology",
+			"existing tech",
+			"Projects/Entities/Technologies",
+		);
+
+		expect(result).toBe(existingFile);
+	});
+
+	it("correctly creates referenced customer and syncs bidirectional links when saving stakeholder", async () => {
+		const files: Map<string, { file: TFile; content: string }> = new Map();
+
+		const vault = {
+			getRoot: () => new TFolder(),
+			getAbstractFileByPath: (p: string) => files.get(p)?.file ?? null,
+			getMarkdownFiles: () => Array.from(files.values()).map((e) => e.file),
+			createFolder: async () => new TFolder(),
+			create: async (p: string, content: string) => {
+				const f = new TFile();
+				f.path = p;
+				f.basename = p.split("/").pop()!.replace(/\.md$/, "");
+				files.set(p, { file: f, content });
+				return f;
+			},
+			process: async (f: TFile, fn: (cur: string) => string) => {
+				const entry = files.get(f.path) ?? { file: f, content: "" };
+				entry.content = fn(entry.content);
+				files.set(f.path, entry);
+				return entry.content;
+			},
+		} as unknown as Vault;
+
+		// 1. Stakeholder "Alice" is being created referencing customer "Beta Corp"
+		const customerFile = await ensureEntityNote(
+			vault,
+			"customer",
+			"Beta Corp",
+			"Projects/Entities/Customers",
+		);
+		expect(customerFile).not.toBeNull();
+
+		// 2. Stakeholder file is created
+		const stakeholderFile = await ensureEntityNote(
+			vault,
+			"stakeholder",
+			"Alice",
+			"Projects/Entities/Stakeholders",
+		);
+		expect(stakeholderFile).not.toBeNull();
+
+		// 3. Bidirectional link: add Alice to customer's stakeholders list
+		await appendEntityLink(
+			vault,
+			customerFile!,
+			"stakeholders",
+			"[[Alice]]",
+			"Stakeholder",
+			"list",
+		);
+
+		// 4. Bidirectional link: set customer on Alice's note
+		await appendEntityLink(
+			vault,
+			stakeholderFile!,
+			"customer",
+			"[[Beta Corp]]",
+			"Customer",
+			"scalar",
+		);
+
+		// Verify Customer note
+		const custEntry = files.get("Projects/Entities/Customers/Beta Corp.md")!;
+		const custData = splitFrontmatter(custEntry.content);
+		expect(custData.data.pe_type).toBe("customer");
+		expect(custData.data.stakeholders).toContain("[[Alice]]");
+		expect(custData.body).toContain("- Stakeholder: [[Alice]]");
+
+		// Verify Stakeholder note
+		const stkhEntry = files.get("Projects/Entities/Stakeholders/Alice.md")!;
+		const stkhData = splitFrontmatter(stkhEntry.content);
+		expect(stkhData.data.pe_type).toBe("stakeholder");
+		expect(stkhData.data.customer).toBe("[[Beta Corp]]");
+		expect(stkhData.body).toContain("- Customer: [[Beta Corp]]");
+	});
+});
+
 

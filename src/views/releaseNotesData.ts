@@ -7,6 +7,15 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.2.1
+
+### Fixes & Improvements
+
+- **Auto-create referenced entities** — Creating or saving an entity (e.g. Customer in Stakeholder or Stakeholders in Customer) automatically creates the referenced notes in the vault and writes bidirectional wikilinks in both YAML and ## Links.
+- **No auto-open note on entity create** — Creating or editing an entity from any menu saves cleanly without forcing the Markdown file open.
+- **Task detail standardization** — Redesigned task detail view matching entity cards, with interactive internal link chips for Project, Assignee, Parent task, Subtasks, Blockers, and Time log members.
+- **Table inline assignee auto-creation** — Setting an assignee inline in the task table automatically creates the Stakeholder note if new.
+
 ## 1.2.0
 
 ### Features

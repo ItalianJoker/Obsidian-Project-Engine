@@ -16,6 +16,7 @@ import type {
 	Stakeholder,
 	Technology,
 } from "../models/types";
+import { wikiLinkTarget } from "../models/types";
 import { openEntityModal } from "./EntityModal";
 import { loadProjectRows, type ProjectRow } from "./projectRows";
 
@@ -262,7 +263,7 @@ export class ViewEntityModal extends Modal {
 		const grid = card.createDiv({ cls: "pe-entity-card-grid" });
 
 		// Stakeholders
-		const stkhValues = customer.stakeholders.map((s) => stripWiki(s)).filter(Boolean);
+		const stkhValues = customer.stakeholders.map((s) => wikiLinkTarget(s)).filter(Boolean);
 		this.renderFieldBlock(grid, "Stakeholders", stkhValues, (stkhName) => {
 			this.currentKind = "stakeholder";
 			this.searchQuery = stkhName;
@@ -271,7 +272,7 @@ export class ViewEntityModal extends Modal {
 
 		// Associated projects
 		const linkedProjects = this.projects.filter(
-			(p) => stripWiki(p.customer).toLowerCase() === customer.name.toLowerCase(),
+			(p) => wikiLinkTarget(p.customer).toLowerCase() === customer.name.toLowerCase(),
 		);
 		this.renderProjectLinksBlock(grid, linkedProjects);
 
@@ -291,7 +292,7 @@ export class ViewEntityModal extends Modal {
 
 		// Customer
 		if (stakeholder.customer) {
-			const custName = stripWiki(stakeholder.customer);
+			const custName = wikiLinkTarget(stakeholder.customer);
 			this.renderFieldBlock(grid, "Customer", [custName], () => {
 				this.currentKind = "customer";
 				this.searchQuery = custName;
@@ -304,12 +305,12 @@ export class ViewEntityModal extends Modal {
 		// Associated projects (either in stakeholder note projects or referenced in project team/stakeholders)
 		const linkedProjects = this.projects.filter((p) => {
 			const nameLower = stakeholder.name.toLowerCase();
-			const inTeam = p.team.some((t) => stripWiki(t).toLowerCase() === nameLower);
+			const inTeam = p.team.some((t) => wikiLinkTarget(t).toLowerCase() === nameLower);
 			const inStakeholders = p.stakeholders.some(
-				(s) => stripWiki(s).toLowerCase() === nameLower,
+				(s) => wikiLinkTarget(s).toLowerCase() === nameLower,
 			);
 			const inStkhProjects = stakeholder.projects.some(
-				(sp) => stripWiki(sp).toLowerCase() === p.name.toLowerCase() || stripWiki(sp) === p.id,
+				(sp) => wikiLinkTarget(sp).toLowerCase() === p.name.toLowerCase() || wikiLinkTarget(sp) === p.id,
 			);
 			return inTeam || inStakeholders || inStkhProjects;
 		});
@@ -328,7 +329,7 @@ export class ViewEntityModal extends Modal {
 
 		// Associated projects
 		const linkedProjects = this.projects.filter(
-			(p) => stripWiki(p.projectType).toLowerCase() === pt.name.toLowerCase(),
+			(p) => wikiLinkTarget(p.projectType).toLowerCase() === pt.name.toLowerCase(),
 		);
 		this.renderProjectLinksBlock(grid, linkedProjects);
 
@@ -345,7 +346,7 @@ export class ViewEntityModal extends Modal {
 
 		// Associated projects
 		const linkedProjects = this.projects.filter((p) =>
-			p.technologies.some((t) => stripWiki(t).toLowerCase() === tech.name.toLowerCase()),
+			p.technologies.some((t) => wikiLinkTarget(t).toLowerCase() === tech.name.toLowerCase()),
 		);
 		this.renderProjectLinksBlock(grid, linkedProjects);
 
@@ -497,10 +498,6 @@ export class ViewEntityModal extends Modal {
 		}
 		return null;
 	}
-}
-
-function stripWiki(raw: string): string {
-	return raw.replace(/^\[\[/, "").replace(/\]\]$/, "").split("|")[0]?.trim() ?? "";
 }
 
 export function openViewEntityModal(

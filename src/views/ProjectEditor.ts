@@ -13,13 +13,13 @@ import {
 	defaultProjectStatusId,
 	projectStatusLabel,
 	toWikiLink,
+	wikiLinkTarget,
 	type GovernanceModel,
 	type ProjectTeamAssignment,
 	type EntityType,
 } from "../models/types";
-import { buildMarkdownNote } from "../services/frontmatter";
 import { governanceDisplayLabel } from "../services/governance";
-import { appendEntityLink } from "../services/linkSync";
+import { appendEntityLink, ensureEntityNote } from "../services/linkSync";
 import { patchProjectFrontmatter } from "../services/projectIo";
 import {
 	applyTaskListTemplate,
@@ -33,7 +33,7 @@ import {
 	notifyProjectDeleted,
 } from "../services/projectDelete";
 import { isValidHttpUrl, isValidTeamsChannelUrl } from "../services/urls";
-import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from "../services/vaultIo";
+import { joinVaultPath, sanitiseNoteBasename } from "../services/vaultIo";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { mountIconPicker } from "../ui/IconPicker";
 import { loadProjectRows, type ProjectRow } from "./projectRows";
@@ -153,12 +153,12 @@ export class ProjectEditor {
 			name: row.name,
 			governance: row.governance,
 			status,
-			customer: stripWiki(row.customer),
-			projectType: stripWiki(row.projectType),
-			technologies: row.technologies.map(stripWiki),
-			team: row.team.map((item) => ({ name: stripWiki(item), role: "" })),
+			customer: wikiLinkTarget(row.customer),
+			projectType: wikiLinkTarget(row.projectType),
+			technologies: row.technologies.map(wikiLinkTarget),
+			team: row.team.map((item) => ({ name: wikiLinkTarget(item), role: "" })),
 			stakeholders: row.stakeholders.map((name) => ({
-				name: stripWiki(name),
+				name: wikiLinkTarget(name),
 				linkToCustomer: false,
 			})),
 			workOrders: [...row.commesse],
@@ -168,7 +168,7 @@ export class ProjectEditor {
 			icon: row.icon || DEFAULT_PROJECT_ICON,
 			color: row.color || DEFAULT_PROJECT_COLOR,
 			parentProjectId: row.parentProjectId ?? "",
-			taskListTemplate: stripWiki(row.taskListTemplate),
+			taskListTemplate: wikiLinkTarget(row.taskListTemplate),
 		};
 	}
 
@@ -892,24 +892,8 @@ export class ProjectEditor {
 		name: string,
 		folder: string,
 	): Promise<void> {
-		const basename = sanitiseNoteBasename(name);
-		if (!basename) return;
-		const existing = this.plugin.indexer.list(peType).some(
-			(item) => item.name.toLowerCase() === basename.toLowerCase(),
-		);
-		if (existing || noteExists(this.app.vault, joinVaultPath(folder, `${basename}.md`))) {
-			return;
-		}
-		await writeNoteAtomic(
-			this.app.vault,
-			joinVaultPath(folder, `${basename}.md`),
-			buildMarkdownNote({ pe_type: peType, name: basename }, `# ${basename}\n`),
-		);
+		await ensureEntityNote(this.app.vault, peType, name, folder);
 	}
-}
-
-function stripWiki(value: string): string {
-	return value.replace(/^\[\[/, "").replace(/\]\]$/, "").split("|")[0] ?? "";
 }
 
 function suggestionName(suggestion: EntitySuggestion): string {

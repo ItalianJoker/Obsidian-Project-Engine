@@ -3081,81 +3081,72 @@
 	padding: 8px 14px;
 }
 
-/* ---- Task detail (read-only) + title/pencil controls ---- */
-.pe-task-detail-modal .pe-task-detail {
+/* ---- Task detail (standardized with entity card layout) ---- */
+.pe-task-detail-modal .pe-modal-body {
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
+	gap: 12px;
 }
 
-.pe-task-detail-header h2 {
-	margin: 0 0 4px;
-	line-height: 1.25;
-}
-
-.pe-task-detail-header .pe-modal-lead {
-	margin: 0;
-}
-
-.pe-task-detail-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-	gap: 12px 16px;
-}
-
-.pe-task-detail-field {
+.pe-task-detail-card {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 16px;
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
-	min-width: 0;
+	gap: 14px;
 }
 
-.pe-task-detail-label {
-	font-size: var(--font-ui-smaller);
-	color: var(--text-muted);
-}
-
-.pe-task-detail-value {
-	font-size: var(--font-ui-small);
-	color: var(--text-normal);
-	word-break: break-word;
+.pe-task-meta-bar {
+	padding: 4px 0 10px;
+	border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .pe-task-detail-notes,
 .pe-task-detail-logs {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 6px;
+	margin-top: 4px;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
 }
 
-.pe-task-detail-notes-body,
-.pe-task-detail-log-list {
+.pe-task-detail-notes-body {
 	margin: 0;
 	color: var(--text-normal);
 	white-space: pre-wrap;
+	font-size: var(--font-ui-small);
 }
 
-.pe-task-detail-log-list {
-	padding-left: 1.25rem;
+.pe-task-detail-log-items {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 6px;
+}
+
+.pe-task-log-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+	font-size: var(--font-ui-small);
+}
+
+.pe-log-meta {
+	color: var(--text-muted);
+}
+
+.pe-log-note {
+	color: var(--text-normal);
 }
 
 .pe-task-detail-actions {
 	margin-top: 4px;
-	align-items: center;
-}
-
-.pe-task-detail-edit {
-	display: inline-flex;
-	align-items: center;
+	display: flex;
+	justify-content: flex-end;
 	gap: 8px;
-}
-
-.pe-task-detail-edit svg {
-	width: 16px;
-	height: 16px;
 }
 
 .pe-eisenhower-card-head {
