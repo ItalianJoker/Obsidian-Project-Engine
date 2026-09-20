@@ -2206,23 +2206,8 @@
 
 .pe-task-chevron-spacer {
 	visibility: hidden;
-	pointer-events: none;
 }
 
-.pe-task-tree-inner::before {
-	content: "";
-	position: absolute;
-	left: calc(var(--pe-tree-depth, 0) * 16px + 12px);
-	top: -50%;
-	bottom: 50%;
-	width: 0;
-	border-left: 1px solid var(--background-modifier-border);
-	pointer-events: none;
-}
-
-.pe-task-row:first-child .pe-task-tree-inner::before {
-	display: none;
-}
 
 .pe-task-title {
 	text-align: left;
