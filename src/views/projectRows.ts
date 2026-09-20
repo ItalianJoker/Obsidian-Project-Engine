@@ -35,6 +35,36 @@ export interface ProjectRow {
 	 * Empty string when unset.
 	 */
 	taskListTemplate: string;
+	/**
+	 * Last project update as ISO date or date-time for portfolio display.
+	 *
+	 * Prefer YAML `updated` (written on project create and frontmatter patches);
+	 * fall back to the project note file mtime when that field is missing.
+	 */
+	updatedAt: string;
+}
+
+/**
+ * Resolve the portfolio “Last Update” ISO value for a project note.
+ *
+ * @param frontmatterUpdated - YAML `updated` (ISO string) when present
+ * @param mtimeMs - Obsidian `TFile.stat.mtime` fallback (epoch milliseconds)
+ * @returns ISO date-time string, or `""` when neither source is usable
+ */
+export function resolveProjectLastUpdateIso(
+	frontmatterUpdated: unknown,
+	mtimeMs: number,
+): string {
+	if (typeof frontmatterUpdated === "string") {
+		const trimmed = frontmatterUpdated.trim();
+		if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+			return trimmed;
+		}
+	}
+	if (Number.isFinite(mtimeMs) && mtimeMs > 0) {
+		return new Date(mtimeMs).toISOString();
+	}
+	return "";
 }
 
 /**
@@ -71,6 +101,7 @@ export function loadProjectRows(app: App): ProjectRow[] {
 					: null,
 			taskListTemplate:
 				typeof fm.task_list_template === "string" ? fm.task_list_template : "",
+			updatedAt: resolveProjectLastUpdateIso(fm.updated, file.stat?.mtime ?? 0),
 		});
 	}
 	return rows.sort((a, b) => a.id.localeCompare(b.id));
