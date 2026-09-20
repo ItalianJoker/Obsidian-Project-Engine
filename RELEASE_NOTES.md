@@ -1,5 +1,22 @@
 # Release notes — Projects Engine
 
+## 1.1.1 — Task table header alignment + Due/Scheduled picker icons
+
+**IT:** Allineamento header/righe tabella task; icone Due/Scheduled di nuovo visibili.
+
+**EN:** Task table header/row alignment fixed; Due/Scheduled picker icons visible again.
+
+### Fixes
+
+- **Table header alignment** — thead columns match body (reorder/checkbox/actions cells kept visible) so labels no longer shift left on Dashboard and Table.
+- **Due/Scheduled picker icons** — calendar/clock glyphs use muted text color again (v1.1.0 centering had made WebKit indicators invisible).
+
+### Breaking Changes
+
+- **None.**
+
+---
+
 ## 1.1.0 — Centered Due/Scheduled picker icons
 
 **IT:** Icone calendario/orologio centrate nei picker Due/Scheduled compatibili.
