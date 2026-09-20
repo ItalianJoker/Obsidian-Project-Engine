@@ -1,5 +1,17 @@
 # Release notes — Projects Engine
 
+## 1.2.2 — Remove stray vertical line in task table
+
+**IT:** Rimossa la linea verticale spuria che appariva prima dell'icona di modifica nelle righe della tabella dei task.
+
+**EN:** Removed stray vertical line pseudo-element appearing before the edit icon on task table rows.
+
+### Fixes
+
+- **Task table tree rendering** — Removed leftover `.pe-task-tree-inner::before` connector line that erroneously rendered a stray vertical mark before the edit button on root tasks from the second row onwards.
+
+---
+
 ## 1.2.1 — Entity auto-creation, no auto-open on entity create & task detail standardization
 
 **IT:** Creazione automatica delle entità referenziate fuori dalla creazione del progetto; soppressione apertura automatica nota su creazione entità; uniformazione della vista dettaglio task con layout card e link interni.

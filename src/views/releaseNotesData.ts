@@ -7,6 +7,12 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.2.2
+
+### Fixes
+
+- **Task table clean up** — Removed stray vertical line pseudo-element that was showing before the edit button on task rows.
+
 ## 1.2.1
 
 ### Fixes & Improvements
