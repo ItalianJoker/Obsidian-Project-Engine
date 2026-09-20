@@ -179,7 +179,6 @@ export const DEFAULT_TASK_STATUSES: TaskStatusOption[] = [
  */
 export type CustomFieldEntityKind =
 	| "customer"
-	| "team-member"
 	| "project-type"
 	| "project-technology"
 	| "stakeholder";
@@ -394,6 +393,8 @@ export interface Stakeholder {
 	name: string;
 	filePath: string;
 	wikiLink: WikiLink;
+	/** Contact email / mail. @remarks YAML: `email` or `mail` */
+	email?: string;
 	/** Optional customer association. @remarks YAML: `customer` */
 	customer?: WikiLink;
 	/** Projects that reference this stakeholder. @remarks YAML: `projects` */

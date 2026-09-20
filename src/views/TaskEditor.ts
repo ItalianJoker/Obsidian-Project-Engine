@@ -415,7 +415,7 @@ export class TaskEditor {
 		wrap.createEl("label", { text: "Assignee", cls: "pe-label" });
 		const input = wrap.createEl("input", {
 			cls: "pe-input pe-touch-target",
-			attr: { type: "text", placeholder: "Team member…", spellcheck: "false" },
+			attr: { type: "text", placeholder: "Stakeholder / Assignee…", spellcheck: "false" },
 		});
 		input.value = this.draft.assignee
 			? this.draft.assignee.replace(/^\[\[/, "").replace(/\]\]$/, "")
@@ -423,7 +423,7 @@ export class TaskEditor {
 		const suggest = new EntitySuggest(
 			this.app,
 			input,
-			() => this.plugin.indexer.list("team-member"),
+			() => this.plugin.indexer.list("stakeholder"),
 			(suggestion) => {
 				const name = suggestion.kind === "file" ? suggestion.entity.name : suggestion.name;
 				input.value = name;
@@ -582,7 +582,7 @@ export class TaskEditor {
 				const suggest = new EntitySuggest(
 					this.app,
 					member,
-					() => this.plugin.indexer.list("team-member"),
+					() => this.plugin.indexer.list("stakeholder"),
 					(suggestion) => {
 						const name =
 							suggestion.kind === "file" ? suggestion.entity.name : suggestion.name;

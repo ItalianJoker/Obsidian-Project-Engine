@@ -25,6 +25,7 @@ import {
 import { isValidTeamsChannelUrl, openExternalUrl } from "./services/urls";
 import { ProjectsEngineSettingTab } from "./settings";
 import { openEntityModal } from "./views/EntityModal";
+import { openViewEntityModal } from "./views/ViewEntityModal";
 import { openTaskListTemplateModal } from "./views/TaskListTemplateModal";
 import { ProjectCreationModal } from "./views/ProjectCreationModal";
 import {
@@ -459,18 +460,22 @@ export default class ProjectsEnginePlugin extends Plugin {
 	}
 
 	private registerEntityCommands(): void {
-		const kinds: { id: string; kind: CustomFieldEntityKind; name: string }[] = [
-			{ id: "create-customer", kind: "customer", name: "Create customer" },
-			{ id: "create-team-member", kind: "team-member", name: "Create team member" },
-			{ id: "create-project-type", kind: "project-type", name: "Create project type" },
-			{ id: "create-technology", kind: "project-technology", name: "Create technology" },
-			{ id: "create-stakeholder", kind: "stakeholder", name: "Create stakeholder" },
+		const kinds: { id: string; kind: CustomFieldEntityKind; createName: string; viewName: string }[] = [
+			{ id: "customer", kind: "customer", createName: "Create customer", viewName: "View customer entities" },
+			{ id: "stakeholder", kind: "stakeholder", createName: "Create stakeholder", viewName: "View stakeholder entities" },
+			{ id: "project-type", kind: "project-type", createName: "Create project type", viewName: "View project type entities" },
+			{ id: "technology", kind: "project-technology", createName: "Create technology", viewName: "View technology entities" },
 		];
 		for (const item of kinds) {
 			this.addCommand({
-				id: item.id,
-				name: item.name,
+				id: `create-${item.id}`,
+				name: item.createName,
 				callback: () => openEntityModal(this, item.kind),
+			});
+			this.addCommand({
+				id: `view-${item.id}`,
+				name: item.viewName,
+				callback: () => openViewEntityModal(this, item.kind),
 			});
 		}
 
@@ -519,7 +524,7 @@ function peTypeToCustomKind(peType: unknown): CustomFieldEntityKind | null {
 		case "customer":
 			return "customer";
 		case "team-member":
-			return "team-member";
+			return "stakeholder";
 		case "project-type":
 			return "project-type";
 		case "technology":

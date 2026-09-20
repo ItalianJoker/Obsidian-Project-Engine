@@ -15,6 +15,7 @@ import {
 	toWikiLink,
 	type GovernanceModel,
 	type ProjectTeamAssignment,
+	type EntityType,
 } from "../models/types";
 import { buildMarkdownNote } from "../services/frontmatter";
 import { governanceDisplayLabel } from "../services/governance";
@@ -550,7 +551,7 @@ export class ProjectEditor {
 
 	private addChipList(
 		label: string,
-		type: "technology" | "team-member",
+		type: EntityType,
 		getValues: () => string[],
 		setValues: (next: string[]) => void,
 	): void {
@@ -572,31 +573,27 @@ export class ProjectEditor {
 					attr: { type: "button", "aria-label": `Remove ${name}` },
 				});
 				remove.addEventListener("click", () => {
-					setValues(getValues().filter((item) => item !== name));
+					setValues(getValues().filter((v) => v !== name));
 					renderChips();
 				});
 			}
 		};
-		const addName = (name: string): void => {
+		const add = (name: string): void => {
 			const trimmed = name.trim();
-			if (!trimmed) return;
-			if (!getValues().includes(trimmed)) {
-				setValues([...getValues(), trimmed]);
-			}
+			if (!trimmed || getValues().includes(trimmed)) return;
+			setValues([...getValues(), trimmed]);
 			input.value = "";
 			renderChips();
 		};
-		const suggest = new EntitySuggest(
-			this.app,
-			input,
-			() => this.plugin.indexer.list(type),
-			(suggestion) => addName(suggestionName(suggestion)),
+		this.suggests.push(
+			new EntitySuggest(this.app, input, () => this.plugin.indexer.list(type), (s) =>
+				add(suggestionName(s)),
+			),
 		);
-		this.suggests.push(suggest);
 		input.addEventListener("keydown", (event) => {
 			if (event.key === "Enter") {
 				event.preventDefault();
-				addName(input.value);
+				add(input.value);
 			}
 		});
 		renderChips();
@@ -604,25 +601,24 @@ export class ProjectEditor {
 
 	private addTeamEditor(): void {
 		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
-		wrap.createEl("label", { text: "Team", cls: "pe-label" });
+		wrap.createEl("label", { text: "Team members", cls: "pe-label" });
 		const list = wrap.createDiv({ cls: "pe-team-list" });
 		const input = wrap.createEl("input", {
 			cls: "pe-input pe-touch-target",
-			attr: { type: "text", placeholder: "Search people…" },
+			attr: { type: "text", placeholder: "Search people and add…" },
 		});
 		const render = (): void => {
 			list.empty();
 			this.form.team.forEach((member, index) => {
 				const row = list.createDiv({ cls: "pe-team-row" });
-				row.createSpan({ text: member.name, cls: "pe-chip-label" });
+				row.createEl("span", { text: member.name, cls: "pe-chip-label" });
 				const role = row.createEl("input", {
 					cls: "pe-input pe-role-input pe-touch-target",
-					attr: { type: "text", placeholder: "Role" },
+					attr: { type: "text", placeholder: "Role (optional)" },
 				});
 				role.value = member.role;
 				role.addEventListener("input", () => {
-					const current = this.form.team[index];
-					if (current) current.role = role.value;
+					this.form.team[index] = { name: member.name, role: role.value };
 				});
 				const remove = row.createEl("button", {
 					text: "Remove",
@@ -630,7 +626,7 @@ export class ProjectEditor {
 					attr: { type: "button" },
 				});
 				remove.addEventListener("click", () => {
-					this.form.team = this.form.team.filter((_, i) => i !== index);
+					this.form.team.splice(index, 1);
 					render();
 				});
 			});
@@ -643,7 +639,7 @@ export class ProjectEditor {
 			render();
 		};
 		this.suggests.push(
-			new EntitySuggest(this.app, input, () => this.plugin.indexer.list("team-member"), (s) =>
+			new EntitySuggest(this.app, input, () => this.plugin.indexer.list("stakeholder"), (s) =>
 				add(suggestionName(s)),
 			),
 		);
@@ -884,7 +880,7 @@ export class ProjectEditor {
 			await this.ensureOne("technology", tech, settings.technologiesFolder);
 		}
 		for (const member of this.form.team) {
-			await this.ensureOne("team-member", member.name, settings.teamMembersFolder);
+			await this.ensureOne("stakeholder", member.name, settings.stakeholdersFolder);
 		}
 		for (const stakeholder of this.form.stakeholders) {
 			await this.ensureOne("stakeholder", stakeholder.name, settings.stakeholdersFolder);
@@ -892,7 +888,7 @@ export class ProjectEditor {
 	}
 
 	private async ensureOne(
-		peType: "customer" | "project-type" | "technology" | "team-member" | "stakeholder",
+		peType: "customer" | "project-type" | "technology" | "stakeholder",
 		name: string,
 		folder: string,
 	): Promise<void> {

@@ -402,7 +402,7 @@ export class ProjectCreationModal extends Modal {
 
 	private addMultiEntityPicker(
 		label: string,
-		type: "technology" | "team-member",
+		type: EntityType,
 		getValues: () => string[],
 		setValues: (next: string[]) => void,
 	): HTMLElement {
@@ -503,7 +503,7 @@ export class ProjectCreationModal extends Modal {
 		const suggest = new EntitySuggest(
 			this.app,
 			input,
-			() => this.plugin.indexer.list("team-member"),
+			() => this.plugin.indexer.list("stakeholder"),
 			(suggestion) => addMember(suggestionName(suggestion)),
 		);
 		this.suggests.push(suggest);
@@ -813,7 +813,7 @@ export class ProjectCreationModal extends Modal {
 			await this.ensureOne("technology", tech, settings.technologiesFolder);
 		}
 		for (const member of this.form.team) {
-			await this.ensureOne("team-member", member.name, settings.teamMembersFolder);
+			await this.ensureOne("stakeholder", member.name, settings.stakeholdersFolder);
 		}
 		for (const stakeholder of this.form.stakeholders) {
 			await this.ensureOne("stakeholder", stakeholder.name, settings.stakeholdersFolder);
@@ -821,7 +821,7 @@ export class ProjectCreationModal extends Modal {
 	}
 
 	private async ensureOne(
-		peType: "customer" | "project-type" | "technology" | "team-member" | "stakeholder",
+		peType: "customer" | "project-type" | "technology" | "stakeholder",
 		name: string,
 		folder: string,
 	): Promise<void> {

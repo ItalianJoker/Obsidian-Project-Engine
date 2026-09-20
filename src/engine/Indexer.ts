@@ -105,16 +105,6 @@ export class EntityIndexer {
 					stakeholders: readWikiLinkList(frontmatter, "stakeholders"),
 					customFields,
 				});
-			} else if (inferred === "team-member") {
-				this.teamMembers.push({
-					name: file.basename,
-					filePath: file.path,
-					wikiLink: toWikiLink(file.basename),
-					email: typeof frontmatter?.email === "string" ? frontmatter.email : undefined,
-					defaultRole:
-						typeof frontmatter?.default_role === "string" ? frontmatter.default_role : undefined,
-					customFields,
-				});
 			} else if (inferred === "project-type") {
 				this.projectTypes.push({
 					name: file.basename,
@@ -133,14 +123,27 @@ export class EntityIndexer {
 						typeof frontmatter?.description === "string" ? frontmatter.description : undefined,
 					customFields,
 				});
-			} else if (inferred === "stakeholder") {
+			} else if (inferred === "stakeholder" || inferred === "team-member") {
+				const email =
+					typeof frontmatter?.email === "string" && frontmatter.email.trim()
+						? frontmatter.email.trim()
+						: typeof frontmatter?.mail === "string" && frontmatter.mail.trim()
+							? frontmatter.mail.trim()
+							: undefined;
+				const role =
+					typeof frontmatter?.role === "string" && frontmatter.role.trim()
+						? frontmatter.role.trim()
+						: typeof frontmatter?.default_role === "string" && frontmatter.default_role.trim()
+							? frontmatter.default_role.trim()
+							: undefined;
 				this.stakeholders.push({
 					name: file.basename,
 					filePath: file.path,
 					wikiLink: toWikiLink(file.basename),
+					email,
 					customer: readOptionalWikiLink(frontmatter, "customer"),
 					projects: readWikiLinkList(frontmatter, "projects"),
-					role: typeof frontmatter?.role === "string" ? frontmatter.role : undefined,
+					role,
 					customFields,
 				});
 			}
@@ -201,10 +204,9 @@ export class EntityIndexer {
 		};
 
 		if (type === "customer") pushAll("customer", this.customers);
-		if (type === "team-member") pushAll("team-member", this.teamMembers);
+		if (type === "team-member" || type === "stakeholder") pushAll("stakeholder", this.stakeholders);
 		if (type === "project-type") pushAll("project-type", this.projectTypes);
 		if (type === "technology") pushAll("technology", this.technologies);
-		if (type === "stakeholder") pushAll("stakeholder", this.stakeholders);
 		if (type === "task-list-template") {
 			for (const item of this.taskListTemplates) {
 				const file = this.app.vault.getAbstractFileByPath(item.file.path);
@@ -228,7 +230,7 @@ export class EntityIndexer {
 function inferTypeFromFolder(path: string, settings: ProjectsEngineSettings): EntityType | "" {
 	const normalised = path.replace(/\\/g, "/");
 	if (folderContains(normalised, settings.customersFolder)) return "customer";
-	if (folderContains(normalised, settings.teamMembersFolder)) return "team-member";
+	if (settings.teamMembersFolder && folderContains(normalised, settings.teamMembersFolder)) return "stakeholder";
 	if (folderContains(normalised, settings.projectTypesFolder)) return "project-type";
 	if (folderContains(normalised, settings.technologiesFolder)) return "technology";
 	if (folderContains(normalised, settings.stakeholdersFolder)) return "stakeholder";

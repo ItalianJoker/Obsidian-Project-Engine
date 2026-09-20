@@ -388,7 +388,7 @@ export class TableSubView implements SubView {
 		const suggest = new EntitySuggest(
 			this.props.app,
 			assigneeInput,
-			() => this.props.plugin.indexer.list("team-member"),
+			() => this.props.plugin.indexer.list("stakeholder"),
 			(suggestion) => {
 				const name =
 					suggestion.kind === "file" ? suggestion.entity.name : suggestion.name;

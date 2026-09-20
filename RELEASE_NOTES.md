@@ -1,5 +1,24 @@
 # Release notes — Projects Engine
 
+## 1.2.0 — View Entity in Dashboard, Stakeholder email & Team entity unification
+
+**IT:** Nuova sezione "View entity" nella dashboard di progetto; eliminazione entità Team e unificazione su Stakeholder; aggiunto campo email a Stakeholder.
+
+**EN:** New "View entity" section in project dashboard; Team entity elimination and unification into Stakeholder; added email field to Stakeholder.
+
+### Features
+
+- **View entity dashboard section** — Added "View entity" under "Create entity" on the project dashboard with actions for Customer, Stakeholder, Type, and Tech to view detailed entity cards, custom fields, and associations.
+- **View entity modal** — Touch-friendly catalogue viewer with tabs, live search, entity counts, project association chips, and quick actions to edit or open notes in Obsidian.
+- **Stakeholder email field** — Added email/mail support to Stakeholder notes, forms, and indexing.
+- **Team entity unification** — Removed separate "Team" entity and unified all team member and assignee selections onto Stakeholder across projects, tasks, and time logs.
+
+### Breaking Changes
+
+- The standalone `team-member` entity kind is removed in favor of `stakeholder`. Existing notes and queries for `team-member` automatically route to `stakeholder`.
+
+---
+
 ## 1.1.2 — Lucide calendar/clock buttons for Due/Scheduled pickers
 
 **IT:** Pulsanti Lucide calendario/orologio per i picker Due/Scheduled su Dashboard/Table.

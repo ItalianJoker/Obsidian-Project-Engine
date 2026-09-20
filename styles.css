@@ -3328,3 +3328,220 @@
 	border-color: color-mix(in srgb, var(--text-error, #ef4444) 45%, var(--background-modifier-border));
 }
 
+/* ---------------------------------------------------------------------------
+ * View Entity Modal & Entity Cards
+ * --------------------------------------------------------------------------- */
+
+.pe-view-entity-modal {
+	width: min(780px, 98vw);
+	max-height: 90vh;
+}
+
+.pe-view-entity-body {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	height: 100%;
+}
+
+.pe-view-entity-header {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.pe-view-entity-title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.pe-view-entity-tabs {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.pe-view-entity-controls {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	padding-top: 4px;
+}
+
+.pe-view-entity-search {
+	flex: 1;
+	min-width: 180px;
+}
+
+.pe-view-entity-count {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.pe-view-entity-new-btn {
+	white-space: nowrap;
+}
+
+.pe-view-entity-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	max-height: calc(85vh - 200px);
+	overflow-y: auto;
+	padding-right: 2px;
+}
+
+.pe-view-entity-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	padding: 32px 16px;
+	text-align: center;
+}
+
+.pe-entity-card {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 12px 14px;
+	background: var(--background-secondary);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pe-entity-card:hover {
+	border-color: var(--interactive-accent);
+}
+
+.pe-entity-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.pe-entity-card-title-group {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.pe-entity-card-title {
+	margin: 0;
+	font-size: 1.05rem;
+	font-weight: 600;
+	line-height: 1.25;
+	color: var(--text-normal);
+}
+
+.pe-entity-kind-badge {
+	font-size: 0.75rem;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-weight: 500;
+}
+
+.pe-entity-card-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.pe-entity-action-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 34px;
+	padding: 4px 10px;
+	font-size: var(--font-ui-smaller);
+}
+
+.pe-entity-action-btn svg {
+	width: 14px;
+	height: 14px;
+}
+
+.pe-entity-card-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 10px 14px;
+}
+
+.pe-entity-card-field {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.pe-entity-card-field.full-width {
+	grid-column: 1 / -1;
+}
+
+.pe-entity-card-label {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-weight: 500;
+}
+
+.pe-entity-card-value {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	word-break: break-word;
+}
+
+.pe-entity-link {
+	color: var(--link-color, var(--interactive-accent));
+	text-decoration: underline;
+}
+
+.pe-entity-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 2px;
+}
+
+.pe-entity-chip {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 4px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-normal);
+}
+
+.pe-clickable-chip {
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.pe-clickable-chip:hover {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.pe-project-chip {
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.pe-custom-field-chip {
+	font-family: var(--font-monospace);
+	font-size: 0.8em;
+}
+
+

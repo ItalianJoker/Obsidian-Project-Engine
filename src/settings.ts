@@ -30,7 +30,6 @@ import { ensureTaskListTemplatesFolder } from "./services/taskListTemplates";
 
 const ENTITY_KINDS: { id: CustomFieldEntityKind; label: string }[] = [
 	{ id: "customer", label: "Customer" },
-	{ id: "team-member", label: "Team member" },
 	{ id: "project-type", label: "Project type" },
 	{ id: "project-technology", label: "Project technology" },
 	{ id: "stakeholder", label: "Stakeholder" },
@@ -648,7 +647,6 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 		this.addFolderSetting("Projects root", "projectsFolder", "Projects");
 		this.addFolderSetting("Customers", "customersFolder", "Projects/Entities/Customers");
-		this.addFolderSetting("Team members", "teamMembersFolder", "Projects/Entities/Team Members");
 		this.addFolderSetting("Project types", "projectTypesFolder", "Projects/Entities/Project Types");
 		this.addFolderSetting("Technologies", "technologiesFolder", "Projects/Entities/Technologies");
 		this.addFolderSetting("Stakeholders", "stakeholdersFolder", "Projects/Entities/Stakeholders");

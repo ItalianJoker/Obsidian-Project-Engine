@@ -7,6 +7,15 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.2.0
+
+### Features
+
+- **View entity dashboard section** — Added "View entity" under "Create entity" on the project dashboard (Customer, Stakeholder, Type, Tech) to inspect entity cards, custom fields, and associations.
+- **View entity modal** — Touch-friendly catalogue viewer with tabs, live search, entity counts, project association chips, and quick actions to edit or open notes in Obsidian.
+- **Stakeholder email field** — Added email/mail support to Stakeholder notes, forms, and indexing.
+- **Team entity unification** — Removed separate "Team" entity and unified all team member and assignee selections onto Stakeholder across projects, tasks, and time logs.
+
 ## 1.0.9
 
 ### Fixes

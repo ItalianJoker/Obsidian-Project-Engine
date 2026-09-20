@@ -35,7 +35,6 @@ const ENTITY_META: Record<
 	{ peType: EntityType; label: string; folderKey: keyof ProjectsEnginePlugin["settings"] }
 > = {
 	customer: { peType: "customer", label: "Customer", folderKey: "customersFolder" },
-	"team-member": { peType: "team-member", label: "Team member", folderKey: "teamMembersFolder" },
 	"project-type": { peType: "project-type", label: "Project type", folderKey: "projectTypesFolder" },
 	"project-technology": { peType: "technology", label: "Technology", folderKey: "technologiesFolder" },
 	stakeholder: { peType: "stakeholder", label: "Stakeholder", folderKey: "stakeholdersFolder" },
@@ -113,7 +112,12 @@ export class EntityModal extends Modal {
 		const markdown = await this.app.vault.cachedRead(this.existing);
 		const { data } = splitFrontmatter(markdown);
 		this.form.name = typeof data.name === "string" ? data.name : this.existing.basename;
-		this.form.email = typeof data.email === "string" ? data.email : "";
+		this.form.email =
+			typeof data.email === "string"
+				? data.email
+				: typeof data.mail === "string"
+					? data.mail
+					: "";
 		this.form.defaultRole = typeof data.default_role === "string" ? data.default_role : "";
 		this.form.description = typeof data.description === "string" ? data.description : "";
 		this.form.role = typeof data.role === "string" ? data.role : "";
@@ -145,15 +149,6 @@ export class EntityModal extends Modal {
 			this.form.name = value;
 		}, !this.existing);
 
-		if (this.kind === "team-member") {
-			this.addText("Email", this.form.email, (value) => {
-				this.form.email = value;
-			});
-			this.addText("Default role", this.form.defaultRole, (value) => {
-				this.form.defaultRole = value;
-			});
-		}
-
 		if (this.kind === "project-type" || this.kind === "project-technology") {
 			this.addText("Description", this.form.description, (value) => {
 				this.form.description = value;
@@ -161,6 +156,9 @@ export class EntityModal extends Modal {
 		}
 
 		if (this.kind === "stakeholder") {
+			this.addText("Email", this.form.email, (value) => {
+				this.form.email = value;
+			});
 			this.addText("Role", this.form.role, (value) => {
 				this.form.role = value;
 			});
@@ -178,7 +176,7 @@ export class EntityModal extends Modal {
 			app: this.app,
 			schemas,
 			initial: this.initialCustom,
-			listPeople: () => this.plugin.indexer.list("team-member"),
+			listPeople: () => this.plugin.indexer.list("stakeholder"),
 			dateFormat: this.plugin.settings.dateFormat,
 			registerSuggest: (suggest) => this.suggests.push(suggest),
 		});
@@ -431,14 +429,14 @@ export class EntityModal extends Modal {
 
 		const links: { label: string; wikiLink: string }[] = [];
 
-		if (this.kind === "team-member") {
-			if (this.form.email.trim()) data.email = this.form.email.trim();
-			if (this.form.defaultRole.trim()) data.default_role = this.form.defaultRole.trim();
-		}
 		if (this.kind === "project-type" || this.kind === "project-technology") {
 			if (this.form.description.trim()) data.description = this.form.description.trim();
 		}
 		if (this.kind === "stakeholder") {
+			if (this.form.email.trim()) {
+				data.email = this.form.email.trim();
+				data.mail = this.form.email.trim();
+			}
 			if (this.form.role.trim()) data.role = this.form.role.trim();
 			if (this.form.customer.trim()) {
 				const customerLink = toWikiLink(this.form.customer.trim());

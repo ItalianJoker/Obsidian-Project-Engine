@@ -22,6 +22,26 @@ export class Notice {
 	constructor(public message: string) {}
 }
 
+export class Modal {
+	modalEl = {
+		addClass: () => {},
+	};
+	contentEl = {
+		empty: () => {},
+		addClass: () => {},
+		createDiv: () => ({
+			createEl: () => ({ addEventListener: () => {} }),
+			createDiv: () => ({}),
+			createSpan: () => ({}),
+			empty: () => {},
+		}),
+		createEl: () => ({ addEventListener: () => {} }),
+	};
+	constructor(public app: App) {}
+	open(): void {}
+	close(): void {}
+}
+
 export class AbstractInputSuggest<T> {
 	constructor(
 		public app: App,
