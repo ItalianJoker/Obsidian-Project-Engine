@@ -18,6 +18,7 @@ import { EmptyState } from "../ui/EmptyState";
 import { openEntityModal } from "./EntityModal";
 import { openProjectEditor } from "./ProjectEditView";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
+import { formatDisplayDate } from "../services/dateFormat";
 import {
 	formatBudgetDaysAndHours,
 	formatGiornate,
@@ -258,12 +259,25 @@ export class DashboardView extends ItemView {
 
 	private renderTable(rows: ProjectRow[]): void {
 		const hoursPer = this.plugin.settings.hoursPerManday;
+		const dateFormat = this.plugin.settings.dateFormat;
 		const section = this.bodyEl.createDiv({ cls: "pe-section pe-table-section" });
 		const table = section.createEl("table", { cls: "pe-table pe-project-list" });
 		const thead = table.createEl("thead");
 		const headRow = thead.createEl("tr");
-		for (const label of ["ID", "Name", "Governance", "Status", "Customer", "Budget", ""]) {
-			headRow.createEl("th", { text: label });
+		for (const label of [
+			"ID",
+			"Name",
+			"Governance",
+			"Status",
+			"Customer",
+			"Budget",
+			"Last Update",
+			"",
+		]) {
+			const th = headRow.createEl("th", { text: label });
+			if (label === "Last Update") {
+				th.addClass("pe-col-last-update");
+			}
 		}
 		const tbody = table.createEl("tbody");
 		for (const row of rows) {
@@ -289,6 +303,14 @@ export class DashboardView extends ItemView {
 			}
 			this.td(tr, "Customer", stripWiki(row.customer));
 			this.td(tr, "Budget", formatBudgetDaysAndHours(row.assignedDays, hoursPer));
+			const lastUpdateTd = tr.createEl("td", {
+				text: formatDisplayDate(row.updatedAt, dateFormat),
+				cls: "pe-col-last-update",
+				attr: { "data-label": "Last Update" },
+			});
+			if (row.updatedAt) {
+				lastUpdateTd.title = row.updatedAt;
+			}
 			const actions = tr.createEl("td", { attr: { "data-label": "Actions" } });
 			const open = actions.createEl("button", {
 				text: "Open",
@@ -304,6 +326,7 @@ export class DashboardView extends ItemView {
 
 	private renderCards(rows: ProjectRow[]): void {
 		const hoursPer = this.plugin.settings.hoursPerManday;
+		const dateFormat = this.plugin.settings.dateFormat;
 		const section = this.bodyEl.createDiv({ cls: "pe-section pe-card-section" });
 		for (const row of rows) {
 			const details = section.createEl("details", { cls: "pe-accordion pe-touch-target" });
@@ -321,6 +344,9 @@ export class DashboardView extends ItemView {
 			body.createEl("p", { text: `Customer: ${stripWiki(row.customer)}` });
 			body.createEl("p", {
 				text: `Budget: ${formatBudgetDaysAndHours(row.assignedDays, hoursPer)} · Actual ${formatGiornate(row.actualDays)}`,
+			});
+			body.createEl("p", {
+				text: `Last Update: ${formatDisplayDate(row.updatedAt, dateFormat)}`,
 			});
 			const actions = body.createDiv({ cls: "pe-inline-row" });
 			const open = actions.createEl("button", {

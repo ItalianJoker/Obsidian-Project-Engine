@@ -459,6 +459,12 @@
 	white-space: nowrap;
 }
 
+.pe-project-list .pe-col-last-update {
+	white-space: nowrap;
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
 .pe-project-list .pe-secondary {
 	margin: 0;
 }
