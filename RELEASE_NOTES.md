@@ -1,5 +1,21 @@
 # Release notes — Projects Engine
 
+## 1.1.0 — Centered Due/Scheduled picker icons
+
+**IT:** Icone calendario/orologio centrate nei picker Due/Scheduled compatibili.
+
+**EN:** Centered calendar/clock icons on compact Due/Scheduled day and time pickers.
+
+### Fixes
+
+- **Picker icon centering** — WebKit calendar-picker indicator centered in compact Due/Scheduled day and time controls; ISO edit segments and spin buttons hidden so only the glyph shows.
+
+### Breaking Changes
+
+- **None.**
+
+---
+
 ## 1.0.9 — Task table controls polish
 
 **IT:** Controlli reorder/checkbox più piccoli; Due/Scheduled senza clipping; evidenziazione scaduti su Dashboard/Table.
