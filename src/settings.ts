@@ -19,6 +19,12 @@ import type {
 	TimeDisplayFormat,
 } from "./models/types";
 import { DEFAULT_PROJECT_STATUSES, DEFAULT_TASK_STATUSES } from "./models/types";
+import {
+	ensureDoneTaskStatus,
+	isLockedDoneTaskStatus,
+	LOCKED_DONE_TASK_STATUS_ID,
+	lockedDoneStatusNotice,
+} from "./models/types";
 import { openTaskListTemplateModal } from "./views/TaskListTemplateModal";
 import { ensureTaskListTemplatesFolder } from "./services/taskListTemplates";
 
@@ -355,13 +361,14 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	/**
 	 * Task board columns — add / rename / reorder / colour / archive
 	 * (mirrors {@link renderProjectStatuses}).
+	 * The Done column is locked: label may be renamed; id / archive / remove cannot.
 	 */
 	private renderTaskStatuses(): void {
 		const { containerEl } = this;
 		containerEl.createEl("h4", { text: "Task board columns" });
 		containerEl.createEl("p", {
 			cls: "setting-item-description",
-			text: "Statuses used by the Board, Eisenhower filters, and task editor. Drag to reorder. Archive hides a column from the Board without remapping existing notes. Defaults: Backlog → In Progress → Review → Done (Blocked / Cancelled archived).",
+			text: "Statuses used by the Board, filters, and task editor. Drag to reorder. Archive hides a column from the Board without remapping existing notes. Defaults: Backlog → In Progress → Review → Done (Blocked / Cancelled archived). Done is required — you may rename its label (for example Completato) but cannot archive or remove it.",
 		});
 
 		const list = containerEl.createDiv({ cls: "pe-status-list pe-task-status-list" });
@@ -382,6 +389,9 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 					color: "#94a3b8",
 					archived: false,
 				});
+				this.plugin.settings.taskStatuses = ensureDoneTaskStatus(
+					this.plugin.settings.taskStatuses,
+				);
 				await this.plugin.saveSettings();
 				this.display();
 			})();
@@ -393,9 +403,9 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		});
 		reset.addEventListener("click", () => {
 			void (async () => {
-				this.plugin.settings.taskStatuses = DEFAULT_TASK_STATUSES.map((item) => ({
-					...item,
-				}));
+				this.plugin.settings.taskStatuses = ensureDoneTaskStatus(
+					DEFAULT_TASK_STATUSES.map((item) => ({ ...item })),
+				);
 				await this.plugin.saveSettings();
 				this.display();
 			})();
@@ -406,7 +416,10 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		list.empty();
 		const items = this.plugin.settings.taskStatuses;
 		items.forEach((status, index) => {
-			const row = list.createDiv({ cls: "pe-status-row pe-touch-target" });
+			const lockedDone = isLockedDoneTaskStatus(status);
+			const row = list.createDiv({
+				cls: `pe-status-row pe-touch-target${lockedDone ? " pe-status-row--locked-done" : ""}`,
+			});
 			row.draggable = true;
 			row.createSpan({ text: "⠿", cls: "pe-status-drag" });
 
@@ -445,23 +458,39 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 			const idInput = row.createEl("input", {
 				cls: "pe-input pe-status-id",
-				attr: { type: "text", "aria-label": "Column id", spellcheck: "false" },
+				attr: {
+					type: "text",
+					"aria-label": lockedDone ? "Column id (locked Done)" : "Column id",
+					spellcheck: "false",
+					...(lockedDone ? { readonly: "true", title: lockedDoneStatusNotice() } : {}),
+				},
 			});
 			idInput.value = status.id;
-			idInput.addEventListener("change", () => {
-				const next = idInput.value.trim().toLowerCase().replace(/\s+/g, "-");
-				if (!next) {
-					idInput.value = status.id;
-					return;
-				}
-				if (items.some((item, i) => i !== index && item.id === next)) {
-					new Notice("Column id must be unique");
-					idInput.value = status.id;
-					return;
-				}
-				status.id = next;
-				void this.plugin.saveSettings().then(() => this.plugin.refreshOpenViews());
-			});
+			if (lockedDone) {
+				idInput.disabled = true;
+			} else {
+				idInput.addEventListener("change", () => {
+					const next = idInput.value.trim().toLowerCase().replace(/\s+/g, "-");
+					if (!next) {
+						idInput.value = status.id;
+						return;
+					}
+					if (next === LOCKED_DONE_TASK_STATUS_ID) {
+						new Notice(
+							"Id “done” is reserved for the required Done status. Rename the Done label instead.",
+						);
+						idInput.value = status.id;
+						return;
+					}
+					if (items.some((item, i) => i !== index && item.id === next)) {
+						new Notice("Column id must be unique");
+						idInput.value = status.id;
+						return;
+					}
+					status.id = next;
+					void this.plugin.saveSettings().then(() => this.plugin.refreshOpenViews());
+				});
+			}
 
 			const color = row.createEl("input", {
 				attr: { type: "color", "aria-label": "Column colour" },
@@ -475,23 +504,39 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			const archive = row.createEl("label", { cls: "pe-check-label pe-status-archive" });
 			const checkbox = archive.createEl("input", { attr: { type: "checkbox" } });
 			checkbox.checked = status.archived === true;
-			archive.createSpan({ text: "Archive" });
-			checkbox.addEventListener("change", () => {
-				status.archived = checkbox.checked;
-				void this.plugin.saveSettings().then(() => this.plugin.refreshOpenViews());
-			});
+			archive.createSpan({ text: lockedDone ? "Required" : "Archive" });
+			if (lockedDone) {
+				checkbox.checked = false;
+				checkbox.disabled = true;
+				status.archived = false;
+				archive.title = lockedDoneStatusNotice();
+			} else {
+				checkbox.addEventListener("change", () => {
+					status.archived = checkbox.checked;
+					void this.plugin.saveSettings().then(() => this.plugin.refreshOpenViews());
+				});
+			}
 
 			const remove = row.createEl("button", {
 				text: "Remove",
 				cls: "pe-secondary pe-touch-target",
 				attr: { type: "button" },
 			});
+			if (lockedDone) {
+				remove.disabled = true;
+				remove.title = lockedDoneStatusNotice();
+			}
 			remove.addEventListener("click", () => {
+				if (isLockedDoneTaskStatus(status)) {
+					new Notice(lockedDoneStatusNotice());
+					return;
+				}
 				if (items.length <= 1) {
 					new Notice("Keep at least one task column");
 					return;
 				}
 				items.splice(index, 1);
+				this.plugin.settings.taskStatuses = ensureDoneTaskStatus(items);
 				void this.plugin.saveSettings().then(() => {
 					this.display();
 					this.plugin.refreshOpenViews();

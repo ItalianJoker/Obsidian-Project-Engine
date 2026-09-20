@@ -886,11 +886,9 @@ export class TaskEditor {
 			await this.persistDraft();
 			new Notice(`Saved task ${this.draft.id}`);
 			this.plugin.refreshOpenViews();
-			const file = this.app.vault.getAbstractFileByPath(this.draft.filePath);
+			// Stay in the plugin UI only — do not open the Markdown note in the
+			// Obsidian editor after save (modal or task-edit leaf).
 			this.closeAfterSave();
-			if (this.host.surface === "modal" && file instanceof TFile) {
-				await this.app.workspace.getLeaf(false).openFile(file);
-			}
 		} catch (error) {
 			if (error instanceof CycleDetectedError) {
 				new Notice(error.message);
@@ -1029,6 +1027,7 @@ function taskToDraft(task: Task): TaskDraft {
 		projectId: task.projectId,
 		parentId: task.parentId,
 		childIds: [...task.childIds],
+		sortOrder: task.sortOrder,
 		blockedBy: [...task.blockedBy],
 		blocking: [...task.blocking],
 		startDate: task.startDate,

@@ -27,6 +27,7 @@ import {
 	serialiseTimeLogs,
 } from "./timeLogs";
 import { calendarDatePart } from "./dateFormat";
+import { compareTasksBySortOrder } from "./taskOrder";
 import { joinVaultPath, noteExists, processNote, sanitiseNoteBasename, writeNoteAtomic } from "./vaultIo";
 
 const TASK_PRIORITIES: TaskPriority[] = ["none", "low", "medium", "high", "urgent"];
@@ -41,6 +42,11 @@ export interface TaskDraft {
 	projectId: string;
 	parentId: TaskId | null;
 	childIds: TaskId[];
+	/**
+	 * Manual sibling order (`sort_order` in YAML). `null` when unset.
+	 * @see Task.sortOrder
+	 */
+	sortOrder: number | null;
 	blockedBy: TaskId[];
 	blocking: TaskId[];
 	/** Start date with optional time (`start_date`): `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`. */
@@ -121,6 +127,7 @@ export function blankTaskDraft(args: {
 		projectId: args.projectId,
 		parentId: args.parentId,
 		childIds: [],
+		sortOrder: null,
 		blockedBy: [],
 		blocking: [],
 		startDate: null,
@@ -175,6 +182,7 @@ export function parseTaskNote(
 		projectId,
 		parentId: typeof data.parent_id === "string" ? data.parent_id : null,
 		childIds: readStringArray(data.child_ids),
+		sortOrder: readOptionalNumber(data.sort_order),
 		blockedBy: readStringArray(data.blocked_by),
 		blocking: readStringArray(data.blocking),
 		startDate: readDateTimeField(data.start_date),
@@ -248,6 +256,9 @@ export function buildTaskMarkdown(draft: TaskDraft, hoursPerManday: number): str
 	// Urgent is derived from Priority (`high` | `urgent`). Strip legacy key.
 	if (draft.important != null) {
 		frontmatter.important = draft.important;
+	}
+	if (draft.sortOrder != null && Number.isFinite(draft.sortOrder)) {
+		frontmatter.sort_order = draft.sortOrder;
 	}
 	// Intentionally omit / strip legacy `urgent` on every write.
 	delete frontmatter.urgent;
@@ -367,7 +378,7 @@ export function buildTaskTree(tasks: readonly Task[]): Map<TaskId | null, Task[]
 		tree.set(key, list);
 	}
 	for (const [, list] of tree) {
-		list.sort((a, b) => a.title.localeCompare(b.title));
+		list.sort(compareTasksBySortOrder);
 	}
 	return tree;
 }
@@ -413,6 +424,20 @@ function parseTaskStatus(raw: unknown): TaskStatus {
 function readOptionalBoolean(raw: unknown): boolean | null {
 	if (raw === true || raw === false) {
 		return raw;
+	}
+	return null;
+}
+
+/**
+ * Parse an optional YAML number (`sort_order`). Missing / non-finite → `null`.
+ */
+function readOptionalNumber(raw: unknown): number | null {
+	if (typeof raw === "number" && Number.isFinite(raw)) {
+		return raw;
+	}
+	if (typeof raw === "string" && raw.trim()) {
+		const n = Number(raw);
+		return Number.isFinite(n) ? n : null;
 	}
 	return null;
 }

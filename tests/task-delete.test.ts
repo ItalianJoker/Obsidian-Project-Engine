@@ -17,6 +17,7 @@ function task(
 		projectId: "PRJ-001",
 		parentId: partial.parentId ?? null,
 		childIds: partial.childIds ?? [],
+		sortOrder: partial.sortOrder ?? null,
 		blockedBy: [],
 		blocking: [],
 		startDate: null,

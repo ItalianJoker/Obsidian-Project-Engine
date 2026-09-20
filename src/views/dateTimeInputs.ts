@@ -31,6 +31,20 @@ export interface DateTimeFieldOptions {
 }
 
 /**
+ * Options for {@link mountInlineDateTime} — compact table-cell date/time editors.
+ */
+export interface InlineDateTimeOptions {
+	/** Accessible name for the control group (e.g. `"Due date"`). */
+	ariaLabel: string;
+	/** Current YAML value (`YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`), or null. */
+	value: string | null;
+	dateFormat: DateDisplayFormat;
+	timeFormat: TimeDisplayFormat;
+	/** Fired with the composed ISO string (or null when cleared). */
+	onChange: (value: string | null) => void;
+}
+
+/**
  * Mount a labelled date field with a native calendar picker and a Settings-format
  * text input. When {@link DateTimeFieldOptions.includeTime} is true, also mounts
  * an optional time text field + native time picker.
@@ -40,14 +54,64 @@ export interface DateTimeFieldOptions {
  * active Settings formats remain typeable.
  */
 export function mountDateTimeField(parent: HTMLElement, options: DateTimeFieldOptions): void {
-	const { label, dateFormat, timeFormat, includeTime, onChange } = options;
 	const wrap = parent.createDiv({ cls: "pe-field pe-datetime-field" });
-	wrap.createEl("label", { text: label, cls: "pe-label" });
+	wrap.createEl("label", { text: options.label, cls: "pe-label" });
 	if (options.help) {
 		wrap.createEl("p", { cls: "pe-help", text: options.help });
 	}
+	mountDateTimeControls(wrap, {
+		ariaLabel: options.label,
+		value: options.value,
+		dateFormat: options.dateFormat,
+		timeFormat: options.timeFormat,
+		includeTime: options.includeTime,
+		onChange: options.onChange,
+	});
+}
 
-	const controls = wrap.createDiv({ cls: "pe-datetime-controls" });
+/**
+ * Mount compact date + optional time pickers suitable for task table cells.
+ *
+ * Same Settings-aware text + native calendar/clock pairing as
+ * {@link mountDateTimeField}, without the outer field label / help chrome.
+ * YAML stays ISO; display follows plugin date/time formats.
+ *
+ * @param parent — Table cell (or wrapper) that receives the controls.
+ * @param options — Value, formats, and change handler.
+ */
+export function mountInlineDateTime(
+	parent: HTMLElement,
+	options: InlineDateTimeOptions,
+): void {
+	const wrap = parent.createDiv({ cls: "pe-inline-datetime" });
+	mountDateTimeControls(wrap, {
+		ariaLabel: options.ariaLabel,
+		value: options.value,
+		dateFormat: options.dateFormat,
+		timeFormat: options.timeFormat,
+		includeTime: true,
+		onChange: options.onChange,
+	});
+}
+
+interface DateTimeControlsOptions {
+	ariaLabel: string;
+	value: string | null;
+	dateFormat: DateDisplayFormat;
+	timeFormat: TimeDisplayFormat;
+	includeTime: boolean;
+	onChange: (value: string | null) => void;
+}
+
+/**
+ * Shared control chrome for labelled fields and compact inline table editors.
+ */
+function mountDateTimeControls(
+	parent: HTMLElement,
+	options: DateTimeControlsOptions,
+): void {
+	const { ariaLabel, dateFormat, timeFormat, includeTime, onChange } = options;
+	const controls = parent.createDiv({ cls: "pe-datetime-controls" });
 	const parts = splitDateTime(options.value);
 
 	const dateCombo = controls.createDiv({ cls: "pe-picker-combo pe-date-combo" });
@@ -57,7 +121,7 @@ export function mountDateTimeField(parent: HTMLElement, options: DateTimeFieldOp
 			type: "text",
 			placeholder: dateFormatPlaceholder(dateFormat),
 			spellcheck: "false",
-			"aria-label": `${label} date`,
+			"aria-label": `${ariaLabel} date`,
 		},
 	});
 	dateText.value = parts.date ? formatDisplayDate(parts.date, dateFormat) : "";
@@ -66,7 +130,7 @@ export function mountDateTimeField(parent: HTMLElement, options: DateTimeFieldOp
 		cls: "pe-input pe-touch-target pe-native-date",
 		attr: {
 			type: "date",
-			"aria-label": `${label} calendar`,
+			"aria-label": `${ariaLabel} calendar`,
 			title: "Open calendar",
 		},
 	});
@@ -83,7 +147,7 @@ export function mountDateTimeField(parent: HTMLElement, options: DateTimeFieldOp
 				type: "text",
 				placeholder: timeFormatPlaceholder(timeFormat),
 				spellcheck: "false",
-				"aria-label": `${label} time (optional)`,
+				"aria-label": `${ariaLabel} time (optional)`,
 			},
 		});
 		timeText.value = parts.time ? formatDisplayTime(parts.time, timeFormat) : "";
@@ -92,7 +156,7 @@ export function mountDateTimeField(parent: HTMLElement, options: DateTimeFieldOp
 			cls: "pe-input pe-touch-target pe-native-time",
 			attr: {
 				type: "time",
-				"aria-label": `${label} time picker (optional)`,
+				"aria-label": `${ariaLabel} time picker (optional)`,
 				title: "Open time picker",
 			},
 		});

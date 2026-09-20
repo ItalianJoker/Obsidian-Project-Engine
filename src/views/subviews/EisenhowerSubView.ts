@@ -29,6 +29,7 @@ import { EmptyState } from "../../ui/EmptyState";
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
+import { mountTaskTitleControls } from "../taskTitleControls";
 
 export type { EisenhowerQuadrantId };
 
@@ -161,9 +162,13 @@ export class EisenhowerSubView implements SubView {
 			const cards = cell.createDiv({ cls: "pe-eisenhower-cards" });
 			for (const task of inQuadrant) {
 				const card = cards.createDiv({ cls: "pe-eisenhower-card pe-touch-target" });
-				card.createEl("div", {
-					text: task.title || task.id,
-					cls: "pe-eisenhower-card-title",
+				const titleWrap = card.createDiv({ cls: "pe-eisenhower-card-head" });
+				mountTaskTitleControls(titleWrap, {
+					plugin,
+					project,
+					task,
+					titleClass: "pe-eisenhower-card-title pe-touch-target",
+					titleAsButton: false,
 				});
 
 				const foot = card.createDiv({ cls: "pe-eisenhower-card-foot" });
@@ -176,21 +181,6 @@ export class EisenhowerSubView implements SubView {
 					});
 					pill.title = formatDisplayDateTime(dueIso, dateFormat, timeFormat);
 				}
-
-				const edit = foot.createEl("button", {
-					text: "Edit",
-					cls: "pe-secondary pe-touch-target pe-eisenhower-edit",
-					attr: { type: "button" },
-				});
-				edit.addEventListener("click", (event) => {
-					event.stopPropagation();
-					void openTaskEditor(plugin, {
-						projectId: project.id,
-						projectLink: toWikiLink(project.file.basename),
-						existing: task,
-						parentId: task.parentId,
-					});
-				});
 
 				this.wireCardDnD(card, quadrant.id, task.id, onDrop, enableHtml5);
 			}
@@ -308,7 +298,12 @@ export class EisenhowerSubView implements SubView {
 		card.addEventListener("pointerdown", (event) => {
 			if (event.button !== 0) return;
 			const target = event.target;
-			if (target instanceof HTMLElement && target.closest("button")) {
+			if (
+				target instanceof HTMLElement &&
+				(target.closest("button") ||
+					target.closest("select") ||
+					target.closest(".pe-task-title-row"))
+			) {
 				return;
 			}
 			active = true;

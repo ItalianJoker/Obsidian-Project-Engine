@@ -107,10 +107,15 @@ export class PersistDependencyCommand implements EngineCommand {
 }
 
 /**
- * Snapshot + restore status on a task note (used by Kanban moves).
+ * Snapshot + restore status on a task note (used by Kanban moves + table checkbox).
+ *
+ * `execute` / `undo` stay synchronous for {@link CommandStack}, but callers that
+ * refresh views afterwards must `await settled()` so `vault.process` finishes
+ * before the indexer / table reloads YAML.
  */
 export class PersistStatusCommand implements EngineCommand {
 	public readonly description: string;
+	private writePromise: Promise<void> = Promise.resolve();
 
 	constructor(
 		private readonly vault: Vault,
@@ -122,11 +127,16 @@ export class PersistStatusCommand implements EngineCommand {
 	}
 
 	public execute(): void {
-		void this.write(this.nextStatus);
+		this.writePromise = this.write(this.nextStatus);
 	}
 
 	public undo(): void {
-		void this.write(this.previousStatus);
+		this.writePromise = this.write(this.previousStatus);
+	}
+
+	/** Resolves when the latest status write through `vault.process` finishes. */
+	public settled(): Promise<void> {
+		return this.writePromise;
 	}
 
 	private async write(status: string): Promise<void> {

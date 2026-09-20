@@ -16,6 +16,8 @@ import { calendarDatePart, formatDisplayDate, formatDisplayDateTime } from "../.
 import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
+import { openTaskDetail } from "../TaskDetailModal";
+import { mountTaskTitleControls } from "../taskTitleControls";
 
 /** Supported Gantt zoom presets. */
 export type GanttZoomId = "day" | "week" | "month" | "quarter" | "year";
@@ -370,9 +372,13 @@ export class GanttSubView implements SubView {
 			}
 
 			label.createSpan({ cls: "pe-gantt-tree-dot" });
-			const title = label.createSpan({ cls: "pe-gantt-label-text", text: row.task.title || row.task.id });
-			title.title = row.task.id;
-			label.addEventListener("click", () => this.openTask(row.task));
+			mountTaskTitleControls(label, {
+				plugin: this.props.plugin,
+				project: this.props.project,
+				task: row.task,
+				titleClass: "pe-gantt-label-text pe-touch-target",
+				titleAsButton: false,
+			});
 
 			const track = lane.createDiv({ cls: "pe-gantt-track" });
 			track.style.width = `${chartWidth}px`;
@@ -409,7 +415,7 @@ export class GanttSubView implements SubView {
 				]
 					.filter(Boolean)
 					.join("\n");
-				bar.addEventListener("click", () => this.openTask(row.task));
+				bar.addEventListener("click", () => this.openTaskDetail(row.task));
 
 				lane.dataset.taskId = row.task.id;
 				lane.dataset.barLeft = String(offset * px);
@@ -524,14 +530,10 @@ export class GanttSubView implements SubView {
 		});
 	}
 
-	private openTask(task: Task): void {
+	/** Bar click → read-only detail (pencil on the label opens edit). */
+	private openTaskDetail(task: Task): void {
 		const { plugin, project } = this.props;
-		void openTaskEditor(plugin, {
-			projectId: project.id,
-			projectLink: toWikiLink(project.file.basename),
-			existing: task,
-			parentId: task.parentId,
-		});
+		openTaskDetail(plugin, { project, task });
 	}
 }
 
