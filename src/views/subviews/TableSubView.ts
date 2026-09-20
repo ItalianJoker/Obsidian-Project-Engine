@@ -313,8 +313,8 @@ export class TableSubView implements SubView {
 			plugin,
 			project,
 			task,
-			titleClass: "pe-link-button pe-task-title pe-touch-target",
-			titleAsButton: true,
+			titleClass: "pe-task-title",
+			titleAsButton: false,
 		});
 
 		const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });

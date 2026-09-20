@@ -1,5 +1,19 @@
 # Release notes — Projects Engine
 
+## 1.2.5 — Table edit icon enlargement & hyperlink task title styling
+
+**IT:** Nelle visualizzazioni a tabella, ingrandita l'icona di modifica del task di 1x1 pixel, azzerato il padding del titolo per allinearlo alla distanza della vista Gantt e rimosso l'overlay stile pulsante trasformandolo in un hyperlink pulito.
+
+**EN:** In table views, enlarged the task edit icon by 1x1 pixel, eliminated title padding to match the Gantt view spacing, and replaced the button-like overlay with clean hyperlink styling.
+
+### Improvements & Polish
+
+- **Table edit icon (+1x1 px)** — Enlarged `.pe-task-table .pe-task-edit-icon` to 17x17px with a 12x12px SVG pencil specifically in table views (while keeping 16x16px / 11px in Gantt, Kanban, and Eisenhower).
+- **Task title distance matching Gantt** — Rendered task titles in table view as accessible `<span>` elements (`titleAsButton: false`) and removed internal title padding (`padding: 0; margin: 0`), bringing the distance to the edit icon to exactly 6px (matching Gantt).
+- **Hyperlink styling (no button overlay)** — Removed button pill background, border-radius, and fixed min-height from `.pe-task-title`, applying clean hyperlink hover styling (`color: var(--interactive-accent)` and underline) and accessible keyboard focus outlines.
+
+---
+
 ## 1.2.4 — Task edit button sizing, vertical alignment & Gantt refinements
 
 **IT:** Ridotta la dimensione del tasto di modifica del Task (altezza pari a una lettera maiuscola) e allineato verticalmente il testo al centro dell'icona nelle viste Gantt, Kanban ed Eisenhower; rimossi i punti elenco e perfezionati i padding nella vista Gantt.

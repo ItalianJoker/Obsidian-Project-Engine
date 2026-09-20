@@ -7,6 +7,14 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.2.5
+
+### Improvements & Polish
+
+- **Table edit icon sizing** — Enlarged the edit button icon by 1x1 px in table views (17x17px / 12px SVG).
+- **Table task title spacing** — Removed title padding to match Gantt view spacing (6px gap).
+- **Hyperlink styling** — Replaced table title button overlay with clean hyperlink styling.
+
 ## 1.2.4
 
 ### Improvements & Polish

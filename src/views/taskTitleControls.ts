@@ -75,8 +75,8 @@ export function mountTaskTitleControls(
 		plugin,
 		project,
 		task,
-		titleClass = "pe-task-title pe-link-button pe-touch-target",
-		titleAsButton = true,
+		titleClass = "pe-task-title",
+		titleAsButton = false,
 		onEdit,
 		onView,
 	} = options;

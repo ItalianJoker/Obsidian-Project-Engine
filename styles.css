@@ -1397,7 +1397,7 @@
 }
 
 .pe-task-table .pe-link-button {
-	min-height: 32px;
+	min-height: unset;
 	box-shadow: none;
 	border: none;
 }
@@ -2211,17 +2211,30 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	padding: 6px 8px !important;
+	padding: 0;
 	margin: 0;
-	border-radius: 6px;
-	border: none !important;
-	box-shadow: none !important;
-	background: transparent !important;
+	border: none;
+	box-shadow: none;
+	background: transparent;
 	min-width: 0;
-	min-height: 32px;
-	line-height: 1.3;
+	min-height: unset !important;
+	line-height: 1.2;
 	color: var(--text-normal);
 	flex: 1;
+	cursor: pointer;
+	text-decoration: none;
+}
+
+.pe-task-title:hover {
+	background: transparent !important;
+	color: var(--interactive-accent);
+	text-decoration: underline;
+}
+
+.pe-task-title:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 2px;
+	border-radius: 2px;
 }
 
 .pe-task-title-row {
@@ -2268,9 +2281,19 @@
 	display: block;
 }
 
-.pe-task-title:hover {
-	background: var(--background-modifier-hover) !important;
-	text-decoration: none;
+/* Solo nelle visualizzazioni a tabella: icona modifica ingrandita di 1x1 pixel */
+.pe-task-table .pe-task-edit-icon {
+	width: 17px;
+	height: 17px;
+	min-width: 17px !important;
+	min-height: 17px !important;
+	max-width: 17px;
+	max-height: 17px;
+}
+
+.pe-task-table .pe-task-edit-icon svg {
+	width: 12px;
+	height: 12px;
 }
 
 .pe-priority-label {
