@@ -1313,7 +1313,8 @@
 }
 
 .pe-overview-task-search {
-	margin: 0 0 8px;
+	/* Spacing comes from shared `.pe-chrome-search-row` (also used on Table). */
+	margin: 0;
 }
 
 .pe-metric-strip {
@@ -2419,6 +2420,7 @@
 	display: flex;
 	align-items: center;
 	gap: 10px;
+	margin: 14px 0 16px;
 }
 
 .pe-chrome-search {
@@ -3100,5 +3102,60 @@
 
 .pe-gantt-label .pe-gantt-label-text {
 	cursor: pointer;
+}
+
+/* Inline editable cells on Dashboard / Table task list */
+.pe-task-inline-cell {
+	vertical-align: middle;
+	min-width: 7.5rem;
+}
+
+.pe-task-priority-select,
+.pe-task-status-select {
+	min-width: 7.5rem;
+	max-width: 11rem;
+	padding: 4px 8px;
+	font-size: 0.85em;
+}
+
+.pe-task-assignee-input {
+	min-width: 7rem;
+	max-width: 12rem;
+	padding: 4px 8px;
+	font-size: 0.85em;
+}
+
+.pe-inline-datetime .pe-datetime-controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+}
+
+.pe-inline-datetime .pe-picker-combo {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.pe-inline-datetime .pe-date-text,
+.pe-inline-datetime .pe-time-text {
+	min-width: 6.5rem;
+	max-width: 7.5rem;
+	padding: 4px 6px;
+	font-size: 0.8em;
+}
+
+.pe-inline-datetime .pe-native-date,
+.pe-inline-datetime .pe-native-time {
+	width: 2rem;
+	min-width: 2rem;
+	padding: 2px;
+	font-size: 0.75em;
+}
+
+.pe-task-due-cell,
+.pe-task-scheduled-cell {
+	min-width: 11rem;
 }
 

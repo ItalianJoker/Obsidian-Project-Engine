@@ -15,13 +15,12 @@ import {
 	isCompletedTaskStatus,
 	reopenTaskStatusId,
 	taskStatusLabel as resolveTaskStatusLabel,
+	toWikiLink,
 	type Task,
 	type TaskId,
 	type TaskPriority,
 	type TaskStatus,
 } from "../../models/types";
-import { toWikiLink, wikiLinkTarget } from "../../models/types";
-import { formatDisplayDateTime, formatDuePill, isOverdue, effectiveDue } from "../../services/dateFormat";
 import { PersistStatusCommand } from "../../services/taskCommands";
 import {
 	collectTaskSubtreeIds,
@@ -29,15 +28,19 @@ import {
 	deleteTaskSubtree,
 	notifyTaskDeleted,
 } from "../../services/taskDelete";
-import { loadAllTasks } from "../../services/taskIo";
+import { loadAllTasks, patchTaskFrontmatter } from "../../services/taskIo";
 import { formatHours } from "../../services/timeLogs";
 import { ConfirmModal } from "../../ui/ConfirmModal";
 import { EmptyState } from "../../ui/EmptyState";
+import { mountInlineDateTime } from "../dateTimeInputs";
 import type { ProjectRow } from "../projectRows";
+import { EntitySuggest } from "../suggest";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
 import { markCompletedConfirmMessage } from "../../services/taskStatusUi";
 import { mountTaskTitleControls } from "../taskTitleControls";
+
+const TASK_PRIORITIES: TaskPriority[] = ["none", "low", "medium", "high", "urgent"];
 
 /**
  * Workspace task filters (combinable with free-text search).
@@ -62,13 +65,17 @@ export interface TableSubViewProps {
 
 /**
  * Hierarchical task dashboard with tree, status pills, progress, due dates.
+ * Status / Priority / Assignees / Due / Scheduled are editable inline on the
+ * Dashboard and Table surfaces; title opens detail, pencil opens full edit.
  */
 export class TableSubView implements SubView {
 	private collapsedIds = new Set<TaskId>();
+	private readonly suggests: EntitySuggest[] = [];
 
 	constructor(private readonly props: TableSubViewProps) {}
 
 	public render(): void {
+		this.clearSuggests();
 		const { container, tasks, project, filters, plugin } = this.props;
 		container.empty();
 		container.addClass("pe-subview");
@@ -135,7 +142,15 @@ export class TableSubView implements SubView {
 	}
 
 	public destroy(): void {
+		this.clearSuggests();
 		this.props.container.empty();
+	}
+
+	private clearSuggests(): void {
+		for (const suggest of this.suggests) {
+			suggest.close();
+		}
+		this.suggests.length = 0;
 	}
 
 	private buildVisibleTasks(
@@ -269,41 +284,110 @@ export class TableSubView implements SubView {
 			void this.setTaskStatus(task, next);
 		});
 
-		const priorityTd = tr.createEl("td", { attr: { "data-label": "Priority" } });
-		priorityTd.createSpan({
-			text: priorityLabel(task.priority),
-			cls: `pe-priority-label pe-priority--${task.priority}`,
+		const priorityTd = tr.createEl("td", {
+			cls: "pe-task-inline-cell",
+			attr: { "data-label": "Priority" },
+		});
+		const prioritySelect = priorityTd.createEl("select", {
+			cls: "pe-input pe-touch-target pe-task-priority-select",
+			attr: { "aria-label": `Priority for ${task.title || task.id}` },
+		});
+		for (const priority of TASK_PRIORITIES) {
+			prioritySelect.createEl("option", {
+				text: priorityOptionLabel(priority),
+				attr: { value: priority },
+			});
+		}
+		prioritySelect.value = task.priority;
+		prioritySelect.addEventListener("click", (event) => event.stopPropagation());
+		prioritySelect.addEventListener("change", () => {
+			const next = prioritySelect.value as TaskPriority;
+			void this.patchTaskField(task, "Priority", (data) => {
+				data.priority = next;
+			});
 		});
 
-		tr.createEl("td", {
-			text: task.assignee ? wikiLinkTarget(task.assignee) : "—",
-			cls: "pe-task-assignees",
+		const assigneeTd = tr.createEl("td", {
+			cls: "pe-task-inline-cell pe-task-assignees",
 			attr: { "data-label": "Assignees" },
 		});
-
-		const dueValue = effectiveDue(task);
-		const dueTd = tr.createEl("td", { attr: { "data-label": "Due date" } });
-		if (dueValue) {
-			const overdue = isOverdue(dueValue);
-			dueTd.createSpan({
-				text: formatDuePill(dueValue, dateFormat, timeFormat),
-				cls: `pe-due-pill${overdue ? " is-overdue" : ""}`,
-				attr: { title: formatDisplayDateTime(dueValue, dateFormat, timeFormat) },
+		const assigneeInput = assigneeTd.createEl("input", {
+			cls: "pe-input pe-touch-target pe-task-assignee-input",
+			attr: {
+				type: "text",
+				placeholder: "Assignee…",
+				spellcheck: "false",
+				"aria-label": `Assignee for ${task.title || task.id}`,
+			},
+		});
+		assigneeInput.value = task.assignee
+			? task.assignee.replace(/^\[\[/, "").replace(/\]\]$/, "")
+			: "";
+		const suggest = new EntitySuggest(
+			this.props.app,
+			assigneeInput,
+			() => this.props.plugin.indexer.list("team-member"),
+			(suggestion) => {
+				const name =
+					suggestion.kind === "file" ? suggestion.entity.name : suggestion.name;
+				assigneeInput.value = name;
+				void this.patchTaskField(task, "Assignee", (data) => {
+					data.assignee = toWikiLink(name);
+				});
+			},
+		);
+		this.suggests.push(suggest);
+		assigneeInput.addEventListener("click", (event) => event.stopPropagation());
+		assigneeInput.addEventListener("change", () => {
+			const raw = assigneeInput.value.trim();
+			void this.patchTaskField(task, "Assignee", (data) => {
+				if (raw) {
+					data.assignee = toWikiLink(raw);
+				} else {
+					delete data.assignee;
+				}
 			});
-		} else {
-			dueTd.setText("—");
-		}
+		});
 
-		const scheduledTd = tr.createEl("td", { attr: { "data-label": "Scheduled" } });
-		if (task.scheduled) {
-			scheduledTd.createSpan({
-				text: formatDuePill(task.scheduled, dateFormat, timeFormat),
-				cls: "pe-scheduled-pill",
-				attr: { title: formatDisplayDateTime(task.scheduled, dateFormat, timeFormat) },
-			});
-		} else {
-			scheduledTd.setText("—");
-		}
+		const dueTd = tr.createEl("td", {
+			cls: "pe-task-inline-cell pe-task-due-cell",
+			attr: { "data-label": "Due date" },
+		});
+		mountInlineDateTime(dueTd, {
+			ariaLabel: `Due date for ${task.title || task.id}`,
+			value: task.due,
+			dateFormat,
+			timeFormat,
+			onChange: (value) => {
+				void this.patchTaskField(task, "Due date", (data) => {
+					if (value) {
+						data.due = value;
+					} else {
+						delete data.due;
+					}
+				});
+			},
+		});
+
+		const scheduledTd = tr.createEl("td", {
+			cls: "pe-task-inline-cell pe-task-scheduled-cell",
+			attr: { "data-label": "Scheduled" },
+		});
+		mountInlineDateTime(scheduledTd, {
+			ariaLabel: `Scheduled for ${task.title || task.id}`,
+			value: task.scheduled,
+			dateFormat,
+			timeFormat,
+			onChange: (value) => {
+				void this.patchTaskField(task, "Scheduled", (data) => {
+					if (value) {
+						data.scheduled = value;
+					} else {
+						delete data.scheduled;
+					}
+				});
+			},
+		});
 
 		const progressTd = tr.createEl("td", { cls: "pe-task-progress-col", attr: { "data-label": "Progress" } });
 		const pct =
@@ -397,6 +481,33 @@ export class TableSubView implements SubView {
 	}
 
 	/**
+	 * Patch one YAML field on a task note through `vault.process`, then refresh.
+	 * Used by inline Priority / Assignee / Due / Scheduled editors.
+	 */
+	private async patchTaskField(
+		task: Task,
+		fieldLabel: string,
+		patch: (data: Record<string, unknown>) => void,
+	): Promise<void> {
+		const { app, plugin } = this.props;
+		const file = app.vault.getAbstractFileByPath(task.filePath);
+		if (!(file instanceof TFile)) {
+			new Notice("Task file missing");
+			this.render();
+			return;
+		}
+		try {
+			await patchTaskFrontmatter(app.vault, file, patch);
+			new Notice(`${fieldLabel} updated`);
+			plugin.refreshOpenViews();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			new Notice(`Could not update ${fieldLabel.toLowerCase()}: ${message}`);
+			this.render();
+		}
+	}
+
+	/**
 	 * Confirm then delete the task note (+ nested subtasks). Reloads open PE views.
 	 */
 	private confirmDeleteTask(task: Task): void {
@@ -468,18 +579,18 @@ function groupByParent(tasks: Task[]): Map<TaskId | null, Task[]> {
 	return byParent;
 }
 
-function priorityLabel(priority: TaskPriority): string {
+function priorityOptionLabel(priority: TaskPriority): string {
 	switch (priority) {
 		case "none":
-			return "—";
+			return "None";
 		case "low":
-			return "↓ Low";
+			return "Low";
 		case "medium":
-			return "= Medium";
+			return "Medium";
 		case "high":
-			return "↑ High";
+			return "High";
 		case "urgent":
-			return "!! Urgent";
+			return "Urgent";
 		default:
 			return priority;
 	}
