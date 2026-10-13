@@ -12,6 +12,7 @@
 import { type TFile, type WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import { DASHBOARD_VIEW_TYPE } from "./DashboardView";
+import { GLOBAL_DASHBOARD_VIEW_TYPE } from "./GlobalDashboardView";
 import { PROJECT_EDIT_VIEW_TYPE } from "./ProjectEditView";
 import { OVERVIEW_VIEW_TYPE } from "./ProjectOverviewView";
 import { RELEASE_NOTES_VIEW_TYPE } from "./ReleaseNotesView";
@@ -52,6 +53,16 @@ export class ViewRouter {
 			return;
 		}
 		await this.open(DASHBOARD_VIEW_TYPE, {});
+	}
+
+	/** Cross-project task list (Global Dashboard). */
+	public async openGlobalDashboard(): Promise<void> {
+		const { workspace } = this.plugin.app;
+		for (const existing of workspace.getLeavesOfType(GLOBAL_DASHBOARD_VIEW_TYPE)) {
+			workspace.revealLeaf(existing);
+			return;
+		}
+		await this.open(GLOBAL_DASHBOARD_VIEW_TYPE, {});
 	}
 
 	/**

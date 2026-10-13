@@ -1,0 +1,89 @@
+# Projects Engine — Cursor rules (v1.3.0)
+
+English-only UI labels, notices, placeholders, and code comments/JSDoc.
+Obsidian plugin id: `projects-engine`. Mobile-compatible (`isDesktopOnly: false`).
+No Node builtins in the browser bundle. Persist content only via `vault.process`.
+
+## 1. Codebase map
+
+| Path | Responsibility |
+| --- | --- |
+| `src/main.ts` | Plugin entry: settings load/migrate, view registration, commands, ribbon, `refreshOpenViews` |
+| `src/models/types.ts` | Domain types (`Project`, `Task`, `ItsmItem`, `ProjectsEngineSettings`, helpers) |
+| `src/settings.ts` | Settings tab (folders, templates, statuses, Eisenhower, performance) |
+| `src/engine/Indexer.ts` | Debounced entity index from vault frontmatter |
+| `src/engine/Scheduler.ts` | DAG schedule + `CommandStack` undo/redo |
+| `src/engine/debounce.ts` | Trailing-edge debounce for indexer / UI |
+| `src/services/projectRows` → `src/views/projectRows.ts` | `ProjectRow` load + legacy migration |
+| `src/services/projectFlags.ts` | Non PM / Technical intervention / ITSM parse + budget labels |
+| `src/services/projectIo.ts` | `patchProjectFrontmatter` via `vault.process` |
+| `src/services/taskIo.ts` | Task parse/load/save (`loadAllTasks`, `saveTaskNote`) |
+| `src/services/noteTemplates.ts` | Templates folder + `{{project}}` / `{{title}}` / `{{date}}` |
+| `src/services/projectDocumentNote.ts` | New project note create (Graph-linked) |
+| `src/services/vaultIo.ts` | Atomic writes / path helpers |
+| `src/services/frontmatter.ts` | YAML split/build + Graph `## Links` |
+| `src/views/ViewRouter.ts` | Navigation between ItemViews |
+| `src/views/DashboardView.ts` | Projects portfolio list |
+| `src/views/GlobalDashboardView.ts` | Cross-project tasks (“Global Dashboard”) |
+| `src/views/ProjectOverviewView.ts` | Project Dashboard (governance, metrics, tasks, ITSM, docs) |
+| `src/views/ProjectWorkspaceView.ts` | Table / Gantt / Board / Eisenhower host |
+| `src/views/ProjectEditor.ts` / `ProjectEditView.ts` / `ProjectEditModal.ts` | Edit project |
+| `src/views/ProjectCreationModal.ts` | Create project wizard |
+| `src/views/subviews/TableSubView.ts` | Shared task table + exported `filterTasks` |
+| `src/views/TaskEditor.ts` | Mountable task editor (modal/tab) |
+| `src/ui/*` | Shared modals/chrome (`CreateProjectDocumentModal`, `ProjectPickerModal`, …) |
+| `styles.css` | All PE UI (`pe-*` classes) |
+| `tests/` | Vitest pure-module suite (`tests/mocks/obsidian.ts`) |
+
+## 2. Core models & state flow
+
+### Project (`Project` / `ProjectRow`)
+
+YAML `pe_type: project`. Load via `loadProjectRows` → `projectRowFromFrontmatter` (always normalises):
+
+- `team: ProjectTeamAssignment[]` — `{ member, role? }`; legacy string lists → role missing/`""`
+- `isNonPM` ← YAML `is_non_pm` (default `false`) → label **Budget (Days)** → **Assigned (Days)**
+- `isTechnicalIntervention` ← YAML `is_technical_intervention` (default `false`) → hide days input; show **Time & Materials (No Budget)**; `safeBudgetProgressPercent` returns 0 (no ÷0)
+- `itsmItems: ItsmItem[]` ← YAML `itsm_items` (default `[]`) — `{ id, type: Ticket|Change|Problem, title, description }`
+- `assigned_days` / `actual_days`, wikilinks for customer/type/tech/stakeholders
+
+Persist with `patchProjectFrontmatter` / create wizard `writeNoteAtomic`. Days inputs use `min="0"`.
+
+### Task (`Task`)
+
+YAML `pe_type: task`. Loaded by `loadAllTasks`. Effort in hours; project budget in days (`hoursPerManday`).
+
+### Settings (`ProjectsEngineSettings`)
+
+`data.json` via `loadSettings`/`saveSettings`. Notable: `templatesFolder` (default `"Templates"`, `normalizePath`), `taskListTemplatesFolder`, scaffold folders, statuses, Eisenhower labels. Always merge onto `DEFAULT_SETTINGS` with safe migrations.
+
+### Flow
+
+Vault note → MetadataCache / `loadProjectRows` / `loadAllTasks` → views → user edit → `vault.process` → indexer rebuild → `refreshOpenViews()`.
+
+## 3. UI conventions
+
+- **ItemViews:** Dashboard, Global Dashboard, Overview, Workspace, Project Edit, Task, Release Notes — register in `main.ts`; navigate via `ViewRouter`.
+- **Modals:** `projects-engine-modal` + `pe-modal-body`; footers `pe-actions pe-form-footer` (`justify-content: flex-end; gap: 8px; margin-top: 16px`). No float/fixed/absolute on form action buttons.
+- **Project Dashboard (Overview):** team role badges (`.pe-role-badge`); ITSM section with copyable ID badge → `Notice("Copied ID to clipboard")`.
+- **Global Dashboard:** reuses `filterTasks` / `TaskDashboardFilters` from `TableSubView` (do not duplicate filter logic). Project name badge → `openOverview`. New Task → `ProjectPickerModal` then `openTaskEditor`. Overdue → `.pe-task-row--overdue`.
+- **New note:** `CreateProjectDocumentModal` Template dropdown (`None` + `.md` from Templates folder).
+- Lifecycle: `registerEvent` / `registerDomEvent` / `registerInterval`; `contentEl.empty()` in `onClose()`.
+
+## 4. CSS (`styles.css`)
+
+- Prefix: `pe-` (e.g. `pe-view`, `pe-toolbar-title`, `pe-form-footer`, `pe-itsm-card`, `pe-project-badge`, `pe-role-badge`).
+- Touch targets: `pe-touch-target`.
+- Portfolio title padding: `.pe-dashboard .pe-toolbar-title` / `.pe-dashboard-title`.
+- Prefer theme CSS variables (`--background-primary`, `--interactive-accent`, …).
+
+## 5. Coding & performance guardrails
+
+1. English-only UI, notices, JSDoc/`@file` headers on touched modules.
+2. Safe backward-compatible migration on every model change (never leave `undefined` that crashes render).
+3. Debounce search/vault reloads (`indexerDebounceMs` / `debounce`); use `DocumentFragment` for large lists.
+4. Avoid redundant vault scans; reuse `loadProjectRows` / `loadAllTasks` / shared filters.
+5. Extension markers: `// [EXTENSIBILITY]: …` on registries, parsers, shared filters.
+6. Keep `npm test` and `npm run build` green. Prefer Vitest on pure modules under `src/services` / `src/engine`.
+7. No new runtime npm dependencies without strong need.
+8. Releases: bump `manifest.json`, `package.json`, `versions.json`; update `RELEASE_NOTES.md` + `src/views/releaseNotesData.ts`; ship `main.js` + `manifest.json` + `styles.css` as assets.

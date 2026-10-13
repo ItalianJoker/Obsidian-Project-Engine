@@ -1,8 +1,16 @@
 /**
- * Mountable Edit Project form — dotpm-like primary action from Overview / Edit leaf.
+ * @file ProjectEditor.ts
+ * @purpose Mountable Edit Project form (modal or Edit leaf).
+ * @dependencies projectIo, projectFlags, linkSync, taskListTemplates, IconPicker
+ * @usedBy ProjectEditView, ProjectEditModal, ProjectOverviewView, DashboardView
  *
  * Reuses the creation wizard field patterns (fuzzy pickers, chips) but patches
  * an existing project note via {@link patchProjectFrontmatter} / vault.process.
+ *
+ * Business rules:
+ * - `isNonPM` relabels Budget → Assigned (Days).
+ * - `isTechnicalIntervention` hides days input (T&M); overrides Non PM visibility.
+ * - Team `role` is loaded from YAML and persisted; Overview shows role badges.
  */
 
 import { Notice, TFile, type App } from "obsidian";
@@ -15,12 +23,21 @@ import {
 	toWikiLink,
 	wikiLinkTarget,
 	type GovernanceModel,
+	type ItsmItem,
+	type ItsmItemType,
 	type ProjectTeamAssignment,
 	type EntityType,
 } from "../models/types";
 import { governanceDisplayLabel } from "../services/governance";
 import { appendEntityLink, ensureEntityNote } from "../services/linkSync";
 import { patchProjectFrontmatter } from "../services/projectIo";
+import {
+	budgetDaysFieldLabel,
+	nextItsmId,
+	serialiseItsmItems,
+	showBudgetDaysInput,
+	teamMemberDisplayName,
+} from "../services/projectFlags";
 import {
 	applyTaskListTemplate,
 	countTemplateTasks,
@@ -62,6 +79,9 @@ interface EditForm {
 	stakeholders: StakeholderChip[];
 	workOrders: string[];
 	assignedDays: string;
+	isNonPM: boolean;
+	isTechnicalIntervention: boolean;
+	itsmItems: ItsmItem[];
 	projectUrl: string;
 	teamsChannelUrl: string;
 	icon: string;
@@ -156,13 +176,20 @@ export class ProjectEditor {
 			customer: wikiLinkTarget(row.customer),
 			projectType: wikiLinkTarget(row.projectType),
 			technologies: row.technologies.map(wikiLinkTarget),
-			team: row.team.map((item) => ({ name: wikiLinkTarget(item), role: "" })),
+			// Persist role from YAML — never drop to "" unless truly missing.
+			team: row.team.map((item) => ({
+				name: teamMemberDisplayName(item),
+				role: item.role?.trim() ?? "",
+			})),
 			stakeholders: row.stakeholders.map((name) => ({
 				name: wikiLinkTarget(name),
 				linkToCustomer: false,
 			})),
 			workOrders: [...row.commesse],
 			assignedDays: String(row.assignedDays),
+			isNonPM: row.isNonPM,
+			isTechnicalIntervention: row.isTechnicalIntervention,
+			itsmItems: row.itsmItems.map((item) => ({ ...item })),
 			projectUrl: row.projectUrl,
 			teamsChannelUrl: row.teamsChannelUrl,
 			icon: row.icon || DEFAULT_PROJECT_ICON,
@@ -191,7 +218,7 @@ export class ProjectEditor {
 		contentEl.createEl("h2", { text: "Edit project" });
 		contentEl.createEl("p", {
 			cls: "pe-modal-lead",
-			text: `Budget in days · 1 day = ${this.plugin.settings.hoursPerManday} h. Changing ID or name does not rename the project folder in this version.`,
+			text: `Days · 1 day = ${this.plugin.settings.hoursPerManday} h. Changing ID or name does not rename the project folder in this version.`,
 		});
 
 		this.errorEl = contentEl.createDiv({ cls: "pe-errors", attr: { role: "alert" } });
@@ -207,6 +234,7 @@ export class ProjectEditor {
 		this.addParentPicker();
 		this.addStatusPicker();
 		this.addGovernanceToggle();
+		this.addProjectFlagToggles();
 		this.addTaskListTemplatePicker();
 		this.addEntityPicker("Customer *", "customer", this.form.customer, (name) => {
 			this.form.customer = name;
@@ -225,15 +253,8 @@ export class ProjectEditor {
 		this.addTeamEditor();
 		this.addStakeholderEditor();
 		this.addWorkOrders();
-		this.addText(
-			"Budget (days) *",
-			this.form.assignedDays,
-			(value) => {
-				this.form.assignedDays = value;
-			},
-			"number",
-			`Management budget in days. Equals ${this.plugin.settings.hoursPerManday} hours each.`,
-		);
+		this.addItsmEditor();
+		this.addBudgetDaysField();
 		this.addText("Project URL", this.form.projectUrl, (value) => {
 			this.form.projectUrl = value;
 		}, "url");
@@ -241,6 +262,7 @@ export class ProjectEditor {
 			this.form.teamsChannelUrl = value;
 		}, "url");
 
+		// Bottom flex footer — no float/fixed/absolute on action buttons.
 		const actions = contentEl.createDiv({ cls: "pe-actions pe-form-footer" });
 		const cancel = actions.createEl("button", {
 			text: "Cancel",
@@ -270,6 +292,150 @@ export class ProjectEditor {
 			attr: { type: "button" },
 		});
 		del.addEventListener("click", () => this.confirmDelete());
+	}
+
+	/**
+	 * Non PM / Technical intervention checkboxes. Changing Technical intervention
+	 * re-renders so the days field appears or hides.
+	 */
+	private addProjectFlagToggles(): void {
+		const wrap = this.rootEl!.createDiv({ cls: "pe-field pe-flag-toggles" });
+		wrap.createEl("label", { text: "Project flags", cls: "pe-label" });
+
+		const nonPm = wrap.createEl("label", { cls: "pe-check-label pe-touch-target" });
+		const nonPmBox = nonPm.createEl("input", { attr: { type: "checkbox" } });
+		nonPmBox.checked = this.form.isNonPM;
+		nonPm.createSpan({ text: "Non PM" });
+		nonPmBox.addEventListener("change", () => {
+			this.form.isNonPM = nonPmBox.checked;
+			this.render();
+		});
+
+		const tech = wrap.createEl("label", { cls: "pe-check-label pe-touch-target" });
+		const techBox = tech.createEl("input", { attr: { type: "checkbox" } });
+		techBox.checked = this.form.isTechnicalIntervention;
+		tech.createSpan({ text: "Technical intervention" });
+		techBox.addEventListener("change", () => {
+			this.form.isTechnicalIntervention = techBox.checked;
+			this.render();
+		});
+	}
+
+	/** Budget / Assigned days — hidden when Technical intervention is on. */
+	private addBudgetDaysField(): void {
+		const flags = {
+			isNonPM: this.form.isNonPM,
+			isTechnicalIntervention: this.form.isTechnicalIntervention,
+		};
+		if (!showBudgetDaysInput(flags)) {
+			const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
+			wrap.createEl("label", { text: "Effort", cls: "pe-label" });
+			wrap.createEl("p", {
+				cls: "pe-help",
+				text: "Time & Materials (No Budget) — days input is disabled for technical interventions.",
+			});
+			return;
+		}
+		this.addText(
+			budgetDaysFieldLabel(flags, true),
+			this.form.assignedDays,
+			(value) => {
+				this.form.assignedDays = value;
+			},
+			"number",
+			`Management days. Equals ${this.plugin.settings.hoursPerManday} hours each.`,
+			"0",
+		);
+	}
+
+	/** CRUD list for ITSM Ticket / Change / Problem associations. */
+	private addItsmEditor(): void {
+		const wrap = this.rootEl!.createDiv({ cls: "pe-field pe-itsm-editor" });
+		wrap.createEl("label", { text: "ITSM associations", cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Link Ticket, Change, or Problem records. ID badges copy to the clipboard on the project Dashboard.",
+		});
+		const list = wrap.createDiv({ cls: "pe-itsm-list" });
+
+		const render = (): void => {
+			list.empty();
+			this.form.itsmItems.forEach((item, index) => {
+				const card = list.createDiv({ cls: "pe-itsm-card" });
+				const typeSelect = card.createEl("select", {
+					cls: "pe-input pe-touch-target",
+					attr: { "aria-label": "ITSM type" },
+				});
+				for (const type of ["Ticket", "Change", "Problem"] as ItsmItemType[]) {
+					typeSelect.createEl("option", { text: type, attr: { value: type } });
+				}
+				typeSelect.value = item.type;
+				typeSelect.addEventListener("change", () => {
+					const current = this.form.itsmItems[index];
+					if (current) current.type = typeSelect.value as ItsmItemType;
+				});
+
+				const idInput = card.createEl("input", {
+					cls: "pe-input pe-touch-target",
+					attr: { type: "text", placeholder: "ID", "aria-label": "ITSM ID" },
+				});
+				idInput.value = item.id;
+				idInput.addEventListener("input", () => {
+					const current = this.form.itsmItems[index];
+					if (current) current.id = idInput.value;
+				});
+
+				const titleInput = card.createEl("input", {
+					cls: "pe-input pe-touch-target",
+					attr: { type: "text", placeholder: "Title", "aria-label": "ITSM title" },
+				});
+				titleInput.value = item.title;
+				titleInput.addEventListener("input", () => {
+					const current = this.form.itsmItems[index];
+					if (current) current.title = titleInput.value;
+				});
+
+				const descInput = card.createEl("input", {
+					cls: "pe-input pe-touch-target",
+					attr: {
+						type: "text",
+						placeholder: "Short description",
+						"aria-label": "ITSM description",
+					},
+				});
+				descInput.value = item.description;
+				descInput.addEventListener("input", () => {
+					const current = this.form.itsmItems[index];
+					if (current) current.description = descInput.value;
+				});
+
+				const remove = card.createEl("button", {
+					text: "Remove",
+					cls: "pe-chip-remove pe-touch-target",
+					attr: { type: "button" },
+				});
+				remove.addEventListener("click", () => {
+					this.form.itsmItems.splice(index, 1);
+					render();
+				});
+			});
+		};
+
+		const addBtn = wrap.createEl("button", {
+			text: "+ Add ITSM item",
+			cls: "pe-secondary pe-touch-target",
+			attr: { type: "button" },
+		});
+		addBtn.addEventListener("click", () => {
+			this.form.itsmItems.push({
+				id: nextItsmId(this.form.itsmItems),
+				type: "Ticket",
+				title: "",
+				description: "",
+			});
+			render();
+		});
+		render();
 	}
 
 	private addIconColorFields(): void {
@@ -397,15 +563,20 @@ export class ProjectEditor {
 		onChange: (value: string) => void,
 		type = "text",
 		help?: string,
+		min?: string,
 	): void {
 		const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
 		wrap.createEl("label", { text: label, cls: "pe-label" });
 		if (help) {
 			wrap.createEl("p", { text: help, cls: "pe-help" });
 		}
+		const attr: Record<string, string> = { type, spellcheck: "false" };
+		if (type === "number" && min !== undefined) {
+			attr.min = min;
+		}
 		const input = wrap.createEl("input", {
 			cls: "pe-input pe-touch-target",
-			attr: { type, spellcheck: "false" },
+			attr,
 		});
 		input.value = value;
 		input.addEventListener("input", () => onChange(input.value));
@@ -756,9 +927,15 @@ export class ProjectEditor {
 		if (this.form.parentProjectId && this.form.parentProjectId === id) {
 			errors.push("Parent project cannot be the same as this project");
 		}
-		const days = Number.parseFloat(this.form.assignedDays);
-		if (!Number.isFinite(days) || days < 0) {
-			errors.push("Budget (days) must be a number ≥ 0");
+		const flags = {
+			isNonPM: this.form.isNonPM,
+			isTechnicalIntervention: this.form.isTechnicalIntervention,
+		};
+		if (showBudgetDaysInput(flags)) {
+			const days = Number.parseFloat(this.form.assignedDays);
+			if (!Number.isFinite(days) || days < 0) {
+				errors.push(`${budgetDaysFieldLabel(flags)} must be a number ≥ 0`);
+			}
 		}
 		if (this.form.projectUrl.trim() && !isValidHttpUrl(this.form.projectUrl)) {
 			errors.push("Project URL must be a valid http(s) URL");
@@ -803,7 +980,21 @@ export class ProjectEditor {
 				role: member.role.trim() || undefined,
 			}));
 			const stakeholders = this.form.stakeholders.map((item) => toWikiLink(item.name));
-			const assignedDays = Number.parseFloat(this.form.assignedDays);
+			const flags = {
+				isNonPM: this.form.isNonPM,
+				isTechnicalIntervention: this.form.isTechnicalIntervention,
+			};
+			const assignedDays = showBudgetDaysInput(flags)
+				? Number.parseFloat(this.form.assignedDays)
+				: 0;
+			const itsmItems = this.form.itsmItems
+				.map((item) => ({
+					id: item.id.trim() || nextItsmId(this.form.itsmItems),
+					type: item.type,
+					title: item.title.trim(),
+					description: item.description.trim(),
+				}))
+				.filter((item) => item.id || item.title);
 
 			await patchProjectFrontmatter(this.app.vault, this.project.file, (data) => {
 				data.id = this.form.id.trim();
@@ -823,7 +1014,10 @@ export class ProjectEditor {
 				});
 				data.stakeholders = stakeholders;
 				data.work_orders = this.form.workOrders;
-				data.assigned_days = assignedDays;
+				data.assigned_days = Number.isFinite(assignedDays) ? assignedDays : 0;
+				data.is_non_pm = this.form.isNonPM;
+				data.is_technical_intervention = this.form.isTechnicalIntervention;
+				data.itsm_items = serialiseItsmItems(itsmItems);
 				data.project_url = this.form.projectUrl.trim();
 				data.teams_channel_url = this.form.teamsChannelUrl.trim();
 				const templateName = this.form.taskListTemplate.trim();

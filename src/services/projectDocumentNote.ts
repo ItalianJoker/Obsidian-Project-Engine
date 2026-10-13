@@ -36,6 +36,11 @@ export interface CreateProjectDocumentArgs {
 	 * project folder). Example: `Projects/PRJ-001 - Demo/Documents`.
 	 */
 	folderPath: string;
+	/**
+	 * Optional Markdown body after frontmatter (template-expanded).
+	 * When omitted, a default `# title` + Links section is written.
+	 */
+	bodyMarkdown?: string;
 }
 
 /**
@@ -52,10 +57,12 @@ export interface CreateProjectDocumentResult {
  *
  * @param title - Human title / H1.
  * @param projectBasename - Project note basename (no `.md`).
+ * @param bodyMarkdown - Optional body (template output). Links section is appended when missing.
  */
 export function buildProjectDocumentMarkdown(
 	title: string,
 	projectBasename: string,
+	bodyMarkdown?: string,
 ): string {
 	const projectWikiLink = toWikiLink(projectBasename);
 	const frontmatter: Record<string, unknown> = {
@@ -63,9 +70,12 @@ export function buildProjectDocumentMarkdown(
 		name: title,
 		project: projectWikiLink,
 	};
-	const body = [`# ${title}`, "", buildGraphLinksSection([{ label: "Project", wikiLink: projectWikiLink }])].join(
-		"\n",
-	);
+	const links = buildGraphLinksSection([{ label: "Project", wikiLink: projectWikiLink }]);
+	const body = bodyMarkdown?.trim()
+		? bodyMarkdown.includes("## Links")
+			? bodyMarkdown.trim()
+			: `${bodyMarkdown.trim()}\n\n${links}`
+		: [`# ${title}`, "", links].join("\n");
 	return buildMarkdownNote(frontmatter, body);
 }
 
@@ -102,7 +112,11 @@ export async function createProjectDocumentNote(
 		throw new Error(`A note already exists at “${path}”`);
 	}
 
-	const content = buildProjectDocumentMarkdown(title, args.projectFile.basename);
+	const content = buildProjectDocumentMarkdown(
+		title,
+		args.projectFile.basename,
+		args.bodyMarkdown,
+	);
 	const file = await writeNoteAtomic(args.app.vault, path, content);
 	return {
 		file,

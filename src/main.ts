@@ -32,6 +32,11 @@ import {
 	DASHBOARD_VIEW_TYPE,
 	DashboardView,
 } from "./views/DashboardView";
+import {
+	GLOBAL_DASHBOARD_VIEW_TYPE,
+	GlobalDashboardView,
+	activateGlobalDashboardView,
+} from "./views/GlobalDashboardView";
 import { OVERVIEW_VIEW_TYPE, ProjectOverviewView } from "./views/ProjectOverviewView";
 import {
 	PROJECT_EDIT_VIEW_TYPE,
@@ -46,6 +51,7 @@ import { TASK_VIEW_TYPE, TaskView } from "./views/TaskView";
 import { activateGanttView } from "./views/GanttView";
 import { ViewRouter } from "./views/ViewRouter";
 import { openTaskEditorForActiveProject } from "./views/TaskEditor";
+import { normalizeTemplatesFolder } from "./services/noteTemplates";
 
 /**
  * Plugin façade shared with modals, views, and the settings tab.
@@ -87,6 +93,10 @@ export default class ProjectsEnginePlugin extends Plugin {
 		);
 
 		this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
+		this.registerView(
+			GLOBAL_DASHBOARD_VIEW_TYPE,
+			(leaf) => new GlobalDashboardView(leaf, this),
+		);
 		this.registerView(OVERVIEW_VIEW_TYPE, (leaf) => new ProjectOverviewView(leaf, this));
 		this.registerView(WORKSPACE_VIEW_TYPE, (leaf) => new ProjectWorkspaceView(leaf, this));
 		this.registerView(PROJECT_EDIT_VIEW_TYPE, (leaf) => new ProjectEditView(leaf, this));
@@ -114,6 +124,14 @@ export default class ProjectsEnginePlugin extends Plugin {
 			name: "Open projects pane",
 			callback: () => {
 				void this.router.openDashboard();
+			},
+		});
+
+		this.addCommand({
+			id: "open-global-dashboard",
+			name: "Open global dashboard",
+			callback: () => {
+				void activateGlobalDashboardView(this);
 			},
 		});
 
@@ -398,6 +416,9 @@ export default class ProjectsEnginePlugin extends Plugin {
 		this.settings.taskListTemplatesFolder =
 			this.settings.taskListTemplatesFolder ||
 			"Projects/Entities/Task List Templates";
+		this.settings.templatesFolder = normalizeTemplatesFolder(
+			this.settings.templatesFolder || "Templates",
+		);
 	}
 
 	public async saveSettings(): Promise<void> {
@@ -455,6 +476,11 @@ export default class ProjectsEnginePlugin extends Plugin {
 		for (const leaf of this.app.workspace.getLeavesOfType(WORKSPACE_VIEW_TYPE)) {
 			if (leaf.view instanceof ProjectWorkspaceView) {
 				void leaf.view.refresh();
+			}
+		}
+		for (const leaf of this.app.workspace.getLeavesOfType(GLOBAL_DASHBOARD_VIEW_TYPE)) {
+			if (leaf.view instanceof GlobalDashboardView) {
+				leaf.view.refresh();
 			}
 		}
 	}

@@ -21,9 +21,14 @@ import { openProjectEditor } from "./ProjectEditView";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
 import { formatDisplayDate } from "../services/dateFormat";
 import {
+	budgetMetricLabel,
+	formatProjectBudgetDisplay,
+} from "../services/projectFlags";
+import {
 	formatBudgetDaysAndHours,
 	formatGiornate,
 } from "../services/timeLogs";
+import { activateGlobalDashboardView } from "./GlobalDashboardView";
 
 /** Registered ItemView type id. */
 export const DASHBOARD_VIEW_TYPE = "projects-engine-dashboard";
@@ -191,7 +196,7 @@ export class DashboardView extends ItemView {
 		bar.empty();
 
 		const left = bar.createDiv({ cls: "pe-toolbar-left" });
-		left.createEl("h2", { text: "Projects", cls: "pe-toolbar-title" });
+		left.createEl("h2", { text: "Projects", cls: "pe-toolbar-title pe-dashboard-title" });
 
 		const center = bar.createDiv({ cls: "pe-toolbar-center pe-toolbar-filters" });
 		const search = center.createEl("input", {
@@ -252,6 +257,9 @@ export class DashboardView extends ItemView {
 		});
 
 		const right = bar.createDiv({ cls: "pe-toolbar-right" });
+		this.toolButton(right, "Global Dashboard", false, () => {
+			void activateGlobalDashboardView(this.plugin);
+		});
 		this.toolButton(right, "+ new project", true, () => this.plugin.openCreationModal());
 	}
 
@@ -292,8 +300,10 @@ export class DashboardView extends ItemView {
 			}
 		}
 		const tbody = table.createEl("tbody");
+		const fragment = document.createDocumentFragment();
 		for (const row of rows) {
-			const tr = tbody.createEl("tr", { cls: "pe-project-row pe-touch-target" });
+			const tr = document.createElement("tr");
+			tr.className = "pe-project-row pe-touch-target";
 			tr.addEventListener("click", () => {
 				void this.plugin.router.openProjectLink(row.file.path);
 			});
@@ -314,7 +324,16 @@ export class DashboardView extends ItemView {
 				chip.style.setProperty("--pe-status-color", meta.color);
 			}
 			this.td(tr, "Customer", stripWiki(row.customer));
-			this.td(tr, "Budget", formatBudgetDaysAndHours(row.assignedDays, hoursPer));
+			const flags = {
+				isNonPM: row.isNonPM,
+				isTechnicalIntervention: row.isTechnicalIntervention,
+			};
+			const budgetLabel = budgetMetricLabel(flags);
+			const budgetText = formatProjectBudgetDisplay(
+				flags,
+				formatBudgetDaysAndHours(row.assignedDays, hoursPer),
+			);
+			this.td(tr, budgetLabel, budgetText);
 			const lastUpdateTd = tr.createEl("td", {
 				text: formatDisplayDate(row.updatedAt, dateFormat),
 				cls: "pe-col-last-update",
@@ -333,7 +352,9 @@ export class DashboardView extends ItemView {
 				event.stopPropagation();
 				void this.plugin.router.openProjectLink(row.file.path);
 			});
+			fragment.appendChild(tr);
 		}
+		tbody.appendChild(fragment);
 	}
 
 	private renderCards(rows: ProjectRow[]): void {
@@ -354,8 +375,16 @@ export class DashboardView extends ItemView {
 				text: `Status: ${projectStatusLabel(this.plugin.settings.projectStatuses, row.status)}`,
 			});
 			body.createEl("p", { text: `Customer: ${stripWiki(row.customer)}` });
+			const flags = {
+				isNonPM: row.isNonPM,
+				isTechnicalIntervention: row.isTechnicalIntervention,
+			};
+			const budgetText = formatProjectBudgetDisplay(
+				flags,
+				formatBudgetDaysAndHours(row.assignedDays, hoursPer),
+			);
 			body.createEl("p", {
-				text: `Budget: ${formatBudgetDaysAndHours(row.assignedDays, hoursPer)} · Actual ${formatGiornate(row.actualDays)}`,
+				text: `${budgetMetricLabel(flags)}: ${budgetText} · Actual ${formatGiornate(row.actualDays)}`,
 			});
 			body.createEl("p", {
 				text: `Last Update: ${formatDisplayDate(row.updatedAt, dateFormat)}`,

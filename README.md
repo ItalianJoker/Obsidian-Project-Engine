@@ -2,7 +2,7 @@
 
 Obsidian.md plugin for Project Portfolio, Governance, and Delivery Management in Markdown.
 
-Version **1.2.5** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
+Version **1.3.0** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
 
 Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT); domain features and branding remain Projects Engine. See `NOTICE`.
 
@@ -27,7 +27,8 @@ Il plugin include:
 - campi personalizzati configurabili sulle quattro entità catalogo
 - editor task e modale di dettaglio unificata con navigazione tra dipendenze (subtask, parent, blocked by, blocking, log tempo)
 - governance **Semplificato** e **PRINCE2**
-- Dashboard progetti, Overview, Edit progetto (leaf), Workspace unificato (Table / Kanban / Gantt / Eisenhower), editor Task (modale o tab), Release notes
+- Dashboard progetti, **Global Dashboard** task cross-progetto, Overview, Edit progetto (leaf), Workspace unificato (Table / Kanban / Gantt / Eisenhower), editor Task (modale o tab), Release notes
+- modalità budget **Non PM** / **Technical intervention**, associazioni **ITSM**, ruoli team con badge, template note (`{{project}}` / `{{title}}` / `{{date}}`)
 - scheduling DAG con cycle detection e cascade delle date
 - UI fluida e curata: spaziatura tabelle ottimizzata (~24px), titoli task in stile hyperlink pulito, allineamento verticale millimetrico testo-icona e vista Gantt senza punti elenco spuri
 
@@ -302,13 +303,18 @@ Navigation follows a coherent funnel: **Projects (list) → Overview (governance
 The plugin ships with:
 
 - a touch-friendly project creation wizard (including Teams URL)
+- **Budget modes:** Standard **Budget (Days)**, **Non PM** → **Assigned (Days)**, **Technical intervention** → Time & Materials (No Budget)
+- **ITSM associations** (Ticket / Change / Problem) on Edit + Project Dashboard with copyable ID badges
+- **Team member roles** persisted and shown as badges next to names on the Project Dashboard
+- **Global Tasks Dashboard** aggregating all tasks (shared filters; project badge → open project; New Task with project selector)
+- **New note templates** from Settings → Templates folder (`{{project}}`, `{{title}}`, `{{date}}`)
 - interactive **View entity** catalogue viewer (Customer, Stakeholder, Project Type, Technology cards with live search, project association chips, and quick actions)
 - automatic bidirectional creation of referenced entities (without forcing Markdown files open in editor)
 - unified Team Member & Assignee on **Stakeholder** (with `email` / `mail` support)
 - configurable custom fields on the four catalogue entities
 - task editor & standardized task detail modal with interactive dependency navigation (subtasks, parent, blockers, blocking, time logs)
 - **Semplificato** and **PRINCE2** governance
-- Projects dashboard, Overview, Project Edit (leaf), unified Workspace (Table / Kanban / Gantt / Eisenhower), Task editor (modal or tab), Release notes
+- Projects dashboard, Global Dashboard, Overview, Project Edit (leaf), unified Workspace (Table / Kanban / Gantt / Eisenhower), Task editor (modal or tab), Release notes
 - DAG scheduling with cycle detection and date cascade
 - polished UI: optimized table spacing (~24px), clean hyperlink task titles without button overlays, precise vertical title-icon centering, and Gantt timeline without stray bullet dots
 
@@ -573,6 +579,25 @@ npm run build
 
 Copy `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/projects-engine/`, reload Obsidian, enable **Projects Engine**.
 
+### Architecture & codebase map
+
+| Area | Paths | Role |
+| --- | --- | --- |
+| Entry | `src/main.ts` | Plugin load, view registration, commands, settings migrate |
+| Models | `src/models/types.ts` | `Project`, `Task`, `ItsmItem`, `ProjectsEngineSettings` |
+| Engine | `src/engine/` | Debounced `Indexer`, DAG `Scheduler`, `debounce` |
+| Persistence | `src/services/*Io.ts`, `vaultIo.ts`, `frontmatter.ts` | Parse/write notes via `vault.process` only |
+| Project projection | `src/views/projectRows.ts`, `src/services/projectFlags.ts` | Load + legacy defaults (`role`, flags, `itsm_items`) |
+| UI funnel | `src/views/DashboardView.ts` → `ProjectOverviewView.ts` → `ProjectWorkspaceView.ts` | Portfolio → Dashboard → Workspace |
+| Global tasks | `src/views/GlobalDashboardView.ts` | Reuses `filterTasks` from `TableSubView` |
+| Editors | `ProjectEditor.ts`, `ProjectCreationModal.ts`, `TaskEditor.ts` | Create/edit surfaces |
+| Shared UI | `src/ui/` | Modals, chrome, documents tree, project picker |
+| Styles | `styles.css` | `pe-*` layout, badges, ITSM cards, modal footers |
+
+**Lifecycle:** vault event → debounced rebuild → `loadProjectRows` / `loadAllTasks` → view render → user mutation → `vault.process` → `refreshOpenViews()`.
+
+See also root [`.cursorrules`](.cursorrules) for AI/agent coding guardrails.
+
 ### AI Context & Developer Guidelines
 
 - **Architecture:** Entity-as-a-Note → pure Indexer / Scheduler → Obsidian views (`views/`, `ui/`). Persist only via `vault.process`.
@@ -580,6 +605,7 @@ Copy `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/pr
 - **Library policy:** no new deps without need; prefer native APIs; do not blind-delete unused exports that may be public / migration surface (Watchlist).
 - **Tests:** keep `npm test` 100% green; extend Vitest on pure modules; never weaken assertions.
 - **Safety-first:** empty branches / unreachable guards only when proven; dynamic/UI stubs stay on the Watchlist.
+- **Language:** English-only UI strings, notices, and code comments.
 
 ### License
 

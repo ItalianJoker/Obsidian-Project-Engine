@@ -1,8 +1,11 @@
 /**
- * Modal: create a Graph-linked Markdown note inside a project subfolder.
+ * @file CreateProjectDocumentModal.ts
+ * @purpose Modal: create a Graph-linked Markdown note inside a project subfolder.
+ * @dependencies projectDocumentNote, noteTemplates
+ * @usedBy ProjectOverviewView (Documents → New note)
  *
- * English UI. Caller supplies folder choices (Documents, Initiation, …) and
- * receives the created {@link TFile} via {@link CreateProjectDocumentModalOptions.onCreated}.
+ * Template dropdown lists `.md` files from Settings → Templates folder.
+ * Placeholders: `{{project}}`, `{{title}}`, `{{date}}` (YYYY-MM-DD).
  */
 
 import { Modal, Notice, TFile, type App } from "obsidian";
@@ -10,6 +13,13 @@ import {
 	createProjectDocumentNote,
 	defaultDocumentCreateFolder,
 } from "../services/projectDocumentNote";
+import {
+	applyNoteTemplatePlaceholders,
+	listNoteTemplateBasenames,
+	resolveNoteTemplateFile,
+	todayIsoDate,
+} from "../services/noteTemplates";
+import { splitFrontmatter } from "../services/frontmatter";
 
 /**
  * Options for {@link CreateProjectDocumentModal}.
@@ -23,6 +33,10 @@ export interface CreateProjectDocumentModalOptions {
 	folderChoices: string[];
 	/** Preferred Documents folder basename from Settings. */
 	documentsFolderName: string;
+	/** Vault-relative Templates folder (Settings). */
+	templatesFolder: string;
+	/** Project display name for `{{project}}`. */
+	projectName: string;
 	/** Optional pre-selected folder (e.g. right-click on a tree folder). */
 	initialFolderPath?: string;
 	/** Invoked after a successful create (tree refresh / open note). */
@@ -30,11 +44,12 @@ export interface CreateProjectDocumentModalOptions {
 }
 
 /**
- * Touch-friendly create-note form: title + destination folder.
+ * Touch-friendly create-note form: title + folder + optional template.
  */
 export class CreateProjectDocumentModal extends Modal {
 	private titleInput!: HTMLInputElement;
 	private folderSelect!: HTMLSelectElement;
+	private templateSelect!: HTMLSelectElement;
 	private errorEl!: HTMLElement;
 
 	constructor(
@@ -54,7 +69,7 @@ export class CreateProjectDocumentModal extends Modal {
 		contentEl.createEl("h2", { text: "New project note" });
 		contentEl.createEl("p", {
 			cls: "pe-modal-lead",
-			text: "Creates a Markdown note linked to this project (YAML + Links) so Graph View clusters it.",
+			text: "Creates a Markdown note linked to this project (YAML + Links) so Graph View clusters it. Optional template placeholders: {{project}}, {{title}}, {{date}}.",
 		});
 
 		this.errorEl = contentEl.createDiv({ cls: "pe-errors", attr: { role: "alert" } });
@@ -114,6 +129,21 @@ export class CreateProjectDocumentModal extends Modal {
 			option.selected = true;
 		}
 
+		const templateField = contentEl.createDiv({ cls: "pe-field" });
+		templateField.createEl("label", {
+			text: "Template",
+			cls: "pe-label",
+			attr: { for: "pe-create-doc-template" },
+		});
+		this.templateSelect = templateField.createEl("select", {
+			cls: "pe-input pe-touch-target",
+			attr: { id: "pe-create-doc-template" },
+		});
+		this.templateSelect.createEl("option", { text: "None", attr: { value: "" } });
+		for (const name of listNoteTemplateBasenames(this.app, options.templatesFolder)) {
+			this.templateSelect.createEl("option", { text: name, attr: { value: name } });
+		}
+
 		const actions = contentEl.createDiv({ cls: "pe-actions pe-form-footer" });
 		const cancel = actions.createEl("button", {
 			text: "Cancel",
@@ -146,7 +176,7 @@ export class CreateProjectDocumentModal extends Modal {
 	}
 
 	/**
-	 * Validate and write the note via {@link createProjectDocumentNote}.
+	 * Validate, optionally apply template placeholders, and write the note.
 	 */
 	private async submit(): Promise<void> {
 		const title = this.titleInput.value.trim();
@@ -158,11 +188,32 @@ export class CreateProjectDocumentModal extends Modal {
 
 		const folderPath = this.folderSelect.value;
 		try {
+			let bodyMarkdown: string | undefined;
+			const templateName = this.templateSelect.value.trim();
+			if (templateName) {
+				const file = resolveNoteTemplateFile(
+					this.app.vault,
+					this.options.templatesFolder,
+					templateName,
+				);
+				if (!file) {
+					throw new Error(`Template “${templateName}” not found`);
+				}
+				const raw = await this.app.vault.read(file);
+				const { body } = splitFrontmatter(raw);
+				bodyMarkdown = applyNoteTemplatePlaceholders(body || raw, {
+					project: this.options.projectName,
+					title,
+					date: todayIsoDate(),
+				});
+			}
+
 			const result = await createProjectDocumentNote({
 				app: this.app,
 				projectFile: this.options.projectFile,
 				title,
 				folderPath,
+				bodyMarkdown,
 			});
 			new Notice(`Created note “${result.file.basename}”`);
 			await this.options.onCreated(result.file);

@@ -53,10 +53,15 @@ import {
 	type RegisterEntryRow,
 } from "../services/registerIo";
 import {
-	formatGiornate,
+	budgetMetricLabel,
+	formatProjectBudgetDisplay,
+	safeBudgetProgressPercent,
+	teamMemberDisplayName,
+} from "../services/projectFlags";
+import {
+	formatBudgetDaysAndHours,
 	formatHours,
 	formatHoursAndGiornate,
-	giornateToHours,
 } from "../services/timeLogs";
 import { copyProjectObsidianUri } from "../services/obsidianUri";
 import { isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
@@ -78,6 +83,7 @@ import {
 	isWorkspaceViewMode,
 	type WorkspaceViewMode,
 } from "./ProjectWorkspaceView";
+import type { ItsmItem } from "../models/types";
 
 /** Registered ItemView type id. */
 export const OVERVIEW_VIEW_TYPE = "projects-engine-overview";
@@ -126,6 +132,8 @@ export class ProjectOverviewView extends ItemView {
 	private docsEl!: HTMLElement;
 	/** Linked entities grid. */
 	private entitiesEl!: HTMLElement;
+	/** ITSM Ticket / Change / Problem associations. */
+	private itsmEl!: HTMLElement;
 	/** Edit / Open note / Delete project actions. */
 	private actionsEl!: HTMLElement;
 	/**
@@ -225,9 +233,10 @@ export class ProjectOverviewView extends ItemView {
 		this.filterEl = this.tasksSectionEl.createDiv({ cls: "pe-chrome-filter-panel" });
 		this.tasksSectionEl.createEl("h3", { text: "Tasks", cls: "pe-section-title" });
 		this.tableEl = this.tasksSectionEl.createDiv({ cls: "pe-overview-table" });
-		// 6–8. Documents → Linked Entities → Actions
+		// 6–9. Documents → Linked Entities → ITSM → Actions
 		this.docsEl = root.createDiv({ cls: "pe-overview-docs" });
 		this.entitiesEl = root.createDiv({ cls: "pe-overview-entities" });
+		this.itsmEl = root.createDiv({ cls: "pe-overview-itsm" });
 		this.actionsEl = root.createDiv({ cls: "pe-overview-actions" });
 	}
 
@@ -278,6 +287,7 @@ export class ProjectOverviewView extends ItemView {
 		this.tableEl?.empty();
 		this.docsEl?.empty();
 		this.entitiesEl?.empty();
+		this.itsmEl?.empty();
 		this.actionsEl?.empty();
 		const root = this.contentEl;
 		root.empty();
@@ -372,6 +382,7 @@ export class ProjectOverviewView extends ItemView {
 		this.renderTable();
 		this.renderDocuments(project);
 		this.renderEntities(project);
+		this.renderItsm(project);
 		this.renderActions(project);
 	}
 
@@ -437,6 +448,8 @@ export class ProjectOverviewView extends ItemView {
 			projectFolderPath: projectFolder,
 			folderChoices,
 			documentsFolderName,
+			templatesFolder: this.plugin.settings.templatesFolder,
+			projectName: project.name,
 			initialFolderPath,
 			onCreated: async (file) => {
 				this.renderDocuments(project);
@@ -510,6 +523,7 @@ export class ProjectOverviewView extends ItemView {
 
 	/**
 	 * Budget / effort metric strip — Dashboard section 3 (task summary).
+	 * Non PM → “Assigned”; Technical intervention → T&M (no budget divisor).
 	 */
 	private renderMetrics(project: ProjectRow): void {
 		const root = this.metricsEl;
@@ -520,15 +534,27 @@ export class ProjectOverviewView extends ItemView {
 		const remainingHours = this.tasks.reduce((s, t) => s + t.remainingHours, 0);
 		const loggedHours = this.tasks.reduce((s, t) => s + t.actualHours, 0);
 		const estimateHours = this.tasks.reduce((s, t) => s + t.estimateHours, 0);
-		const budgetHours = giornateToHours(project.assignedDays, hoursPer);
+		const flags = {
+			isNonPM: project.isNonPM,
+			isTechnicalIntervention: project.isTechnicalIntervention,
+		};
+		const budgetLabel = budgetMetricLabel(flags);
+		const budgetValue = formatProjectBudgetDisplay(
+			flags,
+			formatBudgetDaysAndHours(project.assignedDays, hoursPer),
+		);
+		const progressPct = safeBudgetProgressPercent(
+			project.actualDays,
+			project.assignedDays,
+			flags,
+		);
 
 		const metrics = root.createDiv({ cls: "pe-metric-strip" });
 		this.metric(metrics, "Tasks", String(this.tasks.length));
-		this.metric(
-			metrics,
-			"Budget",
-			`${formatGiornate(project.assignedDays)} · ${formatHours(budgetHours)}`,
-		);
+		this.metric(metrics, budgetLabel, budgetValue);
+		if (!flags.isTechnicalIntervention) {
+			this.metric(metrics, "Budget used", `${progressPct}%`);
+		}
 		this.metric(metrics, "Logged", formatHoursAndGiornate(loggedHours, hoursPer));
 		this.metric(metrics, "Remaining", formatHoursAndGiornate(remainingHours, hoursPer));
 		this.metric(metrics, "Est. tasks", formatHours(estimateHours));
@@ -683,12 +709,72 @@ export class ProjectOverviewView extends ItemView {
 		this.entityBlock(grid, "Customer", project.customer ? [project.customer] : []);
 		this.entityBlock(grid, "Project type", project.projectType ? [project.projectType] : []);
 		this.entityBlock(grid, "Technologies", project.technologies);
-		this.entityBlock(grid, "Team", project.team);
+		this.renderTeamBlock(grid, project);
 		this.entityBlock(grid, "Stakeholders", project.stakeholders);
 		this.entityBlock(grid, "Work orders", project.commesse);
 		if (project.parentProjectId) {
 			this.entityBlock(grid, "Parent project", [project.parentProjectId]);
 		}
+	}
+
+	/** Team members with role badges next to names. */
+	private renderTeamBlock(parent: HTMLElement, project: ProjectRow): void {
+		const block = parent.createDiv({ cls: "pe-entity-block" });
+		block.createEl("h4", { text: "Team" });
+		if (project.team.length === 0) {
+			block.createEl("p", { text: "—", cls: "pe-help" });
+			return;
+		}
+		const list = block.createEl("ul", { cls: "pe-team-badge-list" });
+		for (const member of project.team) {
+			const li = list.createEl("li", { cls: "pe-team-badge-row" });
+			li.createSpan({ text: teamMemberDisplayName(member), cls: "pe-team-member-name" });
+			const role = member.role?.trim();
+			if (role) {
+				li.createSpan({ text: role, cls: "pe-role-badge" });
+			}
+		}
+	}
+
+	/**
+	 * ITSM associations with copyable ID badges.
+	 */
+	private renderItsm(project: ProjectRow): void {
+		const section = this.itsmEl;
+		section.empty();
+		section.createEl("h3", { text: "ITSM", cls: "pe-section-title" });
+		if (project.itsmItems.length === 0) {
+			section.createEl("p", {
+				cls: "pe-help",
+				text: "No ITSM associations. Add Ticket / Change / Problem items in Edit project.",
+			});
+			return;
+		}
+		const grid = section.createDiv({ cls: "pe-itsm-grid" });
+		for (const item of project.itsmItems) {
+			this.renderItsmCard(grid, item);
+		}
+	}
+
+	private renderItsmCard(parent: HTMLElement, item: ItsmItem): void {
+		const card = parent.createDiv({ cls: "pe-itsm-card pe-itsm-card--view" });
+		card.createSpan({ text: item.type, cls: "pe-itsm-type-badge" });
+		const idBtn = card.createEl("button", {
+			text: item.id,
+			cls: "pe-itsm-id-badge pe-touch-target",
+			attr: { type: "button", title: "Copy ID to clipboard" },
+		});
+		idBtn.addEventListener("click", () => {
+			void navigator.clipboard.writeText(item.id).then(
+				() => new Notice("Copied ID to clipboard"),
+				() => new Notice("Could not copy ID"),
+			);
+		});
+		card.createEl("div", { text: item.title || "—", cls: "pe-itsm-title" });
+		card.createEl("div", {
+			text: item.description || "—",
+			cls: "pe-itsm-description",
+		});
 	}
 
 	private entityBlock(parent: HTMLElement, title: string, values: string[]): void {
