@@ -25,7 +25,7 @@ import { formatDuePill, formatDisplayDateTime, isOverdue, effectiveDue } from ".
 import { PersistStatusCommand } from "../../services/taskCommands";
 import { EmptyState } from "../../ui/EmptyState";
 import { wireKanbanCardDnD, wireKanbanColumnDrop } from "../kanbanDnD";
-import type { ProjectRow } from "../projectRows";
+import { findProjectRow, type ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
 import { mountTaskTitleControls } from "../taskTitleControls";
@@ -33,11 +33,18 @@ import { mountTaskTitleControls } from "../taskTitleControls";
 export interface KanbanSubViewProps {
 	app: App;
 	plugin: ProjectsEnginePlugin;
-	project: ProjectRow;
+	/** When set, scope cards to this project (Workspace Board). */
+	project?: ProjectRow;
+	/** Portfolio rows for badge lookup (Global Dashboard). */
+	projects?: ProjectRow[];
 	tasks: Task[];
 	filterText: string;
 	container: HTMLElement;
 	onChanged: () => void;
+	/** Show project-name badge on each card (Global Dashboard). */
+	showProjectBadge?: boolean;
+	/** Override empty-state / add-task action. */
+	onNewTask?: () => void;
 }
 
 /**
@@ -58,27 +65,22 @@ export class KanbanSubView implements SubView {
 		const showPreview = plugin.settings.kanbanShowDescriptionPreview === true;
 
 		const q = filterText.trim().toLowerCase();
-		const projectTasks = tasks.filter((task) => {
-			if (task.projectId !== project.id) {
-				return false;
-			}
+		const scopedPool = project
+			? tasks.filter((task) => task.projectId === project.id)
+			: tasks;
+		const projectTasks = scopedPool.filter((task) => {
 			if (!showSubtasks && task.parentId != null) {
 				return false;
 			}
 			if (!q) return true;
-			return `${task.title} ${task.status} ${task.notes ?? ""}`.toLowerCase().includes(q);
+			return `${task.title} ${task.status} ${task.notes ?? ""} ${task.projectId}`.toLowerCase().includes(q);
 		});
 
-		if (tasks.filter((t) => t.projectId === project.id).length === 0) {
+		if (scopedPool.length === 0) {
 			new EmptyState(container)
 				.setTitle("Board is empty")
 				.setBody("Add tasks, then drag cards between columns.")
-				.setAction("+ Add task", () => {
-					void openTaskEditor(plugin, {
-						projectId: project.id,
-						projectLink: toWikiLink(project.file.basename),
-					});
-				});
+				.setAction("+ Add task", () => this.openNewTask());
 			return;
 		}
 
@@ -137,12 +139,30 @@ export class KanbanSubView implements SubView {
 
 			const cards = column.createDiv({ cls: "pe-kanban-cards" });
 			for (const task of inColumn) {
+				const taskProject = this.resolveProject(task);
+				if (!taskProject) {
+					continue;
+				}
 				const card = cards.createDiv({ cls: "pe-kanban-card pe-touch-target" });
+				if (this.props.showProjectBadge) {
+					const badge = card.createEl("button", {
+						cls: "pe-project-badge pe-touch-target",
+						attr: {
+							type: "button",
+							title: `${taskProject.id} — ${taskProject.name}`,
+						},
+					});
+					badge.textContent = taskProject.name;
+					badge.addEventListener("click", (event) => {
+						event.stopPropagation();
+						void plugin.router.openOverview(taskProject.file.path);
+					});
+				}
 
 				const titleWrap = card.createDiv({ cls: "pe-kanban-card-head" });
 				mountTaskTitleControls(titleWrap, {
 					plugin,
-					project,
+					project: taskProject,
 					task,
 					titleClass: "pe-kanban-card-title",
 					titleAsButton: false,
@@ -223,6 +243,32 @@ export class KanbanSubView implements SubView {
 
 	public destroy(): void {
 		this.props.container.empty();
+	}
+
+	private openNewTask(): void {
+		const { plugin, project, onNewTask } = this.props;
+		if (onNewTask) {
+			onNewTask();
+			return;
+		}
+		if (!project) {
+			new Notice("Create a project first");
+			return;
+		}
+		void openTaskEditor(plugin, {
+			projectId: project.id,
+			projectLink: toWikiLink(project.file.basename),
+		});
+	}
+
+	private resolveProject(task: Task): ProjectRow | null {
+		if (this.props.project && this.props.project.id === task.projectId) {
+			return this.props.project;
+		}
+		if (this.props.projects?.length) {
+			return findProjectRow(this.props.projects, task.projectId) ?? null;
+		}
+		return this.props.project ?? null;
 	}
 
 	private async moveTaskStatus(

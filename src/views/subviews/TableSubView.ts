@@ -42,7 +42,7 @@ import { formatHours } from "../../services/timeLogs";
 import { ConfirmModal } from "../../ui/ConfirmModal";
 import { EmptyState } from "../../ui/EmptyState";
 import { mountInlineDateTime } from "../dateTimeInputs";
-import type { ProjectRow } from "../projectRows";
+import { findProjectRow, type ProjectRow } from "../projectRows";
 import { EntitySuggest } from "../suggest";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
@@ -62,14 +62,24 @@ export interface TaskDashboardFilters {
 
 /**
  * Props for {@link TableSubView}.
+ *
+ * Project Dashboard / Workspace pass {@link project}. Global Dashboard omits it,
+ * sets {@link showProjectBadge}, and supplies {@link projects} + {@link onNewTask}.
  */
 export interface TableSubViewProps {
 	app: App;
 	plugin: ProjectsEnginePlugin;
-	project: ProjectRow;
+	/** When set, scope rows to this project (Overview / Workspace). */
+	project?: ProjectRow;
+	/** Portfolio rows for project badge lookup (Global Dashboard). */
+	projects?: ProjectRow[];
 	tasks: Task[];
 	filters: TaskDashboardFilters;
 	container: HTMLElement;
+	/** Show a clickable project-name badge on each task row. */
+	showProjectBadge?: boolean;
+	/** Override “+ New task” (Global Dashboard opens a project picker). */
+	onNewTask?: () => void;
 }
 
 /**
@@ -91,14 +101,18 @@ export class TableSubView implements SubView {
 		container.addClass("pe-table-subview");
 
 		const filtered = filterTasks(tasks, filters);
-		const projectFiltered = filtered.filter((t) => t.projectId === project.id);
+		const scoped = project
+			? filtered.filter((t) => t.projectId === project.id)
+			: filtered;
 
-		if (projectFiltered.length === 0) {
+		if (scoped.length === 0) {
 			new EmptyState(container)
 				.setTitle(tasks.length === 0 ? "No tasks yet" : "No matching tasks")
 				.setBody(
 					tasks.length === 0
-						? "Add a task to plan delivery for this project."
+						? project
+							? "Add a task to plan delivery for this project."
+							: "Create a task from a project or use New Task with a project selector."
 						: "Clear search or change status / priority filters.",
 				)
 				.setAction("New task", () => this.openNewTask());
@@ -106,7 +120,7 @@ export class TableSubView implements SubView {
 		}
 
 		const dateFormat = plugin.settings.dateFormat;
-		const byParent = groupByParent(projectFiltered);
+		const byParent = groupByParent(scoped);
 		const visible = this.buildVisibleTasks(byParent);
 
 		const table = container.createEl("table", {
@@ -207,18 +221,22 @@ export class TableSubView implements SubView {
 		dateFormat: import("../../models/types").DateDisplayFormat,
 		timeFormat: import("../../models/types").TimeDisplayFormat,
 	): void {
-		const { plugin, project, tasks } = this.props;
+		const { plugin, tasks } = this.props;
+		const project = this.resolveProject(task);
+		if (!project) {
+			return;
+		}
 		const projectTasks = tasks.filter((item) => item.projectId === project.id);
 		const statuses = plugin.settings.taskStatuses;
 		const completedId = completedTaskStatusId(statuses);
 		const completed = isCompletedTaskStatus(task.status, statuses);
 		const dueExpired = !completed && isExpiredDateTime(task.due);
 		const scheduledExpired = !completed && isExpiredDateTime(task.scheduled);
+		const overdue = dueExpired || scheduledExpired;
 		const tr = tbody.createEl("tr", {
-			cls:
-				dueExpired || scheduledExpired
-					? "pe-task-row pe-task-row--expired"
-					: "pe-task-row",
+			cls: overdue
+				? "pe-task-row pe-task-row--expired pe-task-row--overdue"
+				: "pe-task-row",
 		});
 
 		const reorderTd = tr.createEl("td", {
@@ -307,6 +325,22 @@ export class TableSubView implements SubView {
 			});
 		} else if (depth > 0) {
 			treeInner.createSpan({ cls: "pe-task-chevron-spacer" });
+		}
+
+		if (this.props.showProjectBadge) {
+			const badgeWrap = treeInner.createSpan({ cls: "pe-task-project-badge-wrap" });
+			const badge = badgeWrap.createEl("button", {
+				cls: "pe-project-badge pe-touch-target",
+				attr: {
+					type: "button",
+					title: `${project.id} — ${project.name}`,
+				},
+			});
+			badge.textContent = project.name;
+			badge.addEventListener("click", (event) => {
+				event.stopPropagation();
+				void plugin.router.openOverview(project.file.path);
+			});
 		}
 
 		mountTaskTitleControls(treeInner, {
@@ -550,7 +584,12 @@ export class TableSubView implements SubView {
 	 * siblings and rewrites the parent’s `child_ids` when nested.
 	 */
 	private async reorderTask(task: Task, direction: TaskReorderDirection): Promise<void> {
-		const { app, plugin, project, tasks } = this.props;
+		const { app, plugin, tasks } = this.props;
+		const project = this.resolveProject(task);
+		if (!project) {
+			new Notice(`Project “${task.projectId}” not found`);
+			return;
+		}
 		const projectTasks = tasks.filter((item) => item.projectId === project.id);
 		const patches = planSiblingReorder(projectTasks, task.id, direction);
 		if (patches.length === 0) {
@@ -671,11 +710,35 @@ export class TableSubView implements SubView {
 	}
 
 	private openNewTask(): void {
-		const { plugin, project } = this.props;
+		const { plugin, project, onNewTask } = this.props;
+		if (onNewTask) {
+			onNewTask();
+			return;
+		}
+		if (!project) {
+			new Notice("Create a project first");
+			return;
+		}
 		void openTaskEditor(plugin, {
 			projectId: project.id,
 			projectLink: toWikiLink(project.file.basename),
 		});
+	}
+
+	/**
+	 * Resolve the project row for a task (scoped props or portfolio lookup).
+	 */
+	private resolveProject(task: Task): ProjectRow | null {
+		if (this.props.project && this.props.project.id === task.projectId) {
+			return this.props.project;
+		}
+		if (this.props.project && !this.props.showProjectBadge) {
+			return this.props.project;
+		}
+		if (this.props.projects?.length) {
+			return findProjectRow(this.props.projects, task.projectId) ?? null;
+		}
+		return this.props.project ?? null;
 	}
 }
 

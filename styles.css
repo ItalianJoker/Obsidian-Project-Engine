@@ -987,10 +987,10 @@
 	text-align: left;
 }
 
-/* Projects portfolio title: align with project grid padding */
+/* Projects portfolio title: align with ID column text (.pe-table th/td pad-x 12px) */
 .pe-dashboard .pe-toolbar-title,
 .pe-dashboard-title {
-	padding: 4px 4px 4px 2px;
+	padding: 4px 4px 4px 12px;
 }
 
 .pe-toolbar-title--link {
@@ -1218,7 +1218,8 @@
 .pe-overview-tasks,
 .pe-overview-governance,
 .pe-overview-registers,
-.pe-overview-entities {
+.pe-overview-entities,
+.pe-overview-itsm {
 	padding: 4px var(--pe-overview-pad-x, 20px) 8px;
 	border-top: 1px solid var(--background-modifier-border);
 	margin-top: 4px;
@@ -1233,7 +1234,8 @@
 .pe-overview-registers .pe-section-title,
 .pe-overview-status .pe-section-title,
 .pe-overview-metrics .pe-section-title,
-.pe-overview-entities .pe-section-title {
+.pe-overview-entities .pe-section-title,
+.pe-overview-itsm .pe-section-title {
 	margin: 12px 0 10px;
 	font-size: 0.85rem;
 	font-weight: 650;
@@ -3675,32 +3677,39 @@
 	background: color-mix(in srgb, var(--text-error) 8%, transparent);
 }
 
-.pe-project-picker-list {
+.pe-project-picker-select {
+	width: 100%;
+}
+
+.pe-global-dashboard {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
-	max-height: 50vh;
 	overflow: auto;
-	margin: 8px 0;
 }
 
-.pe-project-picker-row {
-	display: block;
-	width: 100%;
-	text-align: left;
-	padding: 10px 12px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
-	background: var(--background-secondary);
-	cursor: pointer;
-	color: var(--text-normal);
+.pe-global-dashboard .pe-chrome-title {
+	margin: 0;
+	font-size: 1.35rem;
 }
 
-.pe-project-picker-row:hover {
-	border-color: var(--interactive-accent);
-	background: var(--background-primary);
+.pe-global-dashboard .pe-content {
+	flex: 1 1 auto;
+	min-height: 0;
+	padding: 8px 16px 24px;
 }
 
-.pe-global-dashboard .pe-toolbar-title {
-	padding: 4px 4px 4px 2px;
+.pe-global-dashboard .pe-chrome-filter-panel {
+	padding-inline: 16px;
+}
+
+.pe-task-project-badge-wrap {
+	display: inline-flex;
+	align-items: center;
+	margin-right: 8px;
+	vertical-align: middle;
+}
+
+.pe-kanban-card .pe-project-badge,
+.pe-eisenhower-card .pe-project-badge {
+	margin-bottom: 6px;
 }
