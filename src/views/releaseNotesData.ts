@@ -9,6 +9,10 @@
 export const RELEASE_NOTES_MARKDOWN = `
 ## 1.3.1
 
+### Added
+
+- **Add ITSM Item** on Project Dashboard — same pattern as New note; persists Ticket / Change / Problem via \`vault.process\` without Edit project.
+
 ### Fixes & polish
 
 - **ITSM / Projects alignment** — ITSM section padding matches Linked Entities; Projects title aligns with the ID column.
