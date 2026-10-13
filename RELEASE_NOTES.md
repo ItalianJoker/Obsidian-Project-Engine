@@ -2,7 +2,11 @@
 
 ## 1.3.1 — Global Dashboard UX + ITSM/Projects alignment
 
-**EN:** Align ITSM and Projects title padding; Global Dashboard matches project Task chrome (Table / Board / Eisenhower) with a dropdown project picker for New Task.
+**EN:** Align ITSM and Projects title padding; Global Dashboard matches project Task chrome (Table / Board / Eisenhower) with a dropdown project picker for New Task; Add ITSM Item on Project Dashboard.
+
+### Added
+
+- **Add ITSM Item** on the Project Dashboard — same button chrome as **New note**; modal for Type / ID / Title / Short description; saves to `itsm_items` via `vault.process` and refreshes the ITSM section (no Edit project required).
 
 ### Fixes & polish
 

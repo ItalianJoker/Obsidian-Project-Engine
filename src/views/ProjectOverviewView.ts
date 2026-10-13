@@ -21,7 +21,7 @@
  * (MIT © 2026 Stepan Kropachev and dotpm contributors).
  */
 
-import { ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import { activeTaskStatuses, projectStatusLabel, toWikiLink } from "../models/types";
 import {
@@ -65,6 +65,7 @@ import {
 } from "../services/timeLogs";
 import { copyProjectObsidianUri } from "../services/obsidianUri";
 import { isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
+import { AddItsmItemModal } from "../ui/AddItsmItemModal";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { CreateProjectDocumentModal } from "../ui/CreateProjectDocumentModal";
 import { EmptyState } from "../ui/EmptyState";
@@ -738,15 +739,36 @@ export class ProjectOverviewView extends ItemView {
 
 	/**
 	 * ITSM associations with copyable ID badges.
+	 * Header “Add ITSM Item” mirrors Documents → New note (same button chrome).
 	 */
 	private renderItsm(project: ProjectRow): void {
 		const section = this.itsmEl;
 		section.empty();
-		section.createEl("h3", { text: "ITSM", cls: "pe-section-title" });
+		const header = section.createDiv({ cls: "pe-docs-tree-header" });
+		header.createEl("h3", {
+			text: "ITSM",
+			cls: "pe-section-title",
+			attr: { id: "pe-overview-itsm-heading" },
+		});
+		const addBtn = header.createEl("button", {
+			cls: "pe-docs-tree-add pe-touch-target",
+			attr: {
+				type: "button",
+				"aria-label": "Add ITSM item",
+				title: "Add ITSM Item",
+			},
+		});
+		setIcon(addBtn, "plus");
+		addBtn.createSpan({ text: "Add ITSM Item", cls: "pe-docs-tree-add-label" });
+		addBtn.addEventListener("click", (event) => {
+			event.preventDefault();
+			this.openAddItsmItemModal(project);
+		});
+
 		if (project.itsmItems.length === 0) {
 			section.createEl("p", {
 				cls: "pe-help",
-				text: "No ITSM associations. Add Ticket / Change / Problem items in Edit project.",
+				text: "No ITSM associations. Use Add ITSM Item, or manage items in Edit project.",
 			});
 			return;
 		}
@@ -754,6 +776,19 @@ export class ProjectOverviewView extends ItemView {
 		for (const item of project.itsmItems) {
 			this.renderItsmCard(grid, item);
 		}
+	}
+
+	/**
+	 * Modal to append a Ticket / Change / Problem without opening Edit project.
+	 */
+	private openAddItsmItemModal(project: ProjectRow): void {
+		new AddItsmItemModal(this.app, {
+			projectFile: project.file,
+			existingItems: project.itsmItems,
+			onCreated: async () => {
+				await this.refresh();
+			},
+		}).open();
 	}
 
 	private renderItsmCard(parent: HTMLElement, item: ItsmItem): void {

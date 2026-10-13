@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [1.3.1] — 2026-10-13
 
+### Added
+
+- **Add ITSM Item** on Project Dashboard — create Ticket / Change / Problem associations without opening Edit project (same button pattern as New note); persists via `vault.process`.
+
 ### Fixed
 
 - **ITSM section** horizontal padding matches Linked Entities on the Project Dashboard.
