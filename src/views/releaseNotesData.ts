@@ -16,6 +16,7 @@ export const RELEASE_NOTES_MARKDOWN = `
 ### Fixes & polish
 
 - **ITSM / Projects alignment** — ITSM section padding matches Linked Entities; Projects title aligns with the ID column.
+- **Work orders card padding** — Linked Entities Work orders card matches sibling entity cards.
 - **Global Dashboard chrome** — Same Task structure as project views (search, All/Filter, Table | Board | Eisenhower) via shared SubViews.
 - **New Task project picker** — \`<select>\` dropdown (no button chips); project badges and overdue highlight kept.
 
