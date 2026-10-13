@@ -305,7 +305,9 @@ export class ViewEntityModal extends Modal {
 		// Associated projects (either in stakeholder note projects or referenced in project team/stakeholders)
 		const linkedProjects = this.projects.filter((p) => {
 			const nameLower = stakeholder.name.toLowerCase();
-			const inTeam = p.team.some((t) => wikiLinkTarget(t).toLowerCase() === nameLower);
+			const inTeam = p.team.some(
+				(t) => wikiLinkTarget(t.member).toLowerCase() === nameLower,
+			);
 			const inStakeholders = p.stakeholders.some(
 				(s) => wikiLinkTarget(s).toLowerCase() === nameLower,
 			);

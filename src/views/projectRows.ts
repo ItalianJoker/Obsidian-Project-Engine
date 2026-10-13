@@ -1,12 +1,26 @@
 /**
- * Shared project-row loading for Dashboard, Overview, and Workspace.
+ * @file projectRows.ts
+ * @purpose Shared project-row loading for Dashboard, Overview, Workspace, and editors.
+ * @dependencies models/types, services/projectFlags
+ * @usedBy DashboardView, ProjectOverviewView, ProjectWorkspaceView, ProjectEditor, GlobalDashboardView
+ *
+ * // [EXTENSIBILITY]: Add new YAML → {@link ProjectRow} fields here so every
+ * // surface receives a normalised projection (no `undefined` crashes).
  */
 
 import type { App, TFile } from "obsidian";
-import type { GovernanceModel } from "../models/types";
+import type { GovernanceModel, ItsmItem, ProjectTeamAssignment } from "../models/types";
+import {
+	normalizeProjectBudgetFlags,
+	parseItsmItems,
+	parseTeamAssignments,
+} from "../services/projectFlags";
 
 /**
  * Lightweight project projection from vault frontmatter.
+ *
+ * Loaders always populate flags, team roles, and `itsmItems` with safe defaults
+ * so legacy notes missing those keys never throw at render time.
  */
 export interface ProjectRow {
 	file: TFile;
@@ -17,11 +31,24 @@ export interface ProjectRow {
 	customer: string;
 	projectType: string;
 	technologies: string[];
-	team: string[];
+	/**
+	 * Team assignments with optional per-project role.
+	 * Prefer this over string-only lists when rendering role badges.
+	 */
+	team: ProjectTeamAssignment[];
 	stakeholders: string[];
 	commesse: string[];
 	assignedDays: number;
 	actualDays: number;
+	/** Non-PM: label budget as Assigned (Days). @remarks YAML `is_non_pm` */
+	isNonPM: boolean;
+	/**
+	 * Technical intervention: T&M / no budget input.
+	 * @remarks YAML `is_technical_intervention`
+	 */
+	isTechnicalIntervention: boolean;
+	/** ITSM associations. Empty array when YAML key is missing. */
+	itsmItems: ItsmItem[];
 	projectUrl: string;
 	teamsChannelUrl: string;
 	/** Lucide icon id (YAML `icon`). */
@@ -69,6 +96,9 @@ export function resolveProjectLastUpdateIso(
 
 /**
  * Scan Markdown notes with `pe_type: project` into sorted {@link ProjectRow}s.
+ *
+ * Normalises legacy projects: missing `role`, `is_non_pm`,
+ * `is_technical_intervention`, and `itsm_items` default safely.
  */
 export function loadProjectRows(app: App): ProjectRow[] {
 	const rows: ProjectRow[] = [];
@@ -77,34 +107,52 @@ export function loadProjectRows(app: App): ProjectRow[] {
 		if (fm?.pe_type !== "project") {
 			continue;
 		}
-		rows.push({
-			file,
-			id: typeof fm.id === "string" ? fm.id : file.basename,
-			name: typeof fm.name === "string" ? fm.name : file.basename,
-			governance: fm.governance === "PRINCE2" ? "PRINCE2" : "Semplificato",
-			status: typeof fm.status === "string" ? fm.status : "backlog",
-			customer: typeof fm.customer === "string" ? fm.customer : "",
-			projectType: typeof fm.project_type === "string" ? fm.project_type : "",
-			technologies: asStringArray(fm.technologies),
-			team: asTeamNames(fm.team),
-			stakeholders: asStringArray(fm.stakeholders),
-			commesse: asStringArray(fm.work_orders?.length ? fm.work_orders : fm.commesse),
-			assignedDays: typeof fm.assigned_days === "number" ? fm.assigned_days : 0,
-			actualDays: typeof fm.actual_days === "number" ? fm.actual_days : 0,
-			projectUrl: typeof fm.project_url === "string" ? fm.project_url : "",
-			teamsChannelUrl: typeof fm.teams_channel_url === "string" ? fm.teams_channel_url : "",
-			icon: typeof fm.icon === "string" ? fm.icon : "",
-			color: typeof fm.color === "string" ? fm.color : "",
-			parentProjectId:
-				typeof fm.parent_project === "string" && fm.parent_project.trim()
-					? fm.parent_project.trim()
-					: null,
-			taskListTemplate:
-				typeof fm.task_list_template === "string" ? fm.task_list_template : "",
-			updatedAt: resolveProjectLastUpdateIso(fm.updated, file.stat?.mtime ?? 0),
-		});
+		rows.push(projectRowFromFrontmatter(file, fm as Record<string, unknown>));
 	}
 	return rows.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
+ * Build one {@link ProjectRow} from cached frontmatter (shared migration path).
+ */
+export function projectRowFromFrontmatter(
+	file: TFile,
+	fm: Record<string, unknown>,
+): ProjectRow {
+	const flags = normalizeProjectBudgetFlags(fm);
+	return {
+		file,
+		id: typeof fm.id === "string" ? fm.id : file.basename,
+		name: typeof fm.name === "string" ? fm.name : file.basename,
+		governance: fm.governance === "PRINCE2" ? "PRINCE2" : "Semplificato",
+		status: typeof fm.status === "string" ? fm.status : "backlog",
+		customer: typeof fm.customer === "string" ? fm.customer : "",
+		projectType: typeof fm.project_type === "string" ? fm.project_type : "",
+		technologies: asStringArray(fm.technologies),
+		team: parseTeamAssignments(fm.team),
+		stakeholders: asStringArray(fm.stakeholders),
+		commesse: asStringArray(
+			Array.isArray(fm.work_orders) && fm.work_orders.length
+				? fm.work_orders
+				: fm.commesse,
+		),
+		assignedDays: typeof fm.assigned_days === "number" ? fm.assigned_days : 0,
+		actualDays: typeof fm.actual_days === "number" ? fm.actual_days : 0,
+		isNonPM: flags.isNonPM,
+		isTechnicalIntervention: flags.isTechnicalIntervention,
+		itsmItems: parseItsmItems(fm.itsm_items),
+		projectUrl: typeof fm.project_url === "string" ? fm.project_url : "",
+		teamsChannelUrl: typeof fm.teams_channel_url === "string" ? fm.teams_channel_url : "",
+		icon: typeof fm.icon === "string" ? fm.icon : "",
+		color: typeof fm.color === "string" ? fm.color : "",
+		parentProjectId:
+			typeof fm.parent_project === "string" && fm.parent_project.trim()
+				? fm.parent_project.trim()
+				: null,
+		taskListTemplate:
+			typeof fm.task_list_template === "string" ? fm.task_list_template : "",
+		updatedAt: resolveProjectLastUpdateIso(fm.updated, file.stat?.mtime ?? 0),
+	};
 }
 
 /**
@@ -122,25 +170,4 @@ function asStringArray(value: unknown): string[] {
 		return [];
 	}
 	return value.filter((item): item is string => typeof item === "string");
-}
-
-/**
- * Team YAML may be a list of wikilinks or `{ member, role }` objects.
- */
-function asTeamNames(value: unknown): string[] {
-	if (!Array.isArray(value)) {
-		return [];
-	}
-	const names: string[] = [];
-	for (const item of value) {
-		if (typeof item === "string") {
-			names.push(item);
-		} else if (item && typeof item === "object" && !Array.isArray(item)) {
-			const member = (item as { member?: unknown }).member;
-			if (typeof member === "string") {
-				names.push(member);
-			}
-		}
-	}
-	return names;
 }

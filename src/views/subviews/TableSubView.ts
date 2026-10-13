@@ -679,7 +679,11 @@ export class TableSubView implements SubView {
 	}
 }
 
-function filterTasks(tasks: Task[], filters: TaskDashboardFilters): Task[] {
+/**
+ * Shared task filter used by project Dashboard tables and Global Dashboard.
+ * // [EXTENSIBILITY]: Add filter dimensions here so all task list surfaces stay in sync.
+ */
+export function filterTasks(tasks: Task[], filters: TaskDashboardFilters): Task[] {
 	const q = filters.text.trim().toLowerCase();
 	return tasks.filter((task) => {
 		if (filters.status !== "all" && task.status !== filters.status) {
@@ -691,7 +695,7 @@ function filterTasks(tasks: Task[], filters: TaskDashboardFilters): Task[] {
 		if (!q) {
 			return true;
 		}
-		const hay = `${task.id} ${task.title} ${task.status} ${task.priority} ${task.assignee ?? ""}`.toLowerCase();
+		const hay = `${task.id} ${task.title} ${task.status} ${task.priority} ${task.assignee ?? ""} ${task.projectId}`.toLowerCase();
 		return hay.includes(q);
 	});
 }

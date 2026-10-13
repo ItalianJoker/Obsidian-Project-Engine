@@ -1,5 +1,30 @@
 # Release notes — Projects Engine
 
+## 1.3.0 — Feature pack: budget modes, ITSM, Global Dashboard, note templates
+
+**EN:** Cross-project Global Dashboard, Non PM / Technical intervention budget modes, ITSM associations, team role badges, New note templates, docs + `.cursorrules`.
+
+### Features
+
+- **Global Tasks Dashboard** — All tasks across projects with shared status/priority/search filters; clickable project badge opens Overview; overdue rows highlighted; **New Task** prompts for a project then reuses the task editor.
+- **Budget modes** — **Non PM** relabels Budget (Days) → Assigned (Days) in forms and stats. **Technical intervention** hides the days input and shows **Time & Materials (No Budget)**; progress math never divides by zero.
+- **ITSM associations** — Ticket / Change / Problem list on Create/Edit project; Project Dashboard cards show ID / Title / Short description; click ID copies to clipboard.
+- **Team member roles** — Role field persists correctly and renders as a badge next to the member name on the Project Dashboard.
+- **New note templates** — Settings → **Templates folder** (default `Templates`). New project note modal offers a Template dropdown; placeholders `{{project}}`, `{{title}}`, `{{date}}` (YYYY-MM-DD).
+
+### Fixes & polish
+
+- Legacy project notes migrate missing `role` / flags / `itsm_items` safely.
+- Edit project footer is a flex row (`justify-content: flex-end; gap: 8px; margin-top: 16px`).
+- Projects header padding aligned with the portfolio grid.
+- Days inputs use `min="0"`.
+
+### Docs
+
+- README Architecture & codebase map; root `.cursorrules` for agents; CHANGELOG; expanded TSDoc on models and helpers.
+
+---
+
 ## 1.2.5 — Table edit icon enlargement & hyperlink task title styling
 
 **IT:** Nelle visualizzazioni a tabella, ingrandita l'icona di modifica del task di 1x1 pixel, azzerato il padding del titolo per allinearlo alla distanza della vista Gantt e rimosso l'overlay stile pulsante trasformandolo in un hyperlink pulito.

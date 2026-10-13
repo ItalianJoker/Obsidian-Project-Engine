@@ -1,5 +1,8 @@
 /**
- * Canonical domain types for Projects Engine.
+ * @file types.ts
+ * @purpose Canonical domain types for Projects Engine (Entity-as-a-Note).
+ * @dependencies none (pure TypeScript; no Obsidian imports)
+ * @usedBy engine/*, services/*, views/*, settings.ts, main.ts
  *
  * All entities follow the Entity-as-a-Note pattern: each record lives as a
  * Markdown file whose YAML frontmatter is the source of truth. Relationship
@@ -8,6 +11,9 @@
  *
  * TypeScript property names are camelCase. Corresponding YAML keys are
  * documented with `@remarks` and are snake_case (for example `teams_channel_url`).
+ *
+ * // [EXTENSIBILITY]: Add new `pe_type` values to {@link EntityType} and mirror
+ * // parsers in Indexer / vault I/O. Budget modes and ITSM live on {@link Project}.
  *
  * @packageDocumentation
  */
@@ -285,12 +291,41 @@ export interface TimeLog {
  * Team-member assignment on a project, with an optional per-project role.
  *
  * @remarks YAML list `team` of `{ member, role }`.
+ * Legacy notes may store bare wikilink strings; loaders normalise to this shape
+ * with `role` defaulting to missing/`""` so UI never sees `undefined` crashes.
  */
 export interface ProjectTeamAssignment {
 	/** Person note. @remarks YAML: `member` */
 	member: WikiLink;
-	/** Optional role override for this project (example: "Project Manager"). */
+	/**
+	 * Optional role override for this project (example: "Project Manager").
+	 * Persisted only when non-empty; shown as a badge next to the name on Overview.
+	 */
 	role?: string;
+}
+
+/**
+ * ITSM association kinds (ServiceNow-style Ticket / Change / Problem).
+ *
+ * @remarks YAML `itsm_items[].type`
+ */
+export type ItsmItemType = "Ticket" | "Change" | "Problem";
+
+/**
+ * One ITSM association linked to a project (ticket, change, or problem).
+ *
+ * @remarks YAML list `itsm_items` of `{ id, type, title, description }`.
+ * Missing list on legacy projects migrates to `[]`.
+ */
+export interface ItsmItem {
+	/** External / local identifier (copied to clipboard from Dashboard badges). */
+	id: string;
+	/** Association kind. */
+	type: ItsmItemType;
+	/** Short title shown on cards. */
+	title: string;
+	/** Short description (YAML `description`). */
+	description: string;
 }
 
 /**
@@ -592,11 +627,30 @@ export interface Project {
 	/**
 	 * Budgeted management effort in **days**.
 	 * UI shows the hour equivalent on the same line (`assignedDays * hoursPerManday`).
+	 * When {@link isNonPM} is true, UI labels this as “Assigned (Days)” instead of “Budget (Days)”.
+	 * When {@link isTechnicalIntervention} is true, the days input is hidden and surfaces show
+	 * “Time & Materials (No Budget)” — treat `assignedDays` as unused (typically `0`).
 	 * @remarks YAML: `assigned_days`
 	 */
 	assignedDays: number;
 	/** Actual days rolled up from task time logs. @remarks YAML: `actual_days` */
 	actualDays: number;
+	/**
+	 * Non-PM engagement: relabel budget days as assigned days in forms and stats.
+	 * @remarks YAML: `is_non_pm` (boolean). Missing → `false` on load.
+	 */
+	isNonPM: boolean;
+	/**
+	 * Technical intervention / T&M: hide budget input; no budget progress divisor.
+	 * Overrides {@link isNonPM} for input visibility.
+	 * @remarks YAML: `is_technical_intervention` (boolean). Missing → `false` on load.
+	 */
+	isTechnicalIntervention: boolean;
+	/**
+	 * ITSM associations (Ticket / Change / Problem) shown on Overview / Edit.
+	 * @remarks YAML: `itsm_items`. Missing → `[]` on load.
+	 */
+	itsmItems: ItsmItem[];
 	projectUrl: string;
 	/** Microsoft Teams channel URL or `msteams://` deep link. */
 	teamsChannelUrl: string;
@@ -981,6 +1035,14 @@ export interface ProjectsEngineSettings {
 	 */
 	taskListTemplatesFolder: string;
 	/**
+	 * Vault-relative folder of Markdown note templates for **New project note**.
+	 * Dropdown lists `.md` files here; placeholders `{{project}}`, `{{title}}`,
+	 * `{{date}}` (YYYY-MM-DD) are replaced on create. Path is normalised with
+	 * Obsidian `normalizePath()`.
+	 * @example `"Templates"`
+	 */
+	templatesFolder: string;
+	/**
 	 * Legacy / fallback global tasks folder. New tasks are written under each
 	 * project’s scaffolded Tasks subfolder; this path remains for older notes
 	 * and as a scan hint for {@link loadAllTasks}.
@@ -1091,6 +1153,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	technologiesFolder: "Projects/Entities/Technologies",
 	stakeholdersFolder: "Projects/Entities/Stakeholders",
 	taskListTemplatesFolder: "Projects/Entities/Task List Templates",
+	templatesFolder: "Templates",
 	tasksFolder: "Projects/Tasks",
 	scaffoldTasksFolder: "Tasks",
 	scaffoldInitiationFolder: "Initiation",

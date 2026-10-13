@@ -7,6 +7,20 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.3.0
+
+### Features
+
+- **Global Tasks Dashboard** — All tasks across projects; shared filters; project badge → Overview; overdue highlight; New Task with project selector.
+- **Budget modes** — Non PM → Assigned (Days); Technical intervention → Time & Materials (No Budget).
+- **ITSM associations** — Ticket / Change / Problem on Edit + Dashboard; copy ID to clipboard.
+- **Team role badges** — Roles persist and show next to member names on the Project Dashboard.
+- **Note templates** — Templates folder setting; \`{{project}}\`, \`{{title}}\`, \`{{date}}\` on New project note.
+
+### Fixes & Docs
+
+- Safe legacy migration for roles / flags / ITSM; edit footer flex layout; Projects title padding; README architecture map + \`.cursorrules\`.
+
 ## 1.2.5
 
 ### Improvements & Polish

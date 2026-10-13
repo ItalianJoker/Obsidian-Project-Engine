@@ -651,6 +651,12 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		this.addFolderSetting("Technologies", "technologiesFolder", "Projects/Entities/Technologies");
 		this.addFolderSetting("Stakeholders", "stakeholdersFolder", "Projects/Entities/Stakeholders");
 		this.addFolderSetting(
+			"Templates folder",
+			"templatesFolder",
+			"Templates",
+			"Markdown templates for New project note. Placeholders: {{project}}, {{title}}, {{date}} (YYYY-MM-DD).",
+		);
+		this.addFolderSetting(
 			"Legacy tasks folder",
 			"tasksFolder",
 			"Projects/Tasks",
@@ -800,6 +806,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			| "technologiesFolder"
 			| "stakeholdersFolder"
 			| "taskListTemplatesFolder"
+			| "templatesFolder"
 			| "tasksFolder",
 		placeholder: string,
 		desc?: string,
@@ -812,7 +819,11 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			text.inputEl.addClass("pe-touch-target");
 			text.setPlaceholder(placeholder);
 			text.setValue(this.plugin.settings[key]).onChange(async (value) => {
-				this.plugin.settings[key] = value.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+				const cleaned = value.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+				this.plugin.settings[key] =
+					key === "templatesFolder"
+						? cleaned || "Templates"
+						: cleaned;
 				await this.plugin.saveSettings();
 			});
 		});

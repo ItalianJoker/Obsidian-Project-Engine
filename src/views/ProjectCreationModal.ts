@@ -1,8 +1,9 @@
 /**
- * Touch-friendly project creation wizard.
+ * @file ProjectCreationModal.ts
+ * @purpose Touch-friendly project creation wizard (Entity-as-a-Note).
+ * @dependencies projectFlags, frontmatter, linkSync, projectId, vaultIo
+ * @usedBy main.ts (openCreationModal)
  *
- * Collects the v1.0.0 required fields, validates them, and writes an
- * Entity-as-a-Note Markdown file whose YAML stores Obsidian wikilinks.
  * Content is persisted exclusively through `vault.process` (via
  * {@link writeNoteAtomic}) to stay safe under Obsidian Sync and iCloud.
  */
@@ -14,11 +15,19 @@ import {
 	toWikiLink,
 	type EntityType,
 	type GovernanceModel,
+	type ItsmItem,
+	type ItsmItemType,
 	type ProjectTeamAssignment,
 } from "../models/types";
 import { buildGraphLinksSection, buildMarkdownNote } from "../services/frontmatter";
 import { governanceDisplayLabel } from "../services/governance";
 import { appendEntityLink, ensureEntityNote } from "../services/linkSync";
+import {
+	budgetDaysFieldLabel,
+	nextItsmId,
+	serialiseItsmItems,
+	showBudgetDaysInput,
+} from "../services/projectFlags";
 import { nextAvailableProjectId } from "../services/projectId";
 import { isValidHttpUrl, isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
 import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from "../services/vaultIo";
@@ -55,6 +64,9 @@ interface CreationForm {
 	stakeholders: StakeholderChip[];
 	workOrders: string[];
 	assignedDays: string;
+	isNonPM: boolean;
+	isTechnicalIntervention: boolean;
+	itsmItems: ItsmItem[];
 	projectUrl: string;
 	teamsChannelUrl: string;
 	icon: string;
@@ -110,6 +122,9 @@ export class ProjectCreationModal extends Modal {
 			stakeholders: [],
 			workOrders: [],
 			assignedDays: "",
+			isNonPM: false,
+			isTechnicalIntervention: false,
+			itsmItems: [],
 			projectUrl: "",
 			teamsChannelUrl: "",
 			icon: DEFAULT_PROJECT_ICON,
@@ -153,6 +168,7 @@ export class ProjectCreationModal extends Modal {
 		this.addParentProjectField();
 
 		this.addGovernanceToggle();
+		this.addProjectFlagToggles();
 
 		this.addTaskListTemplatePicker();
 
@@ -176,15 +192,8 @@ export class ProjectCreationModal extends Modal {
 		this.addTeamPicker();
 		this.addStakeholderPicker();
 		this.addWorkOrderChips();
-
-		this.addTextField(
-			"Budget (days) *",
-			`Management days (1 day = ${this.plugin.settings.hoursPerManday} h)`,
-			(value) => {
-				this.form.assignedDays = value;
-			},
-			"number",
-		);
+		this.addItsmEditor();
+		this.addBudgetDaysField();
 
 		this.addTextField("Project URL", "Issue tracker or documentation", (value) => {
 			this.form.projectUrl = value;
@@ -192,6 +201,129 @@ export class ProjectCreationModal extends Modal {
 
 		this.addTeamsField();
 		this.addActions();
+	}
+
+	private addProjectFlagToggles(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field pe-flag-toggles" });
+		wrap.createEl("label", { text: "Project flags", cls: "pe-label" });
+
+		const nonPm = wrap.createEl("label", { cls: "pe-check-label pe-touch-target" });
+		const nonPmBox = nonPm.createEl("input", { attr: { type: "checkbox" } });
+		nonPmBox.checked = this.form.isNonPM;
+		nonPm.createSpan({ text: "Non PM" });
+		nonPmBox.addEventListener("change", () => {
+			this.form.isNonPM = nonPmBox.checked;
+			this.render();
+		});
+
+		const tech = wrap.createEl("label", { cls: "pe-check-label pe-touch-target" });
+		const techBox = tech.createEl("input", { attr: { type: "checkbox" } });
+		techBox.checked = this.form.isTechnicalIntervention;
+		tech.createSpan({ text: "Technical intervention" });
+		techBox.addEventListener("change", () => {
+			this.form.isTechnicalIntervention = techBox.checked;
+			this.render();
+		});
+	}
+
+	private addBudgetDaysField(): void {
+		const flags = {
+			isNonPM: this.form.isNonPM,
+			isTechnicalIntervention: this.form.isTechnicalIntervention,
+		};
+		if (!showBudgetDaysInput(flags)) {
+			const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+			wrap.createEl("label", { text: "Effort", cls: "pe-label" });
+			wrap.createEl("p", {
+				cls: "pe-help",
+				text: "Time & Materials (No Budget) — days input is disabled for technical interventions.",
+			});
+			return;
+		}
+		this.addTextField(
+			budgetDaysFieldLabel(flags, true),
+			`Management days (1 day = ${this.plugin.settings.hoursPerManday} h)`,
+			(value) => {
+				this.form.assignedDays = value;
+			},
+			"number",
+			"0",
+		);
+	}
+
+	private addItsmEditor(): void {
+		const wrap = this.contentEl.createDiv({ cls: "pe-field pe-itsm-editor" });
+		wrap.createEl("label", { text: "ITSM associations", cls: "pe-label" });
+		const list = wrap.createDiv({ cls: "pe-itsm-list" });
+		const render = (): void => {
+			list.empty();
+			this.form.itsmItems.forEach((item, index) => {
+				const card = list.createDiv({ cls: "pe-itsm-card" });
+				const typeSelect = card.createEl("select", {
+					cls: "pe-input pe-touch-target",
+					attr: { "aria-label": "ITSM type" },
+				});
+				for (const type of ["Ticket", "Change", "Problem"] as ItsmItemType[]) {
+					typeSelect.createEl("option", { text: type, attr: { value: type } });
+				}
+				typeSelect.value = item.type;
+				typeSelect.addEventListener("change", () => {
+					const current = this.form.itsmItems[index];
+					if (current) current.type = typeSelect.value as ItsmItemType;
+				});
+				const idInput = card.createEl("input", {
+					cls: "pe-input pe-touch-target",
+					attr: { type: "text", placeholder: "ID" },
+				});
+				idInput.value = item.id;
+				idInput.addEventListener("input", () => {
+					const current = this.form.itsmItems[index];
+					if (current) current.id = idInput.value;
+				});
+				const titleInput = card.createEl("input", {
+					cls: "pe-input pe-touch-target",
+					attr: { type: "text", placeholder: "Title" },
+				});
+				titleInput.value = item.title;
+				titleInput.addEventListener("input", () => {
+					const current = this.form.itsmItems[index];
+					if (current) current.title = titleInput.value;
+				});
+				const descInput = card.createEl("input", {
+					cls: "pe-input pe-touch-target",
+					attr: { type: "text", placeholder: "Short description" },
+				});
+				descInput.value = item.description;
+				descInput.addEventListener("input", () => {
+					const current = this.form.itsmItems[index];
+					if (current) current.description = descInput.value;
+				});
+				const remove = card.createEl("button", {
+					text: "Remove",
+					cls: "pe-chip-remove pe-touch-target",
+					attr: { type: "button" },
+				});
+				remove.addEventListener("click", () => {
+					this.form.itsmItems.splice(index, 1);
+					render();
+				});
+			});
+		};
+		const addBtn = wrap.createEl("button", {
+			text: "+ Add ITSM item",
+			cls: "pe-secondary pe-touch-target",
+			attr: { type: "button" },
+		});
+		addBtn.addEventListener("click", () => {
+			this.form.itsmItems.push({
+				id: nextItsmId(this.form.itsmItems),
+				type: "Ticket",
+				title: "",
+				description: "",
+			});
+			render();
+		});
+		render();
 	}
 
 	/**
@@ -274,12 +406,21 @@ export class ProjectCreationModal extends Modal {
 		placeholder: string,
 		onChange: (value: string) => void,
 		inputType: string = "text",
+		min?: string,
 	): HTMLInputElement {
 		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
 		wrap.createEl("label", { text: label, cls: "pe-label" });
+		const attr: Record<string, string> = {
+			type: inputType,
+			placeholder,
+			spellcheck: "false",
+		};
+		if (inputType === "number" && min !== undefined) {
+			attr.min = min;
+		}
 		const input = wrap.createEl("input", {
 			cls: "pe-input pe-touch-target",
-			attr: { type: inputType, placeholder, spellcheck: "false" },
+			attr,
 		});
 		input.addEventListener("input", () => onChange(input.value));
 		return input;
@@ -669,7 +810,7 @@ export class ProjectCreationModal extends Modal {
 	}
 
 	private addActions(): void {
-		const row = this.contentEl.createDiv({ cls: "pe-actions" });
+		const row = this.contentEl.createDiv({ cls: "pe-actions pe-form-footer" });
 		const cancel = row.createEl("button", {
 			text: "Cancel",
 			cls: "pe-secondary pe-touch-target",
@@ -767,9 +908,15 @@ export class ProjectCreationModal extends Modal {
 		if (!this.form.projectType.trim()) {
 			errors.push("Project type is required");
 		}
-		const days = Number.parseFloat(this.form.assignedDays);
-		if (!Number.isFinite(days) || days < 0) {
-			errors.push("Budget (days) must be a number greater than or equal to 0");
+		const flags = {
+			isNonPM: this.form.isNonPM,
+			isTechnicalIntervention: this.form.isTechnicalIntervention,
+		};
+		if (showBudgetDaysInput(flags)) {
+			const days = Number.parseFloat(this.form.assignedDays);
+			if (!Number.isFinite(days) || days < 0) {
+				errors.push(`${budgetDaysFieldLabel(flags)} must be a number ≥ 0`);
+			}
 		}
 		if (this.form.projectUrl.trim() && !isValidHttpUrl(this.form.projectUrl)) {
 			errors.push("Project URL must be a valid http(s) URL");
@@ -841,7 +988,21 @@ export class ProjectCreationModal extends Modal {
 			role: member.role.trim() || undefined,
 		}));
 		const stakeholders = this.form.stakeholders.map((item) => toWikiLink(item.name));
-		const assignedDays = Number.parseFloat(this.form.assignedDays);
+		const flags = {
+			isNonPM: this.form.isNonPM,
+			isTechnicalIntervention: this.form.isTechnicalIntervention,
+		};
+		const assignedDays = showBudgetDaysInput(flags)
+			? Number.parseFloat(this.form.assignedDays)
+			: 0;
+		const itsmItems = this.form.itsmItems
+			.map((item) => ({
+				id: item.id.trim() || nextItsmId(this.form.itsmItems),
+				type: item.type,
+				title: item.title.trim(),
+				description: item.description.trim(),
+			}))
+			.filter((item) => item.id || item.title);
 
 		const frontmatter: Record<string, unknown> = {
 			pe_type: "project",
@@ -864,8 +1025,11 @@ export class ProjectCreationModal extends Modal {
 			}),
 			stakeholders,
 			work_orders: this.form.workOrders,
-			assigned_days: assignedDays,
+			assigned_days: Number.isFinite(assignedDays) ? assignedDays : 0,
 			actual_days: 0,
+			is_non_pm: this.form.isNonPM,
+			is_technical_intervention: this.form.isTechnicalIntervention,
+			itsm_items: serialiseItsmItems(itsmItems),
 			project_url: this.form.projectUrl.trim(),
 			teams_channel_url: this.form.teamsChannelUrl.trim(),
 			created: now,

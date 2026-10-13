@@ -229,3 +229,8 @@ export function setIcon(_parent: HTMLElement, _iconId: string): void {}
 export function getIcon(_iconId: string): null {
 	return null;
 }
+
+/** Obsidian path normaliser stub (collapse `\` / duplicate `/`). */
+export function normalizePath(path: string): string {
+	return path.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/\/+$/g, "");
+}
