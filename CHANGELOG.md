@@ -3,6 +3,18 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.1] — 2026-10-13
+
+### Fixed
+
+- **ITSM section** horizontal padding matches Linked Entities on the Project Dashboard.
+- **Projects** portfolio title aligns with the ID column text.
+- **Global Dashboard New Task** project picker is a `<select>` dropdown (no button chips).
+
+### Changed
+
+- **Global Dashboard** uses the same Task chrome as the single-project Task section (search, All/Filter, Table | Board | Eisenhower) via shared SubViews; project badges and overdue highlight retained.
+
 ## [1.3.0] — 2026-10-13
 
 ### Added

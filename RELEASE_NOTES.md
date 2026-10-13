@@ -1,5 +1,19 @@
 # Release notes — Projects Engine
 
+## 1.3.1 — Global Dashboard UX + ITSM/Projects alignment
+
+**EN:** Align ITSM and Projects title padding; Global Dashboard matches project Task chrome (Table / Board / Eisenhower) with a dropdown project picker for New Task.
+
+### Fixes & polish
+
+- **ITSM section** on Project Dashboard uses the same horizontal padding as Linked Entities.
+- **Projects** portfolio title left edge aligns with the ID column.
+- **Global Dashboard** reuses project Task chrome (search, All/Filter, view switchers **Table | Board | Eisenhower**) and shared SubViews — no duplicated filter/table logic.
+- **New Task** project selector is a `<select>` dropdown (Continue / Cancel), not button chips.
+- Project name badges and overdue highlighting remain on global tasks.
+
+---
+
 ## 1.3.0 — Feature pack: budget modes, ITSM, Global Dashboard, note templates
 
 **EN:** Cross-project Global Dashboard, Non PM / Technical intervention budget modes, ITSM associations, team role badges, New note templates, docs + `.cursorrules`.

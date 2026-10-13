@@ -7,6 +7,14 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.3.1
+
+### Fixes & polish
+
+- **ITSM / Projects alignment** — ITSM section padding matches Linked Entities; Projects title aligns with the ID column.
+- **Global Dashboard chrome** — Same Task structure as project views (search, All/Filter, Table | Board | Eisenhower) via shared SubViews.
+- **New Task project picker** — \`<select>\` dropdown (no button chips); project badges and overdue highlight kept.
+
 ## 1.3.0
 
 ### Features
