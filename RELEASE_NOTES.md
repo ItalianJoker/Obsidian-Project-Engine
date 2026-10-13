@@ -12,6 +12,7 @@
 
 - **ITSM section** on Project Dashboard uses the same horizontal padding as Linked Entities.
 - **Projects** portfolio title left edge aligns with the ID column.
+- **Work orders** Linked Entities card uses the same padding as Customer / Project type / Technologies / Team / Stakeholders.
 - **Global Dashboard** reuses project Task chrome (search, All/Filter, view switchers **Table | Board | Eisenhower**) and shared SubViews — no duplicated filter/table logic.
 - **New Task** project selector is a `<select>` dropdown (Continue / Cancel), not button chips.
 - Project name badges and overdue highlighting remain on global tasks.

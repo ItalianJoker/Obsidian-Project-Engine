@@ -1506,6 +1506,26 @@
 	border-radius: var(--radius-s);
 	background: var(--background-secondary);
 	border: 1px solid var(--pe-ghost-border);
+	box-sizing: border-box;
+}
+
+/*
+ * Linked Entities cards must share identical inset padding (Customer, Project type,
+ * Technologies, Team, Stakeholders, Work orders, …). Themes sometimes zero
+ * padding on :last-child / wrapped grid items — keep Work orders in lockstep.
+ */
+.pe-overview-entities .pe-entity-grid > .pe-entity-block,
+.pe-overview-entities .pe-entity-grid > .pe-entity-block:last-child {
+	padding-top: 8px;
+	padding-right: 10px;
+	padding-bottom: 8px;
+	padding-left: 10px;
+	box-sizing: border-box;
+}
+
+.pe-overview-entities .pe-entity-grid > .pe-entity-block > h4 {
+	margin: 0 0 6px;
+	padding: 0;
 }
 
 .pe-entity-block ul {

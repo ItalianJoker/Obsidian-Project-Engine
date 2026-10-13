@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **ITSM section** horizontal padding matches Linked Entities on the Project Dashboard.
 - **Projects** portfolio title aligns with the ID column text.
+- **Linked Entities → Work orders** card padding matches Customer / Project type / Technologies / Team / Stakeholders.
 - **Global Dashboard New Task** project picker is a `<select>` dropdown (no button chips).
 
 ### Changed
