@@ -21,8 +21,7 @@
 }
 
 .pe-modal-lead,
-.pe-help,
-.projects-engine-settings .setting-item-description {
+.pe-help {
 	color: var(--text-muted);
 	font-size: 0.9em;
 	margin: 0;
@@ -2816,6 +2815,66 @@
 	margin: 0 0 16px;
 }
 
+/**
+ * Setting rows — vertically align the name with controls (inputs / selects /
+ * toggles). Obsidian defaults to centering the control against the full info
+ * column (name + description), which leaves titles top-left while controls
+ * float mid-row (Custom field schemas, Select options, etc.).
+ *
+ * Scoped to `.projects-engine-settings` so core Obsidian settings are untouched.
+ */
+.projects-engine-settings .setting-item {
+	align-items: flex-start;
+	padding-top: 14px;
+	padding-bottom: 16px;
+}
+
+.projects-engine-settings .setting-item-info {
+	/* Keep the label column from colliding with the control cluster. */
+	margin-right: 12px;
+	padding-bottom: 2px;
+}
+
+.projects-engine-settings .setting-item-name {
+	line-height: 1.35;
+	/* Match the first line of the name to the vertical center of 44px controls. */
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+}
+
+.projects-engine-settings .setting-item .setting-item-description {
+	color: var(--text-muted);
+	font-size: 0.9em;
+	line-height: 1.45;
+	margin: 6px 0 0;
+	/* Extra air under multi-line desc (e.g. Select options) vs the row border. */
+	padding-bottom: 8px;
+}
+
+.projects-engine-settings .setting-item-description {
+	color: var(--text-muted);
+	font-size: 0.9em;
+	line-height: 1.45;
+}
+
+/* Section lead paragraphs that reuse the description class (outside a row). */
+.projects-engine-settings > .setting-item-description,
+.projects-engine-settings h3 + .setting-item-description,
+.projects-engine-settings h4 + .setting-item-description {
+	margin: 0 0 14px;
+	padding-bottom: 0;
+}
+
+.projects-engine-settings .setting-item-control {
+	display: flex;
+	align-items: center;
+	/* Sit on the same band as the name (not the mid-point of name+description). */
+	min-height: 44px;
+	padding-top: 0;
+	flex-shrink: 0;
+}
+
 .pe-settings-actions--flat {
 	display: flex;
 	flex-wrap: wrap;
@@ -2832,6 +2891,7 @@
 	background: transparent;
 	border: none;
 	padding: 0;
+	align-items: center;
 }
 
 .pe-field-row {
