@@ -8,6 +8,8 @@ import {
 } from "../src/services/noteTemplates";
 import {
 	budgetDaysFieldLabel,
+	DEFAULT_PM_CREATE_ROLE,
+	defaultPmCreateRole,
 	formatProjectBudgetDisplay,
 	normalizeProjectBudgetFlags,
 	parseItsmItems,
@@ -15,6 +17,7 @@ import {
 	safeBudgetProgressPercent,
 	seedDefaultPmTeam,
 	showBudgetDaysInput,
+	syncDefaultPmTeamRole,
 } from "../src/services/projectFlags";
 
 describe("normalizeProjectBudgetFlags", () => {
@@ -94,7 +97,14 @@ describe("parseTeamAssignments / parseItsmItems", () => {
 	});
 });
 
-describe("seedDefaultPmTeam", () => {
+describe("defaultPmCreateRole / seedDefaultPmTeam / syncDefaultPmTeamRole", () => {
+	it("uses PM when Non PM is unchecked and Settings role when checked", () => {
+		expect(defaultPmCreateRole(false, "Contributor")).toBe(DEFAULT_PM_CREATE_ROLE);
+		expect(defaultPmCreateRole(true, "Contributor")).toBe("Contributor");
+		expect(defaultPmCreateRole(true, "  Lead  ")).toBe("Lead");
+		expect(defaultPmCreateRole(true, "")).toBe("");
+	});
+
 	it("returns existing unchanged when Default PM is unset", () => {
 		expect(seedDefaultPmTeam([], "")).toEqual([]);
 		expect(seedDefaultPmTeam([{ name: "Ada", role: "Dev" }], "  ")).toEqual([
@@ -102,7 +112,7 @@ describe("seedDefaultPmTeam", () => {
 		]);
 	});
 
-	it("prepends Default PM with role PM", () => {
+	it("prepends Default PM with role PM by default", () => {
 		expect(seedDefaultPmTeam([], "[[Luca]]")).toEqual([{ name: "Luca", role: "PM" }]);
 		expect(seedDefaultPmTeam([{ name: "Ada", role: "Dev" }], "Luca")).toEqual([
 			{ name: "Luca", role: "PM" },
@@ -110,10 +120,33 @@ describe("seedDefaultPmTeam", () => {
 		]);
 	});
 
-	it("does not duplicate or overwrite an existing member", () => {
+	it("accepts a custom seed role (Non PM create path)", () => {
+		expect(seedDefaultPmTeam([], "Luca", "Contributor")).toEqual([
+			{ name: "Luca", role: "Contributor" },
+		]);
+	});
+
+	it("does not duplicate or overwrite an existing member on seed", () => {
 		expect(seedDefaultPmTeam([{ name: "Luca", role: "Lead" }], "Luca")).toEqual([
 			{ name: "Luca", role: "Lead" },
 		]);
+	});
+
+	it("syncs only the Default PM member role on Non PM toggle", () => {
+		const team = [
+			{ name: "Luca", role: "PM" },
+			{ name: "Ada", role: "Dev" },
+		];
+		expect(syncDefaultPmTeamRole(team, "[[Luca]]", "Contributor")).toEqual([
+			{ name: "Luca", role: "Contributor" },
+			{ name: "Ada", role: "Dev" },
+		]);
+		expect(syncDefaultPmTeamRole(team, "Luca", "PM")).toEqual([
+			{ name: "Luca", role: "PM" },
+			{ name: "Ada", role: "Dev" },
+		]);
+		expect(syncDefaultPmTeamRole(team, "", "Contributor")).toEqual(team);
+		expect(syncDefaultPmTeamRole(team, "Missing", "Contributor")).toEqual(team);
 	});
 });
 

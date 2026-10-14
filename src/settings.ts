@@ -87,7 +87,8 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	}
 
 	/**
-	 * Default PM — Team Member auto-added with role “PM” on new project creation.
+	 * Default PM — Team Member auto-added on new project creation.
+	 * Role is “PM” unless Non PM is checked at create (then Settings “Default role for Non PM”).
 	 */
 	private renderDefaultPm(): void {
 		const { containerEl } = this;
@@ -100,7 +101,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Default PM")
 			.setDesc(
-				"Team Member automatically added to new projects with role “PM”. Leave unset for no auto-add.",
+				"Team Member automatically added to new projects with role “PM” (or the Non PM default role when that flag is checked at create). Leave unset for no auto-add.",
 			)
 			.addDropdown((dropdown) => {
 				dropdown.addOption("", "— None —");
@@ -117,6 +118,22 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				});
 				dropdown.selectEl.addClass("pe-touch-target");
+			});
+
+		new Setting(containerEl)
+			.setName("Default role for Non PM")
+			.setDesc(
+				"Role applied to the Default PM Team Member when Non PM is checked during Create project only. Leave empty for no role.",
+			)
+			.addText((text) => {
+				text
+					.setPlaceholder("e.g. Contributor")
+					.setValue(this.plugin.settings.defaultNonPmRole)
+					.onChange(async (value) => {
+						this.plugin.settings.defaultNonPmRole = value.trim();
+						await this.plugin.saveSettings();
+					});
+				text.inputEl.addClass("pe-touch-target");
 			});
 	}
 

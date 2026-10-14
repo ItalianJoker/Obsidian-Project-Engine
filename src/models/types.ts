@@ -1076,10 +1076,17 @@ export interface ProjectsEngineSettings {
 	hoursPerManday: number;
 	/**
 	 * Default Project Manager (Team Member basename or wikilink target).
-	 * When set, **Create project** seeds the team with this member and role `"PM"`.
+	 * When set, **Create project** seeds the team with this member and role `"PM"`
+	 * (or {@link defaultNonPmRole} when Non PM is checked at create).
 	 * Empty string = unset (no auto-add). Migrates safely when missing from `data.json`.
 	 */
 	defaultPm: string;
+	/**
+	 * Role applied to the auto-added {@link defaultPm} Team Member when **Non PM**
+	 * is checked during **Create project** only. Edit-project is unchanged.
+	 * Empty string = empty role. Migrates safely when missing from `data.json`.
+	 */
+	defaultNonPmRole: string;
 	/**
 	 * Debounce for the in-memory entity indexer and graph-adjacent recalculation.
 	 * Keeps the UI thread responsive on mobile.
@@ -1168,6 +1175,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	showPrince2RegisterWidgets: true,
 	hoursPerManday: 8,
 	defaultPm: "",
+	defaultNonPmRole: "",
 	indexerDebounceMs: 250,
 	projectSurface: "overview",
 	taskEditorSurface: "modal",

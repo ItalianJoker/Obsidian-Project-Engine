@@ -374,6 +374,10 @@ export default class ProjectsEnginePlugin extends Plugin {
 		}
 		this.settings.defaultPm =
 			typeof this.settings.defaultPm === "string" ? this.settings.defaultPm.trim() : "";
+		this.settings.defaultNonPmRole =
+			typeof this.settings.defaultNonPmRole === "string"
+				? this.settings.defaultNonPmRole.trim()
+				: "";
 		const dateFormats = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
 		if (!dateFormats.has(this.settings.dateFormat)) {
 			this.settings.dateFormat = "DD/MM/YYYY";
