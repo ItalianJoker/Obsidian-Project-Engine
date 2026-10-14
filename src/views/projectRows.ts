@@ -9,7 +9,13 @@
  */
 
 import type { App, TFile } from "obsidian";
-import type { GovernanceModel, ItsmItem, ProjectTeamAssignment } from "../models/types";
+import type {
+	GovernanceModel,
+	ItsmItem,
+	ProjectTeamAssignment,
+	ProjectsEngineSettings,
+} from "../models/types";
+import { isProjectArchived } from "../services/projectArchive";
 import {
 	normalizeProjectBudgetFlags,
 	parseItsmItems,
@@ -69,6 +75,11 @@ export interface ProjectRow {
 	 * fall back to the project note file mtime when that field is missing.
 	 */
 	updatedAt: string;
+	/**
+	 * Archived flag from YAML `archived` (missing → `false`).
+	 * Active portfolio lists also treat notes under the archived-projects folder as archived.
+	 */
+	archived: boolean;
 }
 
 /**
@@ -152,6 +163,7 @@ export function projectRowFromFrontmatter(
 		taskListTemplate:
 			typeof fm.task_list_template === "string" ? fm.task_list_template : "",
 		updatedAt: resolveProjectLastUpdateIso(fm.updated, file.stat?.mtime ?? 0),
+		archived: fm.archived === true,
 	};
 }
 
@@ -163,6 +175,22 @@ export function findProjectRow(
 	idOrPath: string,
 ): ProjectRow | undefined {
 	return rows.find((row) => row.id === idOrPath || row.file.path === idOrPath);
+}
+
+/**
+ * Active (non-archived) projects for portfolio / Global Dashboard lists.
+ */
+export function loadActiveProjectRows(
+	app: App,
+	settings: ProjectsEngineSettings,
+): ProjectRow[] {
+	return loadProjectRows(app).filter(
+		(row) =>
+			!isProjectArchived(
+				{ archived: row.archived, filePath: row.file.path },
+				settings,
+			),
+	);
 }
 
 function asStringArray(value: unknown): string[] {

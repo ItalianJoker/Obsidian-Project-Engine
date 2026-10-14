@@ -280,6 +280,7 @@ export class ProjectWorkspaceView extends ItemView {
 			onAddTask: () => this.openAddTask(),
 			onOpenSettings: () => {
 				void openProjectEditor(this.plugin, project, {
+					leaf: this.leaf,
 					onSaved: () => void this.refresh(),
 				});
 			},

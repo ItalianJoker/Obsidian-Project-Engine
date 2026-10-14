@@ -238,6 +238,12 @@ function inferTypeFromFolder(path: string, settings: ProjectsEngineSettings): En
 		return "task-list-template";
 	}
 	if (folderContains(normalised, settings.projectsFolder)) return "project";
+	if (
+		settings.archivedProjectsFolder &&
+		folderContains(normalised, settings.archivedProjectsFolder)
+	) {
+		return "project";
+	}
 	return "";
 }
 

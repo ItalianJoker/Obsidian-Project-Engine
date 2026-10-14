@@ -670,6 +670,12 @@ export interface Project {
 	 * @remarks YAML: `parent_project` (project id string, not a wikilink)
 	 */
 	parentProjectId: string | null;
+	/**
+	 * When true the project is archived (hidden from active portfolio lists).
+	 * @remarks YAML: `archived`. Missing → `false` on load. Also implied when the
+	 * note lives under {@link ProjectsEngineSettings.archivedProjectsFolder}.
+	 */
+	archived?: boolean;
 	stages: Prince2Stage[];
 	workPackages: WorkPackage[];
 	startDate?: IsoDate;
@@ -1021,8 +1027,15 @@ export interface ProjectsEngineSettings {
 	/**
 	 * Vault-relative projects root (example: `Projects`).
 	 * Project folders and default Entity catalogues live under this root.
+	 * @remarks Settings label: “Projects folder”. Normalised with Obsidian `normalizePath()`.
 	 */
 	projectsFolder: string;
+	/**
+	 * Vault-relative folder for archived project containment trees.
+	 * @remarks Settings label: “Archived projects folder”. Default `Projects_Archived`.
+	 * Normalised with Obsidian `normalizePath()`. Missing → default on load.
+	 */
+	archivedProjectsFolder: string;
 	customersFolder: string;
 	teamMembersFolder: string;
 	projectTypesFolder: string;
@@ -1160,6 +1173,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	projectIdPattern: "PRJ-YYYY-###",
 	projectIdCounter: 1,
 	projectsFolder: "Projects",
+	archivedProjectsFolder: "Projects_Archived",
 	customersFolder: "Projects/Entities/Customers",
 	teamMembersFolder: "Projects/Entities/Team Members",
 	projectTypesFolder: "Projects/Entities/Project Types",

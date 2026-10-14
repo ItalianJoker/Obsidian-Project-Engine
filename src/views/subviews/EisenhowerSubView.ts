@@ -28,7 +28,9 @@ import { PersistEisenhowerCommand } from "../../services/taskCommands";
 import { EmptyState } from "../../ui/EmptyState";
 import { findProjectRow, type ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
+import { taskNestingDepth } from "../../services/taskTree";
 import { openTaskEditor } from "../TaskEditor";
+import { mountTaskNotesToggle } from "../taskNotesControls";
 import { mountTaskTitleControls } from "../taskTitleControls";
 
 export type { EisenhowerQuadrantId };
@@ -106,11 +108,10 @@ export class EisenhowerSubView implements SubView {
 			? tasks.filter((task) => task.projectId === project.id)
 			: tasks;
 		const projectTasks = scopedPool.filter((task) => {
-			if (task.parentId != null) {
-				return false;
-			}
 			if (!q) return true;
-			return `${task.title} ${task.priority} ${task.projectId}`.toLowerCase().includes(q);
+			return `${task.title} ${task.priority} ${task.notes ?? ""} ${task.projectId}`
+				.toLowerCase()
+				.includes(q);
 		});
 
 		if (scopedPool.length === 0) {
@@ -124,6 +125,7 @@ export class EisenhowerSubView implements SubView {
 		const quadrants = buildEisenhowerQuadrants(plugin.settings.eisenhowerLabels);
 		const matrix = container.createDiv({ cls: "pe-eisenhower" });
 		const byId = new Map(projectTasks.map((task) => [task.id, task] as const));
+		const depthLookup = new Map(scopedPool.map((task) => [task.id, task] as const));
 		const enableHtml5 = typeof window !== "undefined" && window.innerWidth >= 720;
 		const dateFormat = plugin.settings.dateFormat;
 		const timeFormat = plugin.settings.timeFormat;
@@ -186,6 +188,13 @@ export class EisenhowerSubView implements SubView {
 						void plugin.router.openOverview(taskProject.file.path);
 					});
 				}
+				const depth = taskNestingDepth(task, depthLookup);
+				if (depth > 0) {
+					card.addClass("pe-eisenhower-card--subtask");
+					card.addClass(`pe-task-depth-${Math.min(depth, 6)}`);
+					card.style.setProperty("--pe-tree-depth", String(depth));
+				}
+
 				const titleWrap = card.createDiv({ cls: "pe-eisenhower-card-head" });
 				mountTaskTitleControls(titleWrap, {
 					plugin,
@@ -194,6 +203,7 @@ export class EisenhowerSubView implements SubView {
 					titleClass: "pe-eisenhower-card-title",
 					titleAsButton: false,
 				});
+				mountTaskNotesToggle(titleWrap, task);
 
 				const foot = card.createDiv({ cls: "pe-eisenhower-card-foot" });
 				const dueIso = effectiveDue(task);

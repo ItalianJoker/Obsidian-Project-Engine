@@ -7,6 +7,20 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.0
+
+### Added
+
+- **Task notes** — optional descriptive notes on Create/Edit; expandable in-place preview on Table, Board, Eisenhower, and Gantt.
+- **Subtask hierarchy** — indentation, tree guide, and smaller type for nested tasks across all task views (including Global Dashboard).
+- **Archive project** — Settings **Archived projects folder** (default \`Projects_Archived\`); Dashboard action moves the project folder and hides it from active lists.
+- **Sync & Rebuild Note Metadata** — Settings button; notice \`Metadata synchronization complete: X files checked\`.
+
+### Changed
+
+- **Edit project** opens/saves in the current leaf (Project Dashboard refreshes in place; no new tab).
+- Folder settings use Obsidian \`normalizePath()\`; label **Projects folder**.
+
 ## 1.3.4
 
 ### Added

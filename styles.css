@@ -3778,3 +3778,135 @@
 	display: block;
 	margin-bottom: 6px;
 }
+
+/* ---------------------------------------------------------------------------
+ * v1.4.0 — Subtask hierarchy + in-place notes preview
+ * --------------------------------------------------------------------------- */
+
+.pe-task-row--subtask .pe-task-title,
+.pe-task-tree-inner--subtask .pe-task-title {
+	font-size: 0.92em;
+	font-weight: 450;
+	color: var(--text-muted);
+}
+
+.pe-task-row--subtask .pe-task-status-select,
+.pe-task-row--subtask .pe-task-priority-select,
+.pe-task-row--subtask .pe-due-pill,
+.pe-task-row--subtask .pe-scheduled-pill {
+	font-size: 0.85em;
+	transform: scale(0.96);
+	transform-origin: left center;
+}
+
+.pe-task-tree-inner {
+	padding-left: calc(var(--pe-tree-depth, 0) * 18px);
+}
+
+.pe-task-tree-inner--guide {
+	border-left: 2px solid color-mix(in srgb, var(--text-muted) 35%, transparent);
+	margin-left: 4px;
+	padding-left: calc(var(--pe-tree-depth, 0) * 18px + 8px);
+}
+
+.pe-task-notes-wrap {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+	flex-shrink: 0;
+	min-width: 0;
+}
+
+.pe-task-notes-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	box-shadow: none;
+}
+
+.pe-task-notes-toggle:hover,
+.pe-task-notes-toggle:focus-visible,
+.pe-task-notes-toggle.is-open {
+	color: var(--interactive-accent);
+	background: var(--background-modifier-hover);
+}
+
+.pe-task-notes-toggle svg {
+	width: 14px;
+	height: 14px;
+}
+
+.pe-task-notes-preview {
+	width: 100%;
+	max-width: 28rem;
+	padding: 6px 8px;
+	margin: 0;
+	border-radius: var(--radius-s);
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	box-sizing: border-box;
+}
+
+.pe-task-notes-preview-body {
+	margin: 0;
+	font-size: 0.85em;
+	line-height: 1.35;
+	color: var(--text-muted);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.pe-task-notes-field .pe-task-notes-input {
+	width: 100%;
+	min-height: 5.5rem;
+	resize: vertical;
+	font-family: inherit;
+	line-height: 1.4;
+}
+
+.pe-kanban-card--subtask,
+.pe-eisenhower-card--subtask {
+	margin-left: calc(var(--pe-tree-depth, 1) * 12px);
+	padding: 8px 10px;
+	border-left: 2px solid color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+	font-size: 0.9em;
+	opacity: 0.96;
+}
+
+.pe-kanban-card--subtask .pe-kanban-card-title,
+.pe-eisenhower-card--subtask .pe-eisenhower-card-title {
+	font-size: 0.95em;
+	font-weight: 450;
+}
+
+.pe-kanban-card-head,
+.pe-eisenhower-card-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.pe-gantt-label {
+	padding-left: calc(8px + var(--pe-tree-depth, 0) * 16px);
+	box-sizing: border-box;
+}
+
+.pe-gantt-label--subtask .pe-gantt-label-text,
+.pe-gantt-label--subtask .pe-task-title {
+	font-size: 0.9em;
+	color: var(--text-muted);
+}
+
+.pe-gantt-row--subtask .pe-gantt-bar {
+	opacity: 0.88;
+}

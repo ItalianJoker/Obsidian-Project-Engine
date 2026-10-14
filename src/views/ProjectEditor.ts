@@ -53,7 +53,7 @@ import { isValidHttpUrl, isValidTeamsChannelUrl } from "../services/urls";
 import { joinVaultPath, sanitiseNoteBasename } from "../services/vaultIo";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { mountIconPicker } from "../ui/IconPicker";
-import { loadProjectRows, type ProjectRow } from "./projectRows";
+import { loadActiveProjectRows, type ProjectRow } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
 import { openTaskListTemplateModal } from "./TaskListTemplateModal";
 
@@ -495,7 +495,7 @@ export class ProjectEditor {
 			attr: { "aria-label": "Parent project" },
 		});
 		select.createEl("option", { text: "— None —", attr: { value: "" } });
-		for (const row of loadProjectRows(this.app)) {
+		for (const row of loadActiveProjectRows(this.app, this.plugin.settings)) {
 			if (row.id === this.project.id) continue;
 			select.createEl("option", {
 				text: `${row.id} — ${row.name}`,

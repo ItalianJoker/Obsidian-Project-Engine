@@ -15,6 +15,7 @@ import { CommandStack, Scheduler } from "./engine/Scheduler";
 import { EntityIndexer } from "./engine/Indexer";
 import { DEFAULT_SETTINGS, type CustomFieldEntityKind, type ProjectsEngineSettings } from "./models/types";
 import { ensureDoneTaskStatus, mergeEisenhowerLabels } from "./models/types";
+import { normalizeVaultFolder } from "./services/folderPaths";
 import { splitFrontmatter } from "./services/frontmatter";
 import { scaffoldProjectTree } from "./services/projectScaffold";
 import { applyAssignedTaskListTemplate } from "./services/taskListTemplates";
@@ -424,6 +425,44 @@ export default class ProjectsEnginePlugin extends Plugin {
 			"Projects/Entities/Task List Templates";
 		this.settings.templatesFolder = normalizeTemplatesFolder(
 			this.settings.templatesFolder || "Templates",
+		);
+		this.settings.projectsFolder = normalizeVaultFolder(
+			this.settings.projectsFolder || "Projects",
+			"Projects",
+		);
+		this.settings.archivedProjectsFolder = normalizeVaultFolder(
+			typeof this.settings.archivedProjectsFolder === "string"
+				? this.settings.archivedProjectsFolder
+				: "Projects_Archived",
+			"Projects_Archived",
+		);
+		this.settings.customersFolder = normalizeVaultFolder(
+			this.settings.customersFolder || "Projects/Entities/Customers",
+			"Projects/Entities/Customers",
+		);
+		this.settings.teamMembersFolder = normalizeVaultFolder(
+			this.settings.teamMembersFolder || "Projects/Entities/Team Members",
+			"Projects/Entities/Team Members",
+		);
+		this.settings.projectTypesFolder = normalizeVaultFolder(
+			this.settings.projectTypesFolder || "Projects/Entities/Project Types",
+			"Projects/Entities/Project Types",
+		);
+		this.settings.technologiesFolder = normalizeVaultFolder(
+			this.settings.technologiesFolder || "Projects/Entities/Technologies",
+			"Projects/Entities/Technologies",
+		);
+		this.settings.stakeholdersFolder = normalizeVaultFolder(
+			this.settings.stakeholdersFolder || "Projects/Entities/Stakeholders",
+			"Projects/Entities/Stakeholders",
+		);
+		this.settings.taskListTemplatesFolder = normalizeVaultFolder(
+			this.settings.taskListTemplatesFolder,
+			"Projects/Entities/Task List Templates",
+		);
+		this.settings.tasksFolder = normalizeVaultFolder(
+			this.settings.tasksFolder || "Projects/Tasks",
+			"Projects/Tasks",
 		);
 	}
 

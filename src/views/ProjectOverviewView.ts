@@ -38,6 +38,10 @@ import {
 } from "../services/projectDocumentNote";
 import { patchProjectFrontmatter, setProjectStatus } from "../services/projectIo";
 import {
+	archiveProjectFolder,
+	notifyProjectArchived,
+} from "../services/projectArchive";
+import {
 	deleteProjectFolder,
 	notifyProjectDeleted,
 } from "../services/projectDelete";
@@ -347,6 +351,7 @@ export class ProjectOverviewView extends ItemView {
 			},
 			onOpenSettings: () => {
 				void openProjectEditor(this.plugin, project, {
+					leaf: this.leaf,
 					onSaved: () => void this.refresh(),
 				});
 			},
@@ -618,6 +623,7 @@ export class ProjectOverviewView extends ItemView {
 		const row = actions.createDiv({ cls: "pe-inline-row" });
 		this.cta(row, "Edit project", false, () => {
 			void openProjectEditor(this.plugin, project, {
+				leaf: this.leaf,
 				onSaved: () => void this.refresh(),
 			});
 		});
@@ -641,9 +647,44 @@ export class ProjectOverviewView extends ItemView {
 				openExternalUrl(project.projectUrl);
 			});
 		}
+		if (!project.archived) {
+			this.cta(row, "Archive project…", false, () => {
+				this.confirmArchive(project);
+			});
+		}
 		this.cta(row, "Delete project…", false, () => {
 			this.confirmDelete(project);
 		});
+	}
+
+	/**
+	 * Confirm then move the project folder into the archived-projects folder.
+	 */
+	private confirmArchive(project: ProjectRow): void {
+		const archiveRoot =
+			this.plugin.settings.archivedProjectsFolder || "Projects_Archived";
+		const folder = containingProjectFolder(project.file.path) || project.file.path;
+		new ConfirmModal(this.app, {
+			title: "Archive project?",
+			message: `This will move the project folder into “${archiveRoot}” and hide it from active project lists:\n\n${folder}\n\nYou can still open the notes from the vault file explorer.`,
+			confirmLabel: "Archive project",
+			onConfirm: async () => {
+				try {
+					const result = await archiveProjectFolder({
+						app: this.app,
+						projectFile: project.file,
+						settings: this.plugin.settings,
+					});
+					notifyProjectArchived(result.archivedPath, result.moved);
+					this.plugin.indexer.rebuild();
+					this.plugin.refreshOpenViews();
+					await this.plugin.router.openDashboard();
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					new Notice(`Could not archive project: ${message}`);
+				}
+			},
+		}).open();
 	}
 
 	private confirmDelete(project: ProjectRow): void {

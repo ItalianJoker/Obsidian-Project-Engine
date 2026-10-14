@@ -25,8 +25,13 @@ import {
 	LOCKED_DONE_TASK_STATUS_ID,
 	lockedDoneStatusNotice,
 } from "./models/types";
-import { openTaskListTemplateModal } from "./views/TaskListTemplateModal";
+import { normalizeVaultFolder } from "./services/folderPaths";
+import {
+	metadataSyncNotice,
+	syncAndRebuildNoteMetadata,
+} from "./services/metadataSync";
 import { ensureTaskListTemplatesFolder } from "./services/taskListTemplates";
+import { openTaskListTemplateModal } from "./views/TaskListTemplateModal";
 
 const ENTITY_KINDS: { id: CustomFieldEntityKind; label: string }[] = [
 	{ id: "customer", label: "Customer" },
@@ -77,6 +82,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		this.renderEisenhower();
 		this.renderScheduling();
 		this.renderPaths();
+		this.renderMetadataSync();
 		this.renderTaskListTemplates();
 		this.renderScaffold();
 		this.renderIdentifiers();
@@ -708,17 +714,23 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	}
 
 	/**
-	 * Paths — Projects root + entity catalogues (default under Projects/Entities).
+	 * Paths — Projects folder + archive + entity catalogues (default under Projects/Entities).
 	 */
 	private renderPaths(): void {
 		const { containerEl } = this;
 		containerEl.createEl("h3", { text: "Folders" });
 		containerEl.createEl("p", {
 			cls: "setting-item-description",
-			text: "Projects root holds project folders ({ID} - {Name}). Entity catalogues default under Projects/Entities/. Overrides are allowed.",
+			text: "Projects folder holds active project trees ({ID} - {Name}). Archived projects move to the archive folder. Entity catalogues default under Projects/Entities/. Paths are normalised with Obsidian normalizePath().",
 		});
 
-		this.addFolderSetting("Projects root", "projectsFolder", "Projects");
+		this.addFolderSetting("Projects folder", "projectsFolder", "Projects");
+		this.addFolderSetting(
+			"Archived projects folder",
+			"archivedProjectsFolder",
+			"Projects_Archived",
+			"Destination for Archive project. Hidden from active portfolio lists.",
+		);
 		this.addFolderSetting("Customers", "customersFolder", "Projects/Entities/Customers");
 		this.addFolderSetting("Project types", "projectTypesFolder", "Projects/Entities/Project Types");
 		this.addFolderSetting("Technologies", "technologiesFolder", "Projects/Entities/Technologies");
@@ -735,6 +747,44 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			"Projects/Tasks",
 			"Fallback scan path for older task notes outside a project folder.",
 		);
+	}
+
+	/**
+	 * Flat button: scan plugin folders and repair pe_type / tags metadata.
+	 */
+	private renderMetadataSync(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Note metadata" });
+		new Setting(containerEl)
+			.setName("Sync & Rebuild Note Metadata")
+			.setDesc(
+				"Scan configured plugin folders, fill missing pe_type / tags (projects-engine, pe/<id>), and rebuild the in-memory index. Safe and idempotent.",
+			)
+			.addButton((button) => {
+				button.setButtonText("Sync & Rebuild Note Metadata").onClick(() => {
+					void (async () => {
+						button.setDisabled(true);
+						try {
+							const result = await syncAndRebuildNoteMetadata({
+								app: this.app,
+								vault: this.app.vault,
+								settings: this.plugin.settings,
+								onIndexRebuild: () => {
+									this.plugin.indexer.rebuild();
+									this.plugin.refreshOpenViews();
+								},
+							});
+							new Notice(metadataSyncNotice(result));
+						} catch (error) {
+							const message =
+								error instanceof Error ? error.message : String(error);
+							new Notice(`Metadata sync failed: ${message}`);
+						} finally {
+							button.setDisabled(false);
+						}
+					})();
+				});
+			});
 	}
 
 	/**
@@ -873,6 +923,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		name: string,
 		key:
 			| "projectsFolder"
+			| "archivedProjectsFolder"
 			| "customersFolder"
 			| "teamMembersFolder"
 			| "projectTypesFolder"
@@ -892,11 +943,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 			text.inputEl.addClass("pe-touch-target");
 			text.setPlaceholder(placeholder);
 			text.setValue(this.plugin.settings[key]).onChange(async (value) => {
-				const cleaned = value.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
-				this.plugin.settings[key] =
-					key === "templatesFolder"
-						? cleaned || "Templates"
-						: cleaned;
+				this.plugin.settings[key] = normalizeVaultFolder(value, placeholder);
 				await this.plugin.saveSettings();
 			});
 		});

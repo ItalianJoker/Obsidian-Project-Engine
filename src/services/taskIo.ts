@@ -266,7 +266,12 @@ export function buildTaskMarkdown(draft: TaskDraft, hoursPerManday: number): str
 	if (draft.stageSequence != null) frontmatter.stage_sequence = draft.stageSequence;
 	if (draft.workPackageId) frontmatter.work_package_id = draft.workPackageId;
 	if (draft.assignee) frontmatter.assignee = draft.assignee;
-	if (draft.notes) frontmatter.notes = draft.notes;
+	if (draft.notes?.trim()) {
+		frontmatter.notes = draft.notes.trim();
+	} else {
+		// Clear legacy / emptied notes so the key does not linger.
+		delete frontmatter.notes;
+	}
 
 	const graphLinks: { label: string; wikiLink: string }[] = [
 		{ label: "Project", wikiLink: draft.project },

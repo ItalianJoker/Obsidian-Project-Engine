@@ -26,7 +26,7 @@ import {
 	type GlobalDashboardMode,
 } from "../ui/GlobalDashboardChrome";
 import { ProjectPickerModal } from "../ui/ProjectPickerModal";
-import { loadProjectRows, type ProjectRow } from "./projectRows";
+import { loadActiveProjectRows, type ProjectRow } from "./projectRows";
 import { openTaskEditor } from "./TaskEditor";
 import type { SubView } from "./SubView";
 import { EisenhowerSubView } from "./subviews/EisenhowerSubView";
@@ -134,12 +134,14 @@ export class GlobalDashboardView extends ItemView {
 
 	private async reload(): Promise<void> {
 		this.plugin.indexer.rebuild();
-		this.projects = loadProjectRows(this.app);
-		this.tasks = await loadAllTasks(
+		this.projects = loadActiveProjectRows(this.app, this.plugin.settings);
+		const activeIds = new Set(this.projects.map((row) => row.id));
+		const allTasks = await loadAllTasks(
 			this.app,
 			this.plugin.settings.tasksFolder,
 			this.plugin.settings.hoursPerManday,
 		);
+		this.tasks = allTasks.filter((task) => activeIds.has(task.projectId));
 		this.renderChrome();
 		this.renderCurrentView();
 	}

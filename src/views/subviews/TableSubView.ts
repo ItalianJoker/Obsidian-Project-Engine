@@ -47,6 +47,7 @@ import { EntitySuggest } from "../suggest";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
 import { markCompletedConfirmMessage } from "../../services/taskStatusUi";
+import { mountTaskNotesToggle } from "../taskNotesControls";
 import { mountTaskTitleControls } from "../taskTitleControls";
 
 const TASK_PRIORITIES: TaskPriority[] = ["none", "low", "medium", "high", "urgent"];
@@ -308,7 +309,15 @@ export class TableSubView implements SubView {
 
 		const titleTd = tr.createEl("td", { cls: "pe-task-tree-cell", attr: { "data-label": "Task" } });
 		titleTd.style.setProperty("--pe-tree-depth", String(depth));
-		const treeInner = titleTd.createDiv({ cls: "pe-task-tree-inner" });
+		if (depth > 0) {
+			tr.addClass("pe-task-row--subtask");
+			tr.addClass(`pe-task-row--depth-${Math.min(depth, 6)}`);
+		}
+		const showTree =
+			plugin.settings.showSubtreeConnections !== false && depth > 0;
+		const treeInner = titleTd.createDiv({
+			cls: `pe-task-tree-inner${showTree ? " pe-task-tree-inner--guide" : ""}${depth > 0 ? " pe-task-tree-inner--subtask" : ""}`,
+		});
 
 		if (hasChildren) {
 			const chevron = treeInner.createSpan({ cls: "pe-task-chevron pe-touch-target" });
@@ -351,6 +360,7 @@ export class TableSubView implements SubView {
 			titleClass: "pe-task-title",
 			titleAsButton: false,
 		});
+		mountTaskNotesToggle(treeInner, task);
 
 		const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
 		const statusSelect = statusTd.createEl("select", {

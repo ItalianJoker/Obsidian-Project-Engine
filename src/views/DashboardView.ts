@@ -18,7 +18,12 @@ import { EmptyState } from "../ui/EmptyState";
 import { openEntityModal } from "./EntityModal";
 import { openViewEntityModal } from "./ViewEntityModal";
 import { openProjectEditor } from "./ProjectEditView";
-import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
+import {
+	findProjectRow,
+	loadActiveProjectRows,
+	loadProjectRows,
+	type ProjectRow,
+} from "./projectRows";
 import { formatDisplayDate } from "../services/dateFormat";
 import {
 	budgetMetricLabel,
@@ -114,7 +119,7 @@ export class DashboardView extends ItemView {
 
 	private reload(): void {
 		this.plugin.indexer.rebuild();
-		this.projects = loadProjectRows(this.app);
+		this.projects = loadActiveProjectRows(this.app, this.plugin.settings);
 		this.render();
 	}
 

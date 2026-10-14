@@ -106,11 +106,13 @@ export class ProjectEditView extends ItemView {
 			{
 				surface: "tab",
 				close: () => {
+					// Stay in this leaf — replace Edit with Project Dashboard in place.
 					void this.plugin.router.openOverview(this.project!.file.path, this.leaf);
 				},
 			},
 			() => {
-				// Reload overview after save (close already navigates).
+				// In-place Overview re-render after save (same leaf; no new tab).
+				this.plugin.refreshOpenViews();
 			},
 		);
 		this.editor.mount(mount);
