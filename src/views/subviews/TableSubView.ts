@@ -59,6 +59,11 @@ export interface TaskDashboardFilters {
 	text: string;
 	status: "all" | TaskStatus;
 	priority: "all" | TaskPriority;
+	/**
+	 * When true, table surfaces omit tasks in the locked Done status
+	 * (`done` id / legacy completed aliases). Session/view-local preference.
+	 */
+	hideCompleted: boolean;
 }
 
 /**
@@ -760,6 +765,9 @@ export class TableSubView implements SubView {
 export function filterTasks(tasks: Task[], filters: TaskDashboardFilters): Task[] {
 	const q = filters.text.trim().toLowerCase();
 	return tasks.filter((task) => {
+		if (filters.hideCompleted && isCompletedTaskStatus(task.status)) {
+			return false;
+		}
 		if (filters.status !== "all" && task.status !== filters.status) {
 			return false;
 		}

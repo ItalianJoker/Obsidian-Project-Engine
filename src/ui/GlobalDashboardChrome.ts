@@ -10,6 +10,7 @@
  */
 
 import { setIcon } from "obsidian";
+import { mountHideCompletedChip } from "./taskFilterChips";
 import { ViewSwitcher } from "./ViewSwitcher";
 
 /** Task surfaces hosted on the Global Dashboard. */
@@ -29,6 +30,10 @@ export interface GlobalDashboardChromeProps {
 	onAllClick?: () => void;
 	onFilterClick?: () => void;
 	onBackToProjects?: () => void;
+	/** Show “Hide completed” on Table mode. */
+	showHideCompleted?: boolean;
+	hideCompleted?: boolean;
+	onHideCompletedToggle?: () => void;
 }
 
 const SWITCHER_OPTIONS: Array<{
@@ -56,6 +61,9 @@ export function renderGlobalDashboardChrome(props: GlobalDashboardChromeProps): 
 		onAllClick,
 		onFilterClick,
 		onBackToProjects,
+		showHideCompleted = false,
+		hideCompleted = false,
+		onHideCompletedToggle,
 	} = props;
 
 	container.empty();
@@ -121,4 +129,11 @@ export function renderGlobalDashboardChrome(props: GlobalDashboardChromeProps): 
 		attr: { type: "button", "aria-pressed": String(!filterAll) },
 	});
 	filterBtn.addEventListener("click", () => onFilterClick?.());
+
+	if (showHideCompleted) {
+		mountHideCompletedChip(chips, {
+			active: hideCompleted,
+			onToggle: () => onHideCompletedToggle?.(),
+		});
+	}
 }

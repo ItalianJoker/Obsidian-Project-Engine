@@ -77,6 +77,7 @@ import { CreateProjectDocumentModal } from "../ui/CreateProjectDocumentModal";
 import { EmptyState } from "../ui/EmptyState";
 import { renderProjectChrome } from "../ui/ProjectChrome";
 import { renderProjectDocumentsTree } from "../ui/ProjectDocumentsTree";
+import { mountHideCompletedChip } from "../ui/taskFilterChips";
 import { TextPromptModal } from "../ui/TextPromptModal";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
 import { loadAllTasks } from "../services/taskIo";
@@ -114,6 +115,7 @@ export class ProjectOverviewView extends ItemView {
 		text: "",
 		status: "all",
 		priority: "all",
+		hideCompleted: false,
 	};
 	private showFilterPanel = false;
 	private table: TableSubView | null = null;
@@ -359,7 +361,12 @@ export class ProjectOverviewView extends ItemView {
 				void copyProjectObsidianUri(this.app, project, { view: "overview" });
 			},
 			onAllClick: () => {
-				this.filters = { text: this.filters.text, status: "all", priority: "all" };
+				this.filters = {
+					text: this.filters.text,
+					status: "all",
+					priority: "all",
+					hideCompleted: this.filters.hideCompleted,
+				};
 				this.showFilterPanel = false;
 				this.render();
 			},
@@ -598,7 +605,12 @@ export class ProjectOverviewView extends ItemView {
 			attr: { type: "button", "aria-pressed": String(!filterActive) },
 		});
 		allBtn.addEventListener("click", () => {
-			this.filters = { text: this.filters.text, status: "all", priority: "all" };
+			this.filters = {
+				text: this.filters.text,
+				status: "all",
+				priority: "all",
+				hideCompleted: this.filters.hideCompleted,
+			};
 			this.showFilterPanel = false;
 			this.render();
 		});
@@ -610,6 +622,14 @@ export class ProjectOverviewView extends ItemView {
 		filterBtn.addEventListener("click", () => {
 			this.showFilterPanel = !this.showFilterPanel;
 			this.render();
+		});
+		mountHideCompletedChip(chips, {
+			active: this.filters.hideCompleted,
+			onToggle: () => {
+				this.filters.hideCompleted = !this.filters.hideCompleted;
+				this.renderTaskSearch(filterActive);
+				this.renderTable();
+			},
 		});
 	}
 
