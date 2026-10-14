@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "../src/models/types";
 import {
 	archivedProjectsFolderPath,
+	expectedArchivedFromPath,
 	isProjectArchived,
 	projectsFolderPath,
 	uniqueArchiveDestination,
@@ -27,26 +28,40 @@ describe("projectArchive helpers", () => {
 		expect(archivedProjectsFolderPath(DEFAULT_SETTINGS)).toBe("Projects_Archived");
 	});
 
-	it("treats YAML flag or archive path as archived", () => {
+	it("prefers folder location over a stale YAML archived flag", () => {
 		const settings = { ...DEFAULT_SETTINGS };
+		// Manually restored into Projects → active even if YAML still says archived.
 		expect(
 			isProjectArchived(
 				{ archived: true, filePath: "Projects/X/X.md" },
 				settings,
 			),
-		).toBe(true);
+		).toBe(false);
+		expect(expectedArchivedFromPath("Projects/X/X.md", settings)).toBe(false);
+		// Under archive folder → archived even if YAML is false / missing.
 		expect(
 			isProjectArchived(
 				{ archived: false, filePath: "Projects_Archived/X/X.md" },
 				settings,
 			),
 		).toBe(true);
+		expect(expectedArchivedFromPath("Projects_Archived/X/X.md", settings)).toBe(
+			true,
+		);
 		expect(
 			isProjectArchived(
 				{ archived: false, filePath: "Projects/X/X.md" },
 				settings,
 			),
 		).toBe(false);
+		// Outside both roots → fall back to YAML.
+		expect(
+			isProjectArchived(
+				{ archived: true, filePath: "Other/X/X.md" },
+				settings,
+			),
+		).toBe(true);
+		expect(expectedArchivedFromPath("Other/X/X.md", settings)).toBeNull();
 	});
 
 	it("avoids destination collisions", () => {

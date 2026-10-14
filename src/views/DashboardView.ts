@@ -17,16 +17,19 @@ import { governanceDisplayLabel } from "../services/governance";
 import {
 	archiveProjectFolder,
 	notifyProjectArchived,
+	notifyProjectUnarchived,
+	reconcileProjectArchivedFlags,
+	unarchiveProjectFolder,
 } from "../services/projectArchive";
 import { containingProjectFolder } from "../services/projectPaths";
 import { EmptyState } from "../ui/EmptyState";
 import { ConfirmModal } from "../ui/ConfirmModal";
-import { openEntityModal } from "./EntityModal";
 import { openViewEntityModal } from "./ViewEntityModal";
 import { openProjectEditor } from "./ProjectEditView";
 import {
 	findProjectRow,
 	loadActiveProjectRows,
+	loadArchivedProjectRows,
 	loadProjectRows,
 	type ProjectRow,
 } from "./projectRows";
@@ -49,6 +52,9 @@ export const DASHBOARD_VIEW_TYPE = "projects-engine-dashboard";
  */
 export class DashboardView extends ItemView {
 	private projects: ProjectRow[] = [];
+	private archivedProjects: ProjectRow[] = [];
+	/** Persist expand state across vault reloads / unarchive. */
+	private showArchived = false;
 	private filterGovernance: "all" | GovernanceModel = "all";
 	private filterCustomer = "all";
 	private searchText = "";
@@ -126,7 +132,13 @@ export class DashboardView extends ItemView {
 	private reload(): void {
 		this.plugin.indexer.rebuild();
 		this.projects = loadActiveProjectRows(this.app, this.plugin.settings);
+		this.archivedProjects = loadArchivedProjectRows(this.app, this.plugin.settings);
 		this.render();
+		// Heal stale YAML `archived` after OS / explorer folder moves (debounced via vault events).
+		void reconcileProjectArchivedFlags({
+			app: this.app,
+			settings: this.plugin.settings,
+		});
 	}
 
 	private visibleRows(): ProjectRow[] {
@@ -164,40 +176,29 @@ export class DashboardView extends ItemView {
 						: "Try a different search or clear Governance / Customer filters.",
 				)
 				.setAction("+ new project", () => this.plugin.openCreationModal());
-			return;
+		} else {
+			this.renderTable(visible);
+			this.renderCards(visible);
 		}
 
-		this.renderTable(visible);
-		this.renderCards(visible);
 		this.renderEntityActions();
+		this.renderArchivedSection();
 	}
 
 	/**
-	 * Entity create shortcuts sit under the project list so the toolbar stays
-	 * aligned with the title / filters and left margins match the table.
+	 * Manage Entities — single homepage entry for catalogue browse / create / delete.
+	 * Creation lives inside the catalogue modal (+ New); no duplicate Create row here.
 	 */
 	private renderEntityActions(): void {
-		const createSection = this.bodyEl.createDiv({ cls: "pe-section pe-dashboard-actions" });
-		createSection.createEl("h3", { text: "Create entity", cls: "pe-section-title" });
-		const createRow = createSection.createDiv({ cls: "pe-inline-row" });
-		this.toolButton(createRow, "Customer", false, () => openEntityModal(this.plugin, "customer"));
-		this.toolButton(createRow, "Stakeholder", false, () =>
-			openEntityModal(this.plugin, "stakeholder"),
-		);
-		this.toolButton(createRow, "Type", false, () => openEntityModal(this.plugin, "project-type"));
-		this.toolButton(createRow, "Tech", false, () =>
-			openEntityModal(this.plugin, "project-technology"),
-		);
-
-		const viewSection = this.bodyEl.createDiv({ cls: "pe-section pe-dashboard-actions" });
-		viewSection.createEl("h3", { text: "View entity", cls: "pe-section-title" });
-		const viewRow = viewSection.createDiv({ cls: "pe-inline-row" });
-		this.toolButton(viewRow, "Customer", false, () => openViewEntityModal(this.plugin, "customer"));
-		this.toolButton(viewRow, "Stakeholder", false, () =>
+		const section = this.bodyEl.createDiv({ cls: "pe-section pe-dashboard-actions" });
+		section.createEl("h3", { text: "Manage Entities", cls: "pe-section-title" });
+		const row = section.createDiv({ cls: "pe-inline-row" });
+		this.toolButton(row, "Customer", false, () => openViewEntityModal(this.plugin, "customer"));
+		this.toolButton(row, "Stakeholder", false, () =>
 			openViewEntityModal(this.plugin, "stakeholder"),
 		);
-		this.toolButton(viewRow, "Type", false, () => openViewEntityModal(this.plugin, "project-type"));
-		this.toolButton(viewRow, "Tech", false, () =>
+		this.toolButton(row, "Type", false, () => openViewEntityModal(this.plugin, "project-type"));
+		this.toolButton(row, "Tech", false, () =>
 			openViewEntityModal(this.plugin, "project-technology"),
 		);
 	}
@@ -228,11 +229,12 @@ export class DashboardView extends ItemView {
 				new EmptyState(this.bodyEl)
 					.setTitle("No matches")
 					.setBody("Try a different search or clear Governance / Customer filters.");
-				return;
+			} else {
+				this.renderTable(visible);
+				this.renderCards(visible);
 			}
-			this.renderTable(visible);
-			this.renderCards(visible);
 			this.renderEntityActions();
+			this.renderArchivedSection();
 		});
 
 		const gov = center.createEl("select", {
@@ -435,6 +437,95 @@ export class DashboardView extends ItemView {
 	}
 
 	/**
+	 * Bottom toggle: reveal archived projects with Unarchive actions.
+	 * Kept below entity shortcuts so the active table stays uncluttered.
+	 */
+	private renderArchivedSection(): void {
+		const section = this.bodyEl.createDiv({
+			cls: "pe-section pe-dashboard-archived",
+		});
+		const count = this.archivedProjects.length;
+		const toggle = section.createEl("button", {
+			text: this.showArchived
+				? "Hide archived projects"
+				: count > 0
+					? `Show archived projects (${count})`
+					: "Show archived projects",
+			cls: "pe-secondary pe-touch-target pe-archived-toggle",
+			attr: {
+				type: "button",
+				"aria-expanded": this.showArchived ? "true" : "false",
+				"aria-controls": "pe-archived-projects-panel",
+			},
+		});
+		toggle.addEventListener("click", () => {
+			this.showArchived = !this.showArchived;
+			this.render();
+		});
+
+		if (!this.showArchived) {
+			return;
+		}
+
+		const panel = section.createDiv({
+			cls: "pe-archived-panel",
+			attr: { id: "pe-archived-projects-panel" },
+		});
+		panel.createEl("h3", {
+			text: "Archived projects",
+			cls: "pe-section-title",
+		});
+
+		if (count === 0) {
+			panel.createEl("p", {
+				text: "No archived projects.",
+				cls: "pe-help pe-archived-empty",
+			});
+			return;
+		}
+
+		const table = panel.createEl("table", {
+			cls: "pe-table pe-project-list pe-archived-list",
+		});
+		const thead = table.createEl("thead");
+		const headRow = thead.createEl("tr");
+		for (const label of ["ID", "Name", "Customer", ""]) {
+			headRow.createEl("th", { text: label });
+		}
+		const tbody = table.createEl("tbody");
+		const fragment = document.createDocumentFragment();
+		for (const row of this.archivedProjects) {
+			const tr = document.createElement("tr");
+			tr.className = "pe-project-row pe-archived-row pe-touch-target";
+			this.td(tr, "ID", row.id);
+			this.td(tr, "Name", row.name);
+			this.td(tr, "Customer", stripWiki(row.customer));
+			const actions = tr.createEl("td", { attr: { "data-label": "Actions" } });
+			const actionRow = actions.createDiv({ cls: "pe-project-row-actions" });
+			const open = actionRow.createEl("button", {
+				text: "Open",
+				cls: "pe-secondary pe-touch-target",
+				attr: { type: "button" },
+			});
+			open.addEventListener("click", (event) => {
+				event.stopPropagation();
+				void this.plugin.router.openOverview(row.file.path);
+			});
+			const unarchive = actionRow.createEl("button", {
+				text: "Unarchive",
+				cls: "pe-primary pe-touch-target",
+				attr: { type: "button" },
+			});
+			unarchive.addEventListener("click", (event) => {
+				event.stopPropagation();
+				this.confirmUnarchive(row);
+			});
+			fragment.appendChild(tr);
+		}
+		tbody.appendChild(fragment);
+	}
+
+	/**
 	 * Confirm then archive (same path as Project Dashboard Archive).
 	 */
 	private confirmArchive(project: ProjectRow): void {
@@ -458,6 +549,35 @@ export class DashboardView extends ItemView {
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
 					new Notice(`Could not archive project: ${message}`);
+				}
+			},
+		}).open();
+	}
+
+	/**
+	 * Confirm then unarchive (same path as Project Dashboard Unarchive).
+	 */
+	private confirmUnarchive(project: ProjectRow): void {
+		const projectsRoot = this.plugin.settings.projectsFolder || "Projects";
+		const folder = containingProjectFolder(project.file.path) || project.file.path;
+		new ConfirmModal(this.app, {
+			title: "Unarchive project?",
+			message: `This will move the project folder back into “${projectsRoot}” and show it in active project lists:\n\n${folder}`,
+			confirmLabel: "Unarchive project",
+			onConfirm: async () => {
+				try {
+					const result = await unarchiveProjectFolder({
+						app: this.app,
+						projectFile: project.file,
+						settings: this.plugin.settings,
+					});
+					notifyProjectUnarchived(result.projectPath, result.moved);
+					this.showArchived = true;
+					this.plugin.indexer.rebuild();
+					this.plugin.refreshOpenViews();
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					new Notice(`Could not unarchive project: ${message}`);
 				}
 			},
 		}).open();

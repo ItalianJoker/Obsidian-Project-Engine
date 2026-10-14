@@ -7,6 +7,21 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.3
+
+### Added
+
+- **Show archived projects** — toggle at the bottom of the Projects homepage; Unarchive from the list.
+- **Manage Entities** — homepage section (was View entity); **Delete Entity** on catalogue cards.
+
+### Changed
+
+- Removed duplicate homepage Create entity row; create via + New in Manage Entities.
+
+### Fixes
+
+- **Manual folder moves** — archive vs active follows Projects / Archived folder location; Sync & refresh normalise YAML \`archived\`.
+
 ## 1.4.2
 
 ### Added
