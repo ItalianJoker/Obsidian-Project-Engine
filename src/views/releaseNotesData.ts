@@ -9,6 +9,10 @@
 export const RELEASE_NOTES_MARKDOWN = `
 ## 1.4.1
 
+### Added
+
+- **Add subtask** — \`+\` on table rows (Global / project Dashboard / Workspace Table); title prompt creates a child under the parent in the same project.
+
 ### Fixes
 
 - **Sync & Rebuild Note Metadata** — nested project-folder notes (including files moved in manually) get \`pe_type\`, project links, and tags; existing properties preserved; notice reports updated count.

@@ -4,6 +4,10 @@
 
 **EN:** Fix Sync & Rebuild Note Metadata so notes in project subfolders (including OS-moved files) receive pe_type, project links, and tags. Does not overwrite v1.4.0.
 
+### Added
+
+- **Add subtask** — compact `+` on each task table row (Global Dashboard, project Dashboard, Workspace Table); prompts for title and creates a child under that parent (same project).
+
 ### Fixed
 
 - **Metadata sync** — resolve owning project by folder path; nested docs → `project-document`, Tasks/ → `task`; merge missing keys only; Graph `## Links` when needed; notice `X files checked (Y updated)`.
