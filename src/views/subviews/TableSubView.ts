@@ -41,12 +41,14 @@ import { isExpiredDateTime } from "../../services/dateFormat";
 import { formatHours } from "../../services/timeLogs";
 import { ConfirmModal } from "../../ui/ConfirmModal";
 import { EmptyState } from "../../ui/EmptyState";
+import { TextPromptModal } from "../../ui/TextPromptModal";
+import { createQuickSubtask } from "../../services/quickSubtask";
+import { markCompletedConfirmMessage } from "../../services/taskStatusUi";
 import { mountInlineDateTime } from "../dateTimeInputs";
 import { findProjectRow, type ProjectRow } from "../projectRows";
 import { EntitySuggest } from "../suggest";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
-import { markCompletedConfirmMessage } from "../../services/taskStatusUi";
 import { mountTaskNotesToggle } from "../taskNotesControls";
 import { mountTaskTitleControls } from "../taskTitleControls";
 
@@ -366,6 +368,7 @@ export class TableSubView implements SubView {
 			titleAsButton: false,
 		});
 		mountTaskNotesToggle(treeInner, task);
+		this.mountAddSubtaskControl(treeInner, task, project);
 
 		const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
 		const statusSelect = statusTd.createEl("select", {
@@ -739,6 +742,68 @@ export class TableSubView implements SubView {
 			projectId: project.id,
 			projectLink: toWikiLink(project.file.basename),
 		});
+	}
+
+	/**
+	 * Compact “+” control to create a child task under this row’s parent.
+	 */
+	private mountAddSubtaskControl(
+		parentEl: HTMLElement,
+		task: Task,
+		project: ProjectRow,
+	): void {
+		const name = task.title.trim() || task.id;
+		const btn = parentEl.createEl("button", {
+			cls: "pe-task-add-subtask-icon pe-touch-target",
+			attr: {
+				type: "button",
+				title: "Add subtask",
+				"aria-label": `Add subtask under ${name}`,
+			},
+		});
+		setIcon(btn, "plus");
+		btn.addEventListener("click", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			this.promptAddSubtask(task, project);
+		});
+	}
+
+	/**
+	 * Title-only prompt → create child under parent (same project), then refresh.
+	 */
+	private promptAddSubtask(parent: Task, project: ProjectRow): void {
+		const { app, plugin } = this.props;
+		const parentName = parent.title.trim() || parent.id;
+		new TextPromptModal(app, {
+			title: "Add subtask",
+			message: `Create a subtask under “${parentName}” in ${project.name}.`,
+			placeholder: "Subtask title",
+			confirmLabel: "Create",
+			onSubmit: async (value) => {
+				const title = value.trim();
+				if (!title) {
+					return "Title is required";
+				}
+				try {
+					await createQuickSubtask({
+						app,
+						settings: plugin.settings,
+						parent,
+						projectFile: project.file,
+						title,
+					});
+					// Expand parent so the new child is visible in the tree.
+					this.collapsedIds.delete(parent.id);
+					new Notice(`Created subtask “${title}”`);
+					plugin.refreshOpenViews();
+					return;
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					return `Could not create subtask: ${message}`;
+				}
+			},
+		}).open();
 	}
 
 	/**

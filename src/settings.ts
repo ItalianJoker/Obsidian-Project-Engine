@@ -784,7 +784,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Sync & Rebuild Note Metadata")
 			.setDesc(
-				"Scan configured plugin folders, fill missing pe_type / tags (projects-engine, pe/<id>), and rebuild the in-memory index. Safe and idempotent.",
+				"Recursively scan configured plugin folders and every note under each project tree (including nested folders and files moved in manually). Fills missing pe_type, project links, and tags (projects-engine, pe/<id>) without removing existing properties. Rebuilds the in-memory index.",
 			)
 			.addButton((button) => {
 				button.setButtonText("Sync & Rebuild Note Metadata").onClick(() => {
