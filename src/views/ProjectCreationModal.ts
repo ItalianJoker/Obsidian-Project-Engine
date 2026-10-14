@@ -25,6 +25,7 @@ import { appendEntityLink, ensureEntityNote } from "../services/linkSync";
 import {
 	budgetDaysFieldLabel,
 	nextItsmId,
+	seedDefaultPmTeam,
 	serialiseItsmItems,
 	showBudgetDaysInput,
 } from "../services/projectFlags";
@@ -83,6 +84,8 @@ export class ProjectCreationModal extends Modal {
 	private form: CreationForm;
 	private errorEl: HTMLElement | null = null;
 	private readonly suggests: EntitySuggest[] = [];
+	/** Mount for budget / T&M field — refreshed in place when flags toggle (no scroll jump). */
+	private budgetMountEl: HTMLElement | null = null;
 	/** Counter to persist after a successful create (accounts for collision skips). */
 	private nextCounter = 1;
 
@@ -118,7 +121,7 @@ export class ProjectCreationModal extends Modal {
 			customer: "",
 			projectType: "",
 			technologies: [],
-			team: [],
+			team: seedDefaultPmTeam([], this.plugin.settings.defaultPm),
 			stakeholders: [],
 			workOrders: [],
 			assignedDays: "",
@@ -203,6 +206,9 @@ export class ProjectCreationModal extends Modal {
 		this.addActions();
 	}
 
+	/**
+	 * Non PM / Technical intervention — refresh budget mount only (no scroll jump).
+	 */
 	private addProjectFlagToggles(): void {
 		const wrap = this.contentEl.createDiv({ cls: "pe-field pe-flag-toggles" });
 		wrap.createEl("label", { text: "Project flags", cls: "pe-label" });
@@ -213,7 +219,7 @@ export class ProjectCreationModal extends Modal {
 		nonPm.createSpan({ text: "Non PM" });
 		nonPmBox.addEventListener("change", () => {
 			this.form.isNonPM = nonPmBox.checked;
-			this.render();
+			this.refreshBudgetDaysField();
 		});
 
 		const tech = wrap.createEl("label", { cls: "pe-check-label pe-touch-target" });
@@ -222,17 +228,34 @@ export class ProjectCreationModal extends Modal {
 		tech.createSpan({ text: "Technical intervention" });
 		techBox.addEventListener("change", () => {
 			this.form.isTechnicalIntervention = techBox.checked;
-			this.render();
+			this.refreshBudgetDaysField();
 		});
 	}
 
 	private addBudgetDaysField(): void {
+		this.budgetMountEl = this.contentEl.createDiv({ cls: "pe-budget-field-mount" });
+		this.paintBudgetDaysField();
+	}
+
+	private refreshBudgetDaysField(): void {
+		if (!this.budgetMountEl) {
+			return;
+		}
+		this.paintBudgetDaysField();
+	}
+
+	private paintBudgetDaysField(): void {
+		const mount = this.budgetMountEl;
+		if (!mount) {
+			return;
+		}
+		mount.empty();
 		const flags = {
 			isNonPM: this.form.isNonPM,
 			isTechnicalIntervention: this.form.isTechnicalIntervention,
 		};
 		if (!showBudgetDaysInput(flags)) {
-			const wrap = this.contentEl.createDiv({ cls: "pe-field" });
+			const wrap = mount.createDiv({ cls: "pe-field" });
 			wrap.createEl("label", { text: "Effort", cls: "pe-label" });
 			wrap.createEl("p", {
 				cls: "pe-help",
@@ -240,15 +263,24 @@ export class ProjectCreationModal extends Modal {
 			});
 			return;
 		}
-		this.addTextField(
-			budgetDaysFieldLabel(flags, true),
-			`Management days (1 day = ${this.plugin.settings.hoursPerManday} h)`,
-			(value) => {
-				this.form.assignedDays = value;
+		const wrap = mount.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", {
+			text: budgetDaysFieldLabel(flags, true),
+			cls: "pe-label",
+		});
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: {
+				type: "number",
+				min: "0",
+				placeholder: `Management days (1 day = ${this.plugin.settings.hoursPerManday} h)`,
+				spellcheck: "false",
 			},
-			"number",
-			"0",
-		);
+		});
+		input.value = this.form.assignedDays;
+		input.addEventListener("input", () => {
+			this.form.assignedDays = input.value;
+		});
 	}
 
 	private addItsmEditor(): void {

@@ -372,6 +372,8 @@ export default class ProjectsEnginePlugin extends Plugin {
 		if (!Number.isFinite(this.settings.hoursPerManday) || this.settings.hoursPerManday <= 0) {
 			this.settings.hoursPerManday = 8;
 		}
+		this.settings.defaultPm =
+			typeof this.settings.defaultPm === "string" ? this.settings.defaultPm.trim() : "";
 		const dateFormats = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
 		if (!dateFormats.has(this.settings.dateFormat)) {
 			this.settings.dateFormat = "DD/MM/YYYY";

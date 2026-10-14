@@ -69,6 +69,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		});
 
 		this.renderGeneral();
+		this.renderDefaultPm();
 		this.renderDateTime();
 		this.renderTable();
 		this.renderGantt();
@@ -83,6 +84,61 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		this.renderProjectStatuses();
 		this.renderPerformance();
 		this.renderCustomFields();
+	}
+
+	/**
+	 * Default PM — Team Member auto-added with role “PM” on new project creation.
+	 */
+	private renderDefaultPm(): void {
+		const { containerEl } = this;
+		containerEl.createEl("h3", { text: "Default PM" });
+
+		this.plugin.indexer.rebuild();
+		const members = this.listDefaultPmCandidates();
+		const current = this.plugin.settings.defaultPm.trim();
+
+		new Setting(containerEl)
+			.setName("Default PM")
+			.setDesc(
+				"Team Member automatically added to new projects with role “PM”. Leave unset for no auto-add.",
+			)
+			.addDropdown((dropdown) => {
+				dropdown.addOption("", "— None —");
+				for (const name of members) {
+					dropdown.addOption(name, name);
+				}
+				// Keep a saved value visible even if the note was moved/deleted.
+				if (current && !members.includes(current)) {
+					dropdown.addOption(current, `${current} (missing)`);
+				}
+				dropdown.setValue(current);
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.defaultPm = value.trim();
+					await this.plugin.saveSettings();
+				});
+				dropdown.selectEl.addClass("pe-touch-target");
+			});
+	}
+
+	/** Basenames under the Team Members folder (plus indexed stakeholders as fallback). */
+	private listDefaultPmCandidates(): string[] {
+		const folder = (this.plugin.settings.teamMembersFolder || "").replace(/\/+$/, "");
+		const names = new Set<string>();
+		if (folder) {
+			const prefix = `${folder}/`;
+			for (const file of this.app.vault.getMarkdownFiles()) {
+				if (file.path.startsWith(prefix) || file.path === `${folder}.md`) {
+					names.add(file.basename);
+				}
+			}
+		}
+		// Fallback: same catalogue the Create project team picker uses.
+		if (names.size === 0) {
+			for (const entity of this.plugin.indexer.list("stakeholder")) {
+				names.add(entity.name);
+			}
+		}
+		return [...names].sort((a, b) => a.localeCompare(b));
 	}
 
 	/** General — open surfaces, defaults, release notes (dotpm General). */

@@ -13,6 +13,7 @@ import {
 	parseItsmItems,
 	parseTeamAssignments,
 	safeBudgetProgressPercent,
+	seedDefaultPmTeam,
 	showBudgetDaysInput,
 } from "../src/services/projectFlags";
 
@@ -89,6 +90,29 @@ describe("parseTeamAssignments / parseItsmItems", () => {
 			parseItsmItems([{ id: "CHG-1", type: "change", title: "Cutover", description: "x" }]),
 		).toEqual([
 			{ id: "CHG-1", type: "Change", title: "Cutover", description: "x" },
+		]);
+	});
+});
+
+describe("seedDefaultPmTeam", () => {
+	it("returns existing unchanged when Default PM is unset", () => {
+		expect(seedDefaultPmTeam([], "")).toEqual([]);
+		expect(seedDefaultPmTeam([{ name: "Ada", role: "Dev" }], "  ")).toEqual([
+			{ name: "Ada", role: "Dev" },
+		]);
+	});
+
+	it("prepends Default PM with role PM", () => {
+		expect(seedDefaultPmTeam([], "[[Luca]]")).toEqual([{ name: "Luca", role: "PM" }]);
+		expect(seedDefaultPmTeam([{ name: "Ada", role: "Dev" }], "Luca")).toEqual([
+			{ name: "Luca", role: "PM" },
+			{ name: "Ada", role: "Dev" },
+		]);
+	});
+
+	it("does not duplicate or overwrite an existing member", () => {
+		expect(seedDefaultPmTeam([{ name: "Luca", role: "Lead" }], "Luca")).toEqual([
+			{ name: "Luca", role: "Lead" },
 		]);
 	});
 });

@@ -7,6 +7,19 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.3.3
+
+### Added
+
+- **Remove ITSM Item** on Project Dashboard — confirm + \`vault.process\` (same chrome as Add ITSM Item).
+- **Default PM** setting — Team Member auto-added with role PM on Create project (when set).
+
+### Fixes & polish
+
+- **Global Dashboard project label** — clickable text (not a pill); opens Project Dashboard.
+- **Global Dashboard margins** — match single-project Task Workspace chrome.
+- **Edit project Overview** breadcrumb padding; flag toggles no longer jump scroll.
+
 ## 1.3.2
 
 ### Fixes & polish

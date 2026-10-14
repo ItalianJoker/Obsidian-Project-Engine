@@ -36,7 +36,7 @@ import {
 import {
 	listProjectDocumentFolders,
 } from "../services/projectDocumentNote";
-import { setProjectStatus } from "../services/projectIo";
+import { patchProjectFrontmatter, setProjectStatus } from "../services/projectIo";
 import {
 	deleteProjectFolder,
 	notifyProjectDeleted,
@@ -55,7 +55,9 @@ import {
 import {
 	budgetMetricLabel,
 	formatProjectBudgetDisplay,
+	parseItsmItems,
 	safeBudgetProgressPercent,
+	serialiseItsmItems,
 	teamMemberDisplayName,
 } from "../services/projectFlags";
 import {
@@ -774,7 +776,7 @@ export class ProjectOverviewView extends ItemView {
 		}
 		const grid = section.createDiv({ cls: "pe-itsm-grid" });
 		for (const item of project.itsmItems) {
-			this.renderItsmCard(grid, item);
+			this.renderItsmCard(grid, project, item);
 		}
 	}
 
@@ -791,10 +793,45 @@ export class ProjectOverviewView extends ItemView {
 		}).open();
 	}
 
-	private renderItsmCard(parent: HTMLElement, item: ItsmItem): void {
+	/**
+	 * Confirm then drop one association from YAML `itsm_items` via vault.process.
+	 */
+	private confirmRemoveItsmItem(project: ProjectRow, item: ItsmItem): void {
+		const label = item.title?.trim() || item.id;
+		new ConfirmModal(this.app, {
+			title: "Remove ITSM Item?",
+			message: `Remove ${item.type} “${label}” (${item.id}) from this project?`,
+			confirmLabel: "Remove",
+			dangerous: true,
+			onConfirm: async () => {
+				try {
+					await patchProjectFrontmatter(this.app.vault, project.file, (data) => {
+						const existing = parseItsmItems(data.itsm_items);
+						data.itsm_items = serialiseItsmItems(
+							existing.filter((row) => row.id !== item.id),
+						);
+					});
+					new Notice(`Removed ${item.type} “${item.id}”`);
+					await this.refresh();
+					this.plugin.refreshOpenViews();
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					new Notice(`Could not remove ITSM item: ${message}`);
+				}
+			},
+		}).open();
+	}
+
+	private renderItsmCard(
+		parent: HTMLElement,
+		project: ProjectRow,
+		item: ItsmItem,
+	): void {
 		const card = parent.createDiv({ cls: "pe-itsm-card pe-itsm-card--view" });
-		card.createSpan({ text: item.type, cls: "pe-itsm-type-badge" });
-		const idBtn = card.createEl("button", {
+		const top = card.createDiv({ cls: "pe-itsm-card-top" });
+		const badges = top.createDiv({ cls: "pe-itsm-card-badges" });
+		badges.createSpan({ text: item.type, cls: "pe-itsm-type-badge" });
+		const idBtn = badges.createEl("button", {
 			text: item.id,
 			cls: "pe-itsm-id-badge pe-touch-target",
 			attr: { type: "button", title: "Copy ID to clipboard" },
@@ -804,6 +841,20 @@ export class ProjectOverviewView extends ItemView {
 				() => new Notice("Copied ID to clipboard"),
 				() => new Notice("Could not copy ID"),
 			);
+		});
+		const removeBtn = top.createEl("button", {
+			cls: "pe-docs-tree-add pe-itsm-remove pe-touch-target",
+			attr: {
+				type: "button",
+				"aria-label": `Remove ITSM item ${item.id}`,
+				title: "Remove ITSM Item",
+			},
+		});
+		setIcon(removeBtn, "trash-2");
+		removeBtn.createSpan({ text: "Remove", cls: "pe-docs-tree-add-label" });
+		removeBtn.addEventListener("click", (event) => {
+			event.preventDefault();
+			this.confirmRemoveItsmItem(project, item);
 		});
 		card.createEl("div", { text: item.title || "—", cls: "pe-itsm-title" });
 		card.createEl("div", {

@@ -172,15 +172,16 @@ export class EisenhowerSubView implements SubView {
 				}
 				const card = cards.createDiv({ cls: "pe-eisenhower-card pe-touch-target" });
 				if (this.props.showProjectBadge) {
-					const badge = card.createEl("button", {
-						cls: "pe-project-badge pe-touch-target",
+					const link = card.createEl("button", {
+						cls: "pe-project-link pe-touch-target",
 						attr: {
 							type: "button",
-							title: `${taskProject.id} — ${taskProject.name}`,
+							title: `Open project ${taskProject.name}`,
+							"aria-label": `Open project ${taskProject.name}`,
 						},
 					});
-					badge.textContent = taskProject.name;
-					badge.addEventListener("click", (event) => {
+					link.textContent = taskProject.name;
+					link.addEventListener("click", (event) => {
 						event.stopPropagation();
 						void plugin.router.openOverview(taskProject.file.path);
 					});

@@ -199,6 +199,31 @@ export function nextItsmId(existing: readonly ItsmItem[]): string {
 	return `ITSM-${max + 1}`;
 }
 
+/**
+ * Seed a Default PM onto a create-project team list.
+ *
+ * When `defaultPm` is empty, returns `existing` unchanged.
+ * When set and not already present, prepends `{ name, role: "PM" }`.
+ * Existing rows with the same name are left as-is (role not overwritten).
+ */
+export function seedDefaultPmTeam<T extends { name: string; role: string }>(
+	existing: readonly T[],
+	defaultPm: string,
+): T[] {
+	const raw = defaultPm.trim();
+	if (!raw) {
+		return [...existing];
+	}
+	const name = wikiLinkTarget(raw) || raw;
+	if (!name) {
+		return [...existing];
+	}
+	if (existing.some((member) => member.name === name)) {
+		return [...existing];
+	}
+	return [{ name, role: "PM" } as T, ...existing];
+}
+
 function normalizeItsmType(value: unknown): ItsmItemType {
 	if (typeof value === "string") {
 		const trimmed = value.trim();

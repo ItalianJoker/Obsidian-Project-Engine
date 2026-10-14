@@ -329,15 +329,16 @@ export class TableSubView implements SubView {
 
 		if (this.props.showProjectBadge) {
 			const badgeWrap = treeInner.createSpan({ cls: "pe-task-project-badge-wrap" });
-			const badge = badgeWrap.createEl("button", {
-				cls: "pe-project-badge pe-touch-target",
+			const link = badgeWrap.createEl("button", {
+				cls: "pe-project-link pe-touch-target",
 				attr: {
 					type: "button",
-					title: `${project.id} — ${project.name}`,
+					title: `Open project ${project.name}`,
+					"aria-label": `Open project ${project.name}`,
 				},
 			});
-			badge.textContent = project.name;
-			badge.addEventListener("click", (event) => {
+			link.textContent = project.name;
+			link.addEventListener("click", (event) => {
 				event.stopPropagation();
 				void plugin.router.openOverview(project.file.path);
 			});
