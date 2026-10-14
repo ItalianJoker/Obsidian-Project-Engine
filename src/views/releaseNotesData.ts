@@ -7,6 +7,12 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.3.2
+
+### Fixes & polish
+
+- **Work orders card padding** — Published build includes the Linked Entities Work orders padding fix (#37) that landed after the v1.3.1 asset cut.
+
 ## 1.3.1
 
 ### Added

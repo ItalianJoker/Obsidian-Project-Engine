@@ -3,6 +3,12 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.2] — 2026-10-14
+
+### Fixed
+
+- Release build includes **Linked Entities → Work orders** card padding fix from [#37](https://github.com/ItalianJoker/Obsidian-Project-Engine/pull/37) (merged after the v1.3.1 asset cut).
+
 ## [1.3.1] — 2026-10-13
 
 ### Added

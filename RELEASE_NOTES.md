@@ -1,5 +1,15 @@
 # Release notes — Projects Engine
 
+## 1.3.2 — Work orders Linked Entities padding (release build)
+
+**EN:** Rebuild of current `main` so the published plugin assets include the Work orders card padding fix (#37) that landed after the v1.3.1 asset cut. Does not overwrite v1.3.1.
+
+### Fixes & polish
+
+- **Work orders** Linked Entities card padding matches Customer / Project type / Technologies / Team / Stakeholders (same as #37 on main).
+
+---
+
 ## 1.3.1 — Global Dashboard UX + ITSM/Projects alignment
 
 **EN:** Align ITSM and Projects title padding; Global Dashboard matches project Task chrome (Table / Board / Eisenhower) with a dropdown project picker for New Task; Add ITSM Item on Project Dashboard.
