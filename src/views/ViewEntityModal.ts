@@ -1,12 +1,12 @@
 /**
- * View Entity Modal — Catalogue and detail viewer for Entity-as-a-Note records.
+ * Manage Entities modal — catalogue viewer for Entity-as-a-Note records.
  *
- * Allows inspecting Customers, Stakeholders, Project types, and Technologies,
- * viewing all properties, relationships (associated projects, stakeholders, customer),
- * custom fields, and quick-jumping into note editing or the Obsidian workspace.
+ * Inspect Customers, Stakeholders, Project types, and Technologies; create via
+ * + New; edit / open notes; delete with confirmation. Opened from the Projects
+ * homepage “Manage Entities” section.
  */
 
-import { Modal, setIcon, TFile, type App } from "obsidian";
+import { Modal, Notice, setIcon, TFile, type App } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import type {
 	Customer,
@@ -17,6 +17,11 @@ import type {
 	Technology,
 } from "../models/types";
 import { wikiLinkTarget } from "../models/types";
+import {
+	deleteEntityNote,
+	notifyEntityDeleted,
+} from "../services/entityDelete";
+import { ConfirmModal } from "../ui/ConfirmModal";
 import { openEntityModal } from "./EntityModal";
 import { loadProjectRows, type ProjectRow } from "./projectRows";
 
@@ -97,7 +102,7 @@ export class ViewEntityModal extends Modal {
 
 		const header = contentEl.createDiv({ cls: "pe-view-entity-header" });
 		const titleRow = header.createDiv({ cls: "pe-view-entity-title-row" });
-		titleRow.createEl("h2", { text: "Entity Catalogue", cls: "pe-modal-title" });
+		titleRow.createEl("h2", { text: "Manage Entities", cls: "pe-modal-title" });
 
 		// Segmented tabs to switch between entity kinds
 		const tabs = header.createDiv({ cls: "pe-segmented pe-view-entity-tabs" });
@@ -400,7 +405,57 @@ export class ViewEntityModal extends Modal {
 			}
 		});
 
+		const deleteBtn = actions.createEl("button", {
+			cls: "pe-secondary pe-touch-target pe-entity-action-btn pe-entity-delete-btn",
+			attr: {
+				type: "button",
+				title: `Delete Entity ${name}`,
+				"aria-label": `Delete Entity ${name}`,
+			},
+		});
+		setIcon(deleteBtn, "trash-2");
+		deleteBtn.createSpan({ text: "Delete Entity" });
+		deleteBtn.addEventListener("click", () => {
+			this.confirmDeleteEntity(name, filePath, kind);
+		});
+
 		return card;
+	}
+
+	/**
+	 * Confirm then trash/delete the entity note and refresh the catalogue list.
+	 */
+	private confirmDeleteEntity(
+		name: string,
+		filePath: string,
+		kind: CustomFieldEntityKind,
+	): void {
+		const meta = VIEW_ENTITY_META[kind];
+		new ConfirmModal(this.app, {
+			title: "Delete Entity?",
+			message: `This will remove the ${meta.singular.toLowerCase()} note from the vault:\n\n${name}\n\n${filePath}\n\nAssociated project links are not automatically cleared.`,
+			confirmLabel: "Delete Entity",
+			dangerous: true,
+			onConfirm: async () => {
+				try {
+					const file = this.resolveFile(filePath);
+					if (!file) {
+						new Notice(`Could not find entity note: ${filePath}`);
+						this.plugin.indexer.rebuild();
+						this.renderList();
+						return;
+					}
+					const result = await deleteEntityNote(this.app.vault, file);
+					notifyEntityDeleted(meta.singular, name, result.trashed);
+					this.plugin.indexer.rebuild();
+					this.plugin.refreshOpenViews();
+					this.renderList();
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					new Notice(`Could not delete entity: ${message}`);
+				}
+			},
+		}).open();
 	}
 
 	private renderSingleField(

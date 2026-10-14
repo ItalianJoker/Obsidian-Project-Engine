@@ -7,6 +7,11 @@
 ### Added
 
 - **Show archived projects** — bottom toggle on the portfolio homepage; list with Unarchive (reuses 1.4.2 path).
+- **Manage Entities** — homepage section (was View entity); **Delete Entity** on each catalogue card with confirmation.
+
+### Changed
+
+- Removed duplicate homepage **Create entity** buttons; create via **+ New** inside Manage Entities.
 
 ### Fixed
 

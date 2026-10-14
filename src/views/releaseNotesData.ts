@@ -12,6 +12,11 @@ export const RELEASE_NOTES_MARKDOWN = `
 ### Added
 
 - **Show archived projects** — toggle at the bottom of the Projects homepage; Unarchive from the list.
+- **Manage Entities** — homepage section (was View entity); **Delete Entity** on catalogue cards.
+
+### Changed
+
+- Removed duplicate homepage Create entity row; create via + New in Manage Entities.
 
 ### Fixes
 

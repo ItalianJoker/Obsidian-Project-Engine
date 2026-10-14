@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **Show archived projects** — toggle at the bottom of the Projects homepage listing archived projects with **Unarchive** (and Open).
+- **Manage Entities** — homepage section (renamed from View entity); create stays inside the catalogue (+ New); each entity card has **Delete Entity** with confirmation.
+
+### Changed
+
+- Removed the duplicate homepage **Create entity** row — entity creation lives once under Manage Entities.
 
 ### Fixed
 

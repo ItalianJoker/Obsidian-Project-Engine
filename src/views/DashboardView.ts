@@ -24,7 +24,6 @@ import {
 import { containingProjectFolder } from "../services/projectPaths";
 import { EmptyState } from "../ui/EmptyState";
 import { ConfirmModal } from "../ui/ConfirmModal";
-import { openEntityModal } from "./EntityModal";
 import { openViewEntityModal } from "./ViewEntityModal";
 import { openProjectEditor } from "./ProjectEditView";
 import {
@@ -187,31 +186,19 @@ export class DashboardView extends ItemView {
 	}
 
 	/**
-	 * Entity create shortcuts sit under the project list so the toolbar stays
-	 * aligned with the title / filters and left margins match the table.
+	 * Manage Entities — single homepage entry for catalogue browse / create / delete.
+	 * Creation lives inside the catalogue modal (+ New); no duplicate Create row here.
 	 */
 	private renderEntityActions(): void {
-		const createSection = this.bodyEl.createDiv({ cls: "pe-section pe-dashboard-actions" });
-		createSection.createEl("h3", { text: "Create entity", cls: "pe-section-title" });
-		const createRow = createSection.createDiv({ cls: "pe-inline-row" });
-		this.toolButton(createRow, "Customer", false, () => openEntityModal(this.plugin, "customer"));
-		this.toolButton(createRow, "Stakeholder", false, () =>
-			openEntityModal(this.plugin, "stakeholder"),
-		);
-		this.toolButton(createRow, "Type", false, () => openEntityModal(this.plugin, "project-type"));
-		this.toolButton(createRow, "Tech", false, () =>
-			openEntityModal(this.plugin, "project-technology"),
-		);
-
-		const viewSection = this.bodyEl.createDiv({ cls: "pe-section pe-dashboard-actions" });
-		viewSection.createEl("h3", { text: "View entity", cls: "pe-section-title" });
-		const viewRow = viewSection.createDiv({ cls: "pe-inline-row" });
-		this.toolButton(viewRow, "Customer", false, () => openViewEntityModal(this.plugin, "customer"));
-		this.toolButton(viewRow, "Stakeholder", false, () =>
+		const section = this.bodyEl.createDiv({ cls: "pe-section pe-dashboard-actions" });
+		section.createEl("h3", { text: "Manage Entities", cls: "pe-section-title" });
+		const row = section.createDiv({ cls: "pe-inline-row" });
+		this.toolButton(row, "Customer", false, () => openViewEntityModal(this.plugin, "customer"));
+		this.toolButton(row, "Stakeholder", false, () =>
 			openViewEntityModal(this.plugin, "stakeholder"),
 		);
-		this.toolButton(viewRow, "Type", false, () => openViewEntityModal(this.plugin, "project-type"));
-		this.toolButton(viewRow, "Tech", false, () =>
+		this.toolButton(row, "Type", false, () => openViewEntityModal(this.plugin, "project-type"));
+		this.toolButton(row, "Tech", false, () =>
 			openViewEntityModal(this.plugin, "project-technology"),
 		);
 	}

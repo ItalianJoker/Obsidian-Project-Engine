@@ -3670,6 +3670,14 @@
 	height: 14px;
 }
 
+.pe-entity-delete-btn {
+	color: var(--text-muted);
+}
+
+.pe-entity-delete-btn:hover {
+	color: var(--text-error, var(--text-normal));
+}
+
 .pe-entity-card-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
