@@ -24,10 +24,12 @@ import { governanceDisplayLabel } from "../services/governance";
 import { appendEntityLink, ensureEntityNote } from "../services/linkSync";
 import {
 	budgetDaysFieldLabel,
+	defaultPmCreateRole,
 	nextItsmId,
 	seedDefaultPmTeam,
 	serialiseItsmItems,
 	showBudgetDaysInput,
+	syncDefaultPmTeamRole,
 } from "../services/projectFlags";
 import { nextAvailableProjectId } from "../services/projectId";
 import { isValidHttpUrl, isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
@@ -86,6 +88,8 @@ export class ProjectCreationModal extends Modal {
 	private readonly suggests: EntitySuggest[] = [];
 	/** Mount for budget / T&M field — refreshed in place when flags toggle (no scroll jump). */
 	private budgetMountEl: HTMLElement | null = null;
+	/** Re-paint team list after Non PM toggles the Default PM role (create-only). */
+	private refreshTeamList: (() => void) | null = null;
 	/** Counter to persist after a successful create (accounts for collision skips). */
 	private nextCounter = 1;
 
@@ -110,6 +114,8 @@ export class ProjectCreationModal extends Modal {
 			suggest.close();
 		}
 		this.suggests.length = 0;
+		this.refreshTeamList = null;
+		this.budgetMountEl = null;
 		this.contentEl.empty();
 	}
 
@@ -219,6 +225,7 @@ export class ProjectCreationModal extends Modal {
 		nonPm.createSpan({ text: "Non PM" });
 		nonPmBox.addEventListener("change", () => {
 			this.form.isNonPM = nonPmBox.checked;
+			this.syncAutoDefaultPmRole();
 			this.refreshBudgetDaysField();
 		});
 
@@ -626,6 +633,23 @@ export class ProjectCreationModal extends Modal {
 		return wrap;
 	}
 
+	/**
+	 * Create-only: when Non PM toggles, apply Settings role to the auto-added Default PM.
+	 * Unchecked → role “PM”; checked → `defaultNonPmRole`. Does not add/remove members.
+	 */
+	private syncAutoDefaultPmRole(): void {
+		const role = defaultPmCreateRole(
+			this.form.isNonPM,
+			this.plugin.settings.defaultNonPmRole,
+		);
+		this.form.team = syncDefaultPmTeamRole(
+			this.form.team,
+			this.plugin.settings.defaultPm,
+			role,
+		);
+		this.refreshTeamList?.();
+	}
+
 	private addTeamPicker(): void {
 		const wrap = this.contentEl.createDiv({ cls: "pe-field" });
 		wrap.createEl("label", { text: "Team members", cls: "pe-label" });
@@ -662,6 +686,7 @@ export class ProjectCreationModal extends Modal {
 				});
 			});
 		};
+		this.refreshTeamList = renderTeam;
 
 		const addMember = (name: string): void => {
 			const trimmed = name.trim();

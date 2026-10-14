@@ -55,7 +55,7 @@ YAML `pe_type: task`. Loaded by `loadAllTasks`. Effort in hours; project budget 
 
 ### Settings (`ProjectsEngineSettings`)
 
-`data.json` via `loadSettings`/`saveSettings`. Notable: `templatesFolder` (default `"Templates"`, `normalizePath`), `defaultPm` (Team Member basename; Create project seeds role `PM` when set), `taskListTemplatesFolder`, scaffold folders, statuses, Eisenhower labels. Always merge onto `DEFAULT_SETTINGS` with safe migrations.
+`data.json` via `loadSettings`/`saveSettings`. Notable: `templatesFolder` (default `"Templates"`, `normalizePath`), `defaultPm` (Team Member basename; Create project seeds role `PM` when set), `defaultNonPmRole` (role for that auto-add when Non PM is checked at create only), `taskListTemplatesFolder`, scaffold folders, statuses, Eisenhower labels. Always merge onto `DEFAULT_SETTINGS` with safe migrations.
 
 ### Flow
 

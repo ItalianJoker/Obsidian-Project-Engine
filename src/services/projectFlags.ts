@@ -199,16 +199,33 @@ export function nextItsmId(existing: readonly ItsmItem[]): string {
 	return `ITSM-${max + 1}`;
 }
 
+/** Role used for the auto-added Default PM when Non PM is not checked at create. */
+export const DEFAULT_PM_CREATE_ROLE = "PM";
+
+/**
+ * Resolve the create-time role for the auto-added Default PM.
+ *
+ * - Non PM unchecked → {@link DEFAULT_PM_CREATE_ROLE} (`"PM"`).
+ * - Non PM checked → trimmed `defaultNonPmRole` from Settings (may be empty).
+ */
+export function defaultPmCreateRole(isNonPM: boolean, defaultNonPmRole: string): string {
+	if (!isNonPM) {
+		return DEFAULT_PM_CREATE_ROLE;
+	}
+	return typeof defaultNonPmRole === "string" ? defaultNonPmRole.trim() : "";
+}
+
 /**
  * Seed a Default PM onto a create-project team list.
  *
  * When `defaultPm` is empty, returns `existing` unchanged.
- * When set and not already present, prepends `{ name, role: "PM" }`.
+ * When set and not already present, prepends `{ name, role }` (default role `"PM"`).
  * Existing rows with the same name are left as-is (role not overwritten).
  */
 export function seedDefaultPmTeam<T extends { name: string; role: string }>(
 	existing: readonly T[],
 	defaultPm: string,
+	role: string = DEFAULT_PM_CREATE_ROLE,
 ): T[] {
 	const raw = defaultPm.trim();
 	if (!raw) {
@@ -221,7 +238,30 @@ export function seedDefaultPmTeam<T extends { name: string; role: string }>(
 	if (existing.some((member) => member.name === name)) {
 		return [...existing];
 	}
-	return [{ name, role: "PM" } as T, ...existing];
+	return [{ name, role } as T, ...existing];
+}
+
+/**
+ * Sync the auto-added Default PM member’s role on Create project (Non PM toggle).
+ *
+ * Finds the team row whose name matches `defaultPm` and sets `role`.
+ * Returns a new array; no-op when Default PM is unset or not on the team.
+ * Does not add or remove members — edit-project must not call this.
+ */
+export function syncDefaultPmTeamRole<T extends { name: string; role: string }>(
+	team: readonly T[],
+	defaultPm: string,
+	role: string,
+): T[] {
+	const raw = defaultPm.trim();
+	if (!raw) {
+		return [...team];
+	}
+	const name = wikiLinkTarget(raw) || raw;
+	if (!name) {
+		return [...team];
+	}
+	return team.map((member) => (member.name === name ? { ...member, role } : member));
 }
 
 function normalizeItsmType(value: unknown): ItsmItemType {
