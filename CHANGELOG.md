@@ -3,6 +3,12 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.4] — 2026-10-14
+
+### Added
+
+- **Default role for Non PM** setting — text field near Default PM; applied only on **Create project** when Non PM is checked (unchecked keeps role **PM**). Edit project flow unchanged.
+
 ## [1.3.3] — 2026-10-14
 
 ### Added

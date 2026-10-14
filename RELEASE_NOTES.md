@@ -1,5 +1,16 @@
 # Release notes — Projects Engine
 
+## 1.3.4 — Default role for Non PM on project create
+
+**EN:** Configurable **Default role for Non PM** in Settings; on Create project, the auto-added Default PM member gets that role when Non PM is checked, otherwise **PM**. Edit project unchanged. Does not overwrite v1.3.3.
+
+### Added
+
+- **Default role for Non PM** — Settings text field (near Default PM); default empty string; safe migrate.
+- **Create project role** — Non PM checked → use Default role for Non PM; unchecked → role **PM**. Team list UI updates immediately when toggling Non PM.
+
+---
+
 ## 1.3.3 — Remove ITSM + Global Dashboard polish + Default PM
 
 **EN:** Remove ITSM Item on Project Dashboard; Global Dashboard project names as clickable text; margins aligned with single-project Task chrome; Edit Overview padding; no scroll jump on flag toggles; Default PM setting. Does not overwrite v1.3.2.

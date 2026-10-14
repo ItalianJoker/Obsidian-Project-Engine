@@ -7,6 +7,12 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.3.4
+
+### Added
+
+- **Default role for Non PM** — Settings field near Default PM; on Create project, Non PM checked → that role; unchecked → **PM**. Edit project unchanged.
+
 ## 1.3.3
 
 ### Added
