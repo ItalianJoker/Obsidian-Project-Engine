@@ -1,11 +1,12 @@
 /**
  * @file projectArchive.ts
- * @purpose Move a project containment folder into the configured archive root.
+ * @purpose Archive / unarchive a project containment folder.
  * @dependencies vaultIo, projectPaths, projectIo, folderPaths
- * @usedBy ProjectOverviewView Actions
+ * @usedBy ProjectOverviewView Actions, DashboardView row Archive
  *
- * On confirm: ensure archive folder exists, set YAML `archived: true`, then
+ * Archive: ensure archive folder exists, set YAML `archived: true`, then
  * `fileManager.renameFile` the project folder. Collision-safe destination names.
+ * Unarchive: clear `archived`, ensure Projects folder, rename back from archive.
  */
 
 import { Notice, TFile, TFolder, type App } from "obsidian";
@@ -50,6 +51,31 @@ export function isProjectArchived(
 }
 
 /**
+ * Pick a collision-free destination folder path under a root.
+ *
+ * @param vault - Active vault.
+ * @param root - Normalised destination root folder.
+ * @param basename - Folder basename to place under the root.
+ */
+export function uniqueFolderDestination(
+	vault: { getAbstractFileByPath: (path: string) => unknown },
+	root: string,
+	basename: string,
+): string {
+	const base = joinVaultPath(root, basename);
+	if (!vault.getAbstractFileByPath(base)) {
+		return base;
+	}
+	for (let i = 2; i < 1000; i++) {
+		const candidate = `${base} (${i})`;
+		if (!vault.getAbstractFileByPath(candidate)) {
+			return candidate;
+		}
+	}
+	return `${base} (${Date.now()})`;
+}
+
+/**
  * Pick a collision-free destination folder path under the archive root.
  *
  * @param vault - Active vault.
@@ -61,17 +87,7 @@ export function uniqueArchiveDestination(
 	archiveRoot: string,
 	basename: string,
 ): string {
-	const base = joinVaultPath(archiveRoot, basename);
-	if (!vault.getAbstractFileByPath(base)) {
-		return base;
-	}
-	for (let i = 2; i < 1000; i++) {
-		const candidate = `${base} (${i})`;
-		if (!vault.getAbstractFileByPath(candidate)) {
-			return candidate;
-		}
-	}
-	return `${base} (${Date.now()})`;
+	return uniqueFolderDestination(vault, archiveRoot, basename);
 }
 
 /**
@@ -144,5 +160,75 @@ export function notifyProjectArchived(archivedPath: string, moved: boolean): voi
 		moved
 			? `Project archived: ${archivedPath}`
 			: `Project marked archived: ${archivedPath}`,
+	);
+}
+
+/**
+ * Unarchive a project: clear frontmatter flag, ensure Projects folder, rename back.
+ *
+ * @returns New project-note path after the move (or same path when already active).
+ */
+export async function unarchiveProjectFolder(args: {
+	app: App;
+	projectFile: TFile;
+	settings: ProjectsEngineSettings;
+}): Promise<{ projectPath: string; moved: boolean }> {
+	const { app, projectFile, settings } = args;
+	const archiveRoot = archivedProjectsFolderPath(settings);
+	const projectsRoot = projectsFolderPath(settings);
+
+	await ensureFolder(app.vault, projectsRoot);
+
+	await patchProjectFrontmatter(app.vault, projectFile, (data) => {
+		data.archived = false;
+	});
+
+	const note =
+		app.vault.getAbstractFileByPath(projectFile.path) instanceof TFile
+			? (app.vault.getAbstractFileByPath(projectFile.path) as TFile)
+			: projectFile;
+
+	const parentPath = containingProjectFolder(note.path);
+	const parent = parentPath ? app.vault.getAbstractFileByPath(parentPath) : null;
+
+	if (
+		parent instanceof TFolder &&
+		isDedicatedProjectFolder(parent.path, archiveRoot) &&
+		pathUnderFolder(parent.path, archiveRoot)
+	) {
+		const basename = parent.name;
+		const destination = uniqueFolderDestination(app.vault, projectsRoot, basename);
+		await ensureFolder(app.vault, projectsRoot);
+		await app.fileManager.renameFile(parent, destination);
+		const newNotePath = joinVaultPath(destination, note.name);
+		return { projectPath: newNotePath, moved: true };
+	}
+
+	// Legacy flat layout: move only the project note back into the projects root.
+	if (pathUnderFolder(note.path, archiveRoot)) {
+		const destination = uniqueFolderDestination(
+			app.vault,
+			projectsRoot,
+			note.basename,
+		);
+		const destFile = destination.endsWith(".md") ? destination : `${destination}.md`;
+		if (app.vault.getAbstractFileByPath(destFile)) {
+			throw new Error(`Unarchive destination already exists: ${destFile}`);
+		}
+		await app.fileManager.renameFile(note, destFile);
+		return { projectPath: destFile, moved: true };
+	}
+
+	return { projectPath: note.path, moved: false };
+}
+
+/**
+ * English notice after a successful unarchive.
+ */
+export function notifyProjectUnarchived(projectPath: string, moved: boolean): void {
+	new Notice(
+		moved
+			? `Project unarchived: ${projectPath}`
+			: `Project marked active: ${projectPath}`,
 	);
 }

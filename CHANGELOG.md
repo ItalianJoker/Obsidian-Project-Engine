@@ -3,6 +3,13 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.2] — 2026-10-14
+
+### Added
+
+- **Unarchive project** — Project Dashboard action for archived projects; moves the folder back to the configured Projects folder, clears `archived`, collision-safe.
+- **Quick Archive** — compact archive control next to **Open** on the Projects homepage table (same confirm + archive path as Project Dashboard).
+
 ## [1.4.1] — 2026-10-14
 
 ### Fixed

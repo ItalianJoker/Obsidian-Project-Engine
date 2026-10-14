@@ -1,5 +1,5 @@
 /**
- * Archive destination uniqueness and archived-path detection.
+ * Archive / unarchive destination uniqueness and archived-path detection.
  */
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "../src/models/types";
@@ -8,6 +8,7 @@ import {
 	isProjectArchived,
 	projectsFolderPath,
 	uniqueArchiveDestination,
+	uniqueFolderDestination,
 } from "../src/services/projectArchive";
 import { normalizeVaultFolder, pathUnderFolder } from "../src/services/folderPaths";
 
@@ -59,5 +60,14 @@ describe("projectArchive helpers", () => {
 		expect(uniqueArchiveDestination(vault, "Projects_Archived", "Fresh")).toBe(
 			"Projects_Archived/Fresh",
 		);
+	});
+
+	it("picks a free unarchive destination under Projects", () => {
+		const occupied = new Set(["Projects/Demo", "Projects/Demo (2)"]);
+		const vault = {
+			getAbstractFileByPath: (path: string) => (occupied.has(path) ? {} : null),
+		};
+		expect(uniqueFolderDestination(vault, "Projects", "Demo")).toBe("Projects/Demo (3)");
+		expect(uniqueFolderDestination(vault, "Projects", "Fresh")).toBe("Projects/Fresh");
 	});
 });

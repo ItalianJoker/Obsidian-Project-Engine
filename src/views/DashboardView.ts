@@ -9,12 +9,18 @@
  * Domain columns (governance, customer, mandays) are Projects Engine original.
  */
 
-import { ItemView, Menu, WorkspaceLeaf } from "obsidian";
+import { ItemView, Menu, Notice, setIcon, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import type { GovernanceModel } from "../models/types";
 import { projectStatusLabel } from "../models/types";
 import { governanceDisplayLabel } from "../services/governance";
+import {
+	archiveProjectFolder,
+	notifyProjectArchived,
+} from "../services/projectArchive";
+import { containingProjectFolder } from "../services/projectPaths";
 import { EmptyState } from "../ui/EmptyState";
+import { ConfirmModal } from "../ui/ConfirmModal";
 import { openEntityModal } from "./EntityModal";
 import { openViewEntityModal } from "./ViewEntityModal";
 import { openProjectEditor } from "./ProjectEditView";
@@ -348,7 +354,8 @@ export class DashboardView extends ItemView {
 				lastUpdateTd.title = row.updatedAt;
 			}
 			const actions = tr.createEl("td", { attr: { "data-label": "Actions" } });
-			const open = actions.createEl("button", {
+			const actionRow = actions.createDiv({ cls: "pe-project-row-actions" });
+			const open = actionRow.createEl("button", {
 				text: "Open",
 				cls: "pe-secondary pe-touch-target",
 				attr: { type: "button" },
@@ -356,6 +363,19 @@ export class DashboardView extends ItemView {
 			open.addEventListener("click", (event) => {
 				event.stopPropagation();
 				void this.plugin.router.openProjectLink(row.file.path);
+			});
+			const archiveBtn = actionRow.createEl("button", {
+				cls: "pe-icon-btn pe-touch-target pe-project-archive-btn",
+				attr: {
+					type: "button",
+					title: "Archive project",
+					"aria-label": `Archive project ${row.name}`,
+				},
+			});
+			setIcon(archiveBtn, "archive");
+			archiveBtn.addEventListener("click", (event) => {
+				event.stopPropagation();
+				this.confirmArchive(row);
 			});
 			fragment.appendChild(tr);
 		}
@@ -412,6 +432,35 @@ export class DashboardView extends ItemView {
 				this.openRowMenu(row, event);
 			});
 		}
+	}
+
+	/**
+	 * Confirm then archive (same path as Project Dashboard Archive).
+	 */
+	private confirmArchive(project: ProjectRow): void {
+		const archiveRoot =
+			this.plugin.settings.archivedProjectsFolder || "Projects_Archived";
+		const folder = containingProjectFolder(project.file.path) || project.file.path;
+		new ConfirmModal(this.app, {
+			title: "Archive project?",
+			message: `This will move the project folder into “${archiveRoot}” and hide it from active project lists:\n\n${folder}\n\nYou can still open the notes from the vault file explorer.`,
+			confirmLabel: "Archive project",
+			onConfirm: async () => {
+				try {
+					const result = await archiveProjectFolder({
+						app: this.app,
+						projectFile: project.file,
+						settings: this.plugin.settings,
+					});
+					notifyProjectArchived(result.archivedPath, result.moved);
+					this.plugin.indexer.rebuild();
+					this.plugin.refreshOpenViews();
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					new Notice(`Could not archive project: ${message}`);
+				}
+			},
+		}).open();
 	}
 
 	/**
