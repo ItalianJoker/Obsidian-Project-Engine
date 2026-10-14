@@ -7,6 +7,12 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.1
+
+### Fixes
+
+- **Sync & Rebuild Note Metadata** — nested project-folder notes (including files moved in manually) get \`pe_type\`, project links, and tags; existing properties preserved; notice reports updated count.
+
 ## 1.4.0
 
 ### Added

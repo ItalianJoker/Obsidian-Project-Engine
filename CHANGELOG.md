@@ -3,6 +3,12 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.1] — 2026-10-14
+
+### Fixed
+
+- **Sync & Rebuild Note Metadata** — recursively owns notes under each project tree (nested folders / OS-moved files); infers `project-document` or `task`, fills missing `project` / `project_id` / tags / Graph Links without wiping existing properties. Notice includes updated count.
+
 ## [1.4.0] — 2026-10-14
 
 ### Added

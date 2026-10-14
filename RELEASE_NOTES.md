@@ -1,5 +1,15 @@
 # Release notes — Projects Engine
 
+## 1.4.1 — Metadata sync for nested project notes
+
+**EN:** Fix Sync & Rebuild Note Metadata so notes in project subfolders (including OS-moved files) receive pe_type, project links, and tags. Does not overwrite v1.4.0.
+
+### Fixed
+
+- **Metadata sync** — resolve owning project by folder path; nested docs → `project-document`, Tasks/ → `task`; merge missing keys only; Graph `## Links` when needed; notice `X files checked (Y updated)`.
+
+---
+
 ## 1.4.0 — Task notes, archive folders, metadata sync
 
 **EN:** Feature release: task descriptive notes with in-place preview; stronger subtask hierarchy in all task views; Edit project save stays in the active leaf; configurable Projects / Archived folders with Archive project; Settings Sync & Rebuild Note Metadata. Does not overwrite v1.3.4.
