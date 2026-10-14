@@ -252,6 +252,7 @@ export class TaskEditor {
 		});
 
 		this.addAssignee();
+		this.addNotes();
 		this.addFlags();
 		this.addDependencies();
 		this.addTimeLogs();
@@ -265,6 +266,32 @@ export class TaskEditor {
 		const footer = contentEl.createDiv({ cls: "pe-te-footer" });
 		this.addScheduleActions(footer);
 		this.addActions(footer);
+	}
+
+	/**
+	 * Optional descriptive notes (YAML `notes` + body preview text).
+	 * Missing / empty on legacy notes is safe.
+	 */
+	private addNotes(): void {
+		const wrap = this.rootEl!.createDiv({ cls: "pe-field pe-task-notes-field" });
+		wrap.createEl("label", { text: "Notes", cls: "pe-label" });
+		wrap.createEl("p", {
+			cls: "pe-help",
+			text: "Optional description shown as an expandable preview on task lists and cards.",
+		});
+		const area = wrap.createEl("textarea", {
+			cls: "pe-input pe-touch-target pe-task-notes-input",
+			attr: {
+				rows: "4",
+				spellcheck: "true",
+				placeholder: "Add descriptive notes…",
+				"aria-label": "Task notes",
+			},
+		});
+		area.value = this.draft.notes ?? "";
+		area.addEventListener("input", () => {
+			this.draft.notes = area.value;
+		});
 	}
 
 	private addText(label: string, value: string, onChange: (value: string) => void): void {

@@ -13,9 +13,10 @@
 
 import { ExtraButtonComponent, setIcon } from "obsidian";
 import type { ProjectChromeMode } from "../views/ProjectWorkspaceView";
-import { ViewSwitcher } from "./ViewSwitcher";
-import type { ProjectRow } from "../views/projectRows";
 import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from "../models/types";
+import type { ProjectRow } from "../views/projectRows";
+import { mountHideCompletedChip } from "./taskFilterChips";
+import { ViewSwitcher } from "./ViewSwitcher";
 
 /**
  * Props for {@link renderProjectChrome}.
@@ -45,6 +46,15 @@ export interface ProjectChromeProps {
 	/** Optional: toggle filter panel / clear filters. */
 	onFilterClick?: () => void;
 	onAllClick?: () => void;
+	/**
+	 * When true, show the “Hide completed” chip (table surfaces only).
+	 * Preference is session/view-local via {@link hideCompleted}.
+	 */
+	showHideCompleted?: boolean;
+	/** Whether completed (Done) tasks are currently hidden. */
+	hideCompleted?: boolean;
+	/** Toggle {@link hideCompleted}. */
+	onHideCompletedToggle?: () => void;
 	/** Extra mount for mode-specific toolbars (Gantt zoom, etc.). */
 	extraToolbar?: (parent: HTMLElement) => void;
 	/**
@@ -89,6 +99,9 @@ export function renderProjectChrome(props: ProjectChromeProps): void {
 		onCopyObsidianUrl,
 		onFilterClick,
 		onAllClick,
+		showHideCompleted = false,
+		hideCompleted = false,
+		onHideCompletedToggle,
 		extraToolbar,
 		showSearchRow = true,
 	} = props;
@@ -168,6 +181,13 @@ export function renderProjectChrome(props: ProjectChromeProps): void {
 			attr: { type: "button", "aria-pressed": String(!filterAll) },
 		});
 		filterBtn.addEventListener("click", () => onFilterClick?.());
+
+		if (showHideCompleted) {
+			mountHideCompletedChip(chips, {
+				active: hideCompleted,
+				onToggle: () => onHideCompletedToggle?.(),
+			});
+		}
 	}
 
 	if (extraToolbar) {

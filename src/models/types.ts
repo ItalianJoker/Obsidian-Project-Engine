@@ -670,6 +670,12 @@ export interface Project {
 	 * @remarks YAML: `parent_project` (project id string, not a wikilink)
 	 */
 	parentProjectId: string | null;
+	/**
+	 * When true the project is archived (hidden from active portfolio lists).
+	 * @remarks YAML: `archived`. Missing → `false` on load. Also implied when the
+	 * note lives under {@link ProjectsEngineSettings.archivedProjectsFolder}.
+	 */
+	archived?: boolean;
 	stages: Prince2Stage[];
 	workPackages: WorkPackage[];
 	startDate?: IsoDate;
@@ -1021,8 +1027,15 @@ export interface ProjectsEngineSettings {
 	/**
 	 * Vault-relative projects root (example: `Projects`).
 	 * Project folders and default Entity catalogues live under this root.
+	 * @remarks Settings label: “Projects folder”. Normalised with Obsidian `normalizePath()`.
 	 */
 	projectsFolder: string;
+	/**
+	 * Vault-relative folder for archived project containment trees.
+	 * @remarks Settings label: “Archived projects folder”. Default `Projects_Archived`.
+	 * Normalised with Obsidian `normalizePath()`. Missing → default on load.
+	 */
+	archivedProjectsFolder: string;
 	customersFolder: string;
 	teamMembersFolder: string;
 	projectTypesFolder: string;
@@ -1140,6 +1153,16 @@ export interface ProjectsEngineSettings {
 	autoSchedule: boolean;
 	/** When auto-schedule is on, pull dependents earlier on early finish. */
 	pullForwardOnEarlyFinish: boolean;
+	/**
+	 * Minutes before a task’s `scheduled` date-time to show a Reminder Notice.
+	 * Non-negative integer (default 15). Date-only scheduled values are skipped.
+	 */
+	reminderMinutesBefore: number;
+	/**
+	 * Dedupe keys (`taskId::scheduled`) for reminders already shown.
+	 * Pruned against live scheduled values; capped for size.
+	 */
+	reminderFiredKeys: string[];
 	/** Persist task editor changes when the leaf/modal closes. */
 	saveTaskOnClose: boolean;
 	/** Open release notes after plugin updates. */
@@ -1160,6 +1183,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	projectIdPattern: "PRJ-YYYY-###",
 	projectIdCounter: 1,
 	projectsFolder: "Projects",
+	archivedProjectsFolder: "Projects_Archived",
 	customersFolder: "Projects/Entities/Customers",
 	teamMembersFolder: "Projects/Entities/Team Members",
 	projectTypesFolder: "Projects/Entities/Project Types",
@@ -1198,6 +1222,8 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	},
 	autoSchedule: true,
 	pullForwardOnEarlyFinish: false,
+	reminderMinutesBefore: 15,
+	reminderFiredKeys: [],
 	saveTaskOnClose: true,
 	showReleaseNotes: true,
 	customFieldSchemas: [],

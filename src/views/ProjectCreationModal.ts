@@ -37,7 +37,7 @@ import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from
 import { projectNotePath } from "../services/projectPaths";
 import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from "../models/types";
 import { mountIconPicker } from "../ui/IconPicker";
-import { loadProjectRows } from "./projectRows";
+import { loadActiveProjectRows } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
 import { openTaskListTemplateModal } from "./TaskListTemplateModal";
 
@@ -428,7 +428,7 @@ export class ProjectCreationModal extends Modal {
 			attr: { "aria-label": "Parent project" },
 		});
 		select.createEl("option", { text: "— None —", attr: { value: "" } });
-		for (const row of loadProjectRows(this.app)) {
+		for (const row of loadActiveProjectRows(this.app, this.plugin.settings)) {
 			select.createEl("option", {
 				text: `${row.id} — ${row.name}`,
 				attr: { value: row.id },

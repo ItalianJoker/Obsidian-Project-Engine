@@ -1,5 +1,23 @@
 # Release notes — Projects Engine
 
+## 1.4.0 — Task notes, archive folders, metadata sync
+
+**EN:** Feature release: task descriptive notes with in-place preview; stronger subtask hierarchy in all task views; Edit project save stays in the active leaf; configurable Projects / Archived folders with Archive project; Settings Sync & Rebuild Note Metadata. Does not overwrite v1.3.4.
+
+### Added
+
+- **Task notes** — Create/Edit field; expandable preview icon on Table / Board / Eisenhower / Gantt (and Global Dashboard shared SubViews).
+- **Subtask hierarchy** — indentation, tree guide, scaled type/badges for nested tasks in all task surfaces.
+- **Projects folder** + **Archived projects folder** settings (defaults `Projects` / `Projects_Archived`); **Archive project** on Project Dashboard with confirm, `createFolder`, `renameFile`, YAML `archived: true`.
+- **Sync & Rebuild Note Metadata** — Settings action; notice `Metadata synchronization complete: X files checked`.
+
+### Changed
+
+- Edit project navigates in the same leaf back to Project Dashboard (no `getLeaf("tab")` from Overview/Workspace).
+- Folder paths normalised via Obsidian `normalizePath()` on load and in Settings.
+
+---
+
 ## 1.3.4 — Default role for Non PM on project create
 
 **EN:** Configurable **Default role for Non PM** in Settings; on Create project, the auto-added Default PM member gets that role when Non PM is checked, otherwise **PM**. Edit project unchanged. Does not overwrite v1.3.3.

@@ -27,7 +27,9 @@ import { EmptyState } from "../../ui/EmptyState";
 import { wireKanbanCardDnD, wireKanbanColumnDrop } from "../kanbanDnD";
 import { findProjectRow, type ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
+import { taskNestingDepth } from "../../services/taskTree";
 import { openTaskEditor } from "../TaskEditor";
+import { mountTaskNotesToggle } from "../taskNotesControls";
 import { mountTaskTitleControls } from "../taskTitleControls";
 
 export interface KanbanSubViewProps {
@@ -102,6 +104,12 @@ export class KanbanSubView implements SubView {
 		const enableHtml5 = typeof window !== "undefined" && window.innerWidth >= 720;
 		const isMobile = typeof window !== "undefined" && window.innerWidth < 720;
 		const byId = new Map(projectTasks.map((task) => [task.id, task] as const));
+		const poolById = new Map(scopedPool.map((task) => [task.id, task] as const));
+		const depthById = new Map(
+			scopedPool.map(
+				(task) => [task.id, taskNestingDepth(task, poolById)] as const,
+			),
+		);
 		const dateFormat = plugin.settings.dateFormat;
 
 		const onDrop = (taskId: string, toStatus: string): void => {
@@ -160,6 +168,13 @@ export class KanbanSubView implements SubView {
 					});
 				}
 
+				const depth = depthById.get(task.id) ?? 0;
+				if (depth > 0) {
+					card.addClass("pe-kanban-card--subtask");
+					card.addClass(`pe-task-depth-${Math.min(depth, 6)}`);
+					card.style.setProperty("--pe-tree-depth", String(depth));
+				}
+
 				const titleWrap = card.createDiv({ cls: "pe-kanban-card-head" });
 				mountTaskTitleControls(titleWrap, {
 					plugin,
@@ -168,6 +183,7 @@ export class KanbanSubView implements SubView {
 					titleClass: "pe-kanban-card-title",
 					titleAsButton: false,
 				});
+				mountTaskNotesToggle(titleWrap, task);
 
 				if (showPreview) {
 					const preview = descriptionPreview(task);

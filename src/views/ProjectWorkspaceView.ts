@@ -80,6 +80,7 @@ export class ProjectWorkspaceView extends ItemView {
 		text: "",
 		status: "all",
 		priority: "all",
+		hideCompleted: false,
 	};
 	private showFilterPanel = false;
 	private zoomId: GanttZoomId = "week";
@@ -280,6 +281,7 @@ export class ProjectWorkspaceView extends ItemView {
 			onAddTask: () => this.openAddTask(),
 			onOpenSettings: () => {
 				void openProjectEditor(this.plugin, project, {
+					leaf: this.leaf,
 					onSaved: () => void this.refresh(),
 				});
 			},
@@ -290,7 +292,12 @@ export class ProjectWorkspaceView extends ItemView {
 				});
 			},
 			onAllClick: () => {
-				this.filters = { text: this.filters.text, status: "all", priority: "all" };
+				this.filters = {
+					text: this.filters.text,
+					status: "all",
+					priority: "all",
+					hideCompleted: this.filters.hideCompleted,
+				};
 				this.showFilterPanel = false;
 				this.renderChrome();
 				this.renderCurrentView();
@@ -298,6 +305,13 @@ export class ProjectWorkspaceView extends ItemView {
 			onFilterClick: () => {
 				this.showFilterPanel = !this.showFilterPanel;
 				this.renderChrome();
+			},
+			showHideCompleted: this.mode === "table",
+			hideCompleted: this.filters.hideCompleted,
+			onHideCompletedToggle: () => {
+				this.filters.hideCompleted = !this.filters.hideCompleted;
+				this.renderChrome();
+				this.renderCurrentView();
 			},
 			extraToolbar:
 				this.mode === "gantt"

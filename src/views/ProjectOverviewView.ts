@@ -38,6 +38,10 @@ import {
 } from "../services/projectDocumentNote";
 import { patchProjectFrontmatter, setProjectStatus } from "../services/projectIo";
 import {
+	archiveProjectFolder,
+	notifyProjectArchived,
+} from "../services/projectArchive";
+import {
 	deleteProjectFolder,
 	notifyProjectDeleted,
 } from "../services/projectDelete";
@@ -73,6 +77,7 @@ import { CreateProjectDocumentModal } from "../ui/CreateProjectDocumentModal";
 import { EmptyState } from "../ui/EmptyState";
 import { renderProjectChrome } from "../ui/ProjectChrome";
 import { renderProjectDocumentsTree } from "../ui/ProjectDocumentsTree";
+import { mountHideCompletedChip } from "../ui/taskFilterChips";
 import { TextPromptModal } from "../ui/TextPromptModal";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
 import { loadAllTasks } from "../services/taskIo";
@@ -110,6 +115,7 @@ export class ProjectOverviewView extends ItemView {
 		text: "",
 		status: "all",
 		priority: "all",
+		hideCompleted: false,
 	};
 	private showFilterPanel = false;
 	private table: TableSubView | null = null;
@@ -347,6 +353,7 @@ export class ProjectOverviewView extends ItemView {
 			},
 			onOpenSettings: () => {
 				void openProjectEditor(this.plugin, project, {
+					leaf: this.leaf,
 					onSaved: () => void this.refresh(),
 				});
 			},
@@ -354,7 +361,12 @@ export class ProjectOverviewView extends ItemView {
 				void copyProjectObsidianUri(this.app, project, { view: "overview" });
 			},
 			onAllClick: () => {
-				this.filters = { text: this.filters.text, status: "all", priority: "all" };
+				this.filters = {
+					text: this.filters.text,
+					status: "all",
+					priority: "all",
+					hideCompleted: this.filters.hideCompleted,
+				};
 				this.showFilterPanel = false;
 				this.render();
 			},
@@ -593,7 +605,12 @@ export class ProjectOverviewView extends ItemView {
 			attr: { type: "button", "aria-pressed": String(!filterActive) },
 		});
 		allBtn.addEventListener("click", () => {
-			this.filters = { text: this.filters.text, status: "all", priority: "all" };
+			this.filters = {
+				text: this.filters.text,
+				status: "all",
+				priority: "all",
+				hideCompleted: this.filters.hideCompleted,
+			};
 			this.showFilterPanel = false;
 			this.render();
 		});
@@ -605,6 +622,14 @@ export class ProjectOverviewView extends ItemView {
 		filterBtn.addEventListener("click", () => {
 			this.showFilterPanel = !this.showFilterPanel;
 			this.render();
+		});
+		mountHideCompletedChip(chips, {
+			active: this.filters.hideCompleted,
+			onToggle: () => {
+				this.filters.hideCompleted = !this.filters.hideCompleted;
+				this.renderTaskSearch(filterActive);
+				this.renderTable();
+			},
 		});
 	}
 
@@ -618,6 +643,7 @@ export class ProjectOverviewView extends ItemView {
 		const row = actions.createDiv({ cls: "pe-inline-row" });
 		this.cta(row, "Edit project", false, () => {
 			void openProjectEditor(this.plugin, project, {
+				leaf: this.leaf,
 				onSaved: () => void this.refresh(),
 			});
 		});
@@ -641,9 +667,44 @@ export class ProjectOverviewView extends ItemView {
 				openExternalUrl(project.projectUrl);
 			});
 		}
+		if (!project.archived) {
+			this.cta(row, "Archive project…", false, () => {
+				this.confirmArchive(project);
+			});
+		}
 		this.cta(row, "Delete project…", false, () => {
 			this.confirmDelete(project);
 		});
+	}
+
+	/**
+	 * Confirm then move the project folder into the archived-projects folder.
+	 */
+	private confirmArchive(project: ProjectRow): void {
+		const archiveRoot =
+			this.plugin.settings.archivedProjectsFolder || "Projects_Archived";
+		const folder = containingProjectFolder(project.file.path) || project.file.path;
+		new ConfirmModal(this.app, {
+			title: "Archive project?",
+			message: `This will move the project folder into “${archiveRoot}” and hide it from active project lists:\n\n${folder}\n\nYou can still open the notes from the vault file explorer.`,
+			confirmLabel: "Archive project",
+			onConfirm: async () => {
+				try {
+					const result = await archiveProjectFolder({
+						app: this.app,
+						projectFile: project.file,
+						settings: this.plugin.settings,
+					});
+					notifyProjectArchived(result.archivedPath, result.moved);
+					this.plugin.indexer.rebuild();
+					this.plugin.refreshOpenViews();
+					await this.plugin.router.openDashboard();
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					new Notice(`Could not archive project: ${message}`);
+				}
+			},
+		}).open();
 	}
 
 	private confirmDelete(project: ProjectRow): void {

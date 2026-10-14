@@ -17,6 +17,7 @@ import type { ProjectRow } from "../projectRows";
 import type { SubView } from "../SubView";
 import { openTaskEditor } from "../TaskEditor";
 import { openTaskDetail } from "../TaskDetailModal";
+import { mountTaskNotesToggle } from "../taskNotesControls";
 import { mountTaskTitleControls } from "../taskTitleControls";
 
 /** Supported Gantt zoom presets. */
@@ -357,7 +358,11 @@ export class GanttSubView implements SubView {
 
 			const label = lane.createDiv({ cls: "pe-gantt-label" });
 			label.style.width = `${LABEL_WIDTH}px`;
-			label.style.paddingLeft = `${12 + row.depth * 16}px`;
+			label.style.setProperty("--pe-tree-depth", String(row.depth));
+			if (row.depth > 0) {
+				label.addClass("pe-gantt-label--subtask");
+				lane.addClass("pe-gantt-row--subtask");
+			}
 
 			if (row.hasChildren) {
 				const chevron = label.createSpan({ cls: "pe-gantt-chevron pe-touch-target" });
@@ -378,6 +383,7 @@ export class GanttSubView implements SubView {
 				titleClass: "pe-gantt-label-text",
 				titleAsButton: false,
 			});
+			mountTaskNotesToggle(label, row.task);
 
 			const track = lane.createDiv({ cls: "pe-gantt-track" });
 			track.style.width = `${chartWidth}px`;

@@ -26,7 +26,7 @@ import {
 	type GlobalDashboardMode,
 } from "../ui/GlobalDashboardChrome";
 import { ProjectPickerModal } from "../ui/ProjectPickerModal";
-import { loadProjectRows, type ProjectRow } from "./projectRows";
+import { loadActiveProjectRows, type ProjectRow } from "./projectRows";
 import { openTaskEditor } from "./TaskEditor";
 import type { SubView } from "./SubView";
 import { EisenhowerSubView } from "./subviews/EisenhowerSubView";
@@ -59,6 +59,7 @@ export class GlobalDashboardView extends ItemView {
 		text: "",
 		status: "all",
 		priority: "all",
+		hideCompleted: false,
 	};
 	private showFilterPanel = false;
 	private reloadTimer: number | null = null;
@@ -134,12 +135,14 @@ export class GlobalDashboardView extends ItemView {
 
 	private async reload(): Promise<void> {
 		this.plugin.indexer.rebuild();
-		this.projects = loadProjectRows(this.app);
-		this.tasks = await loadAllTasks(
+		this.projects = loadActiveProjectRows(this.app, this.plugin.settings);
+		const activeIds = new Set(this.projects.map((row) => row.id));
+		const allTasks = await loadAllTasks(
 			this.app,
 			this.plugin.settings.tasksFolder,
 			this.plugin.settings.hoursPerManday,
 		);
+		this.tasks = allTasks.filter((task) => activeIds.has(task.projectId));
 		this.renderChrome();
 		this.renderCurrentView();
 	}
@@ -169,7 +172,12 @@ export class GlobalDashboardView extends ItemView {
 				void this.plugin.router.openDashboard();
 			},
 			onAllClick: () => {
-				this.filters = { text: this.filters.text, status: "all", priority: "all" };
+				this.filters = {
+					text: this.filters.text,
+					status: "all",
+					priority: "all",
+					hideCompleted: this.filters.hideCompleted,
+				};
 				this.showFilterPanel = false;
 				this.renderChrome();
 				this.renderCurrentView();
@@ -177,6 +185,13 @@ export class GlobalDashboardView extends ItemView {
 			onFilterClick: () => {
 				this.showFilterPanel = !this.showFilterPanel;
 				this.renderChrome();
+			},
+			showHideCompleted: this.mode === "table",
+			hideCompleted: this.filters.hideCompleted,
+			onHideCompletedToggle: () => {
+				this.filters.hideCompleted = !this.filters.hideCompleted;
+				this.renderChrome();
+				this.renderCurrentView();
 			},
 		});
 
