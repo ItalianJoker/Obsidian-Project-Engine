@@ -7,6 +7,16 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.3
+
+### Added
+
+- **Show archived projects** — toggle at the bottom of the Projects homepage; Unarchive from the list.
+
+### Fixes
+
+- **Manual folder moves** — archive vs active follows Projects / Archived folder location; Sync & refresh normalise YAML \`archived\`.
+
 ## 1.4.2
 
 ### Added

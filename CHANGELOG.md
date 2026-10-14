@@ -3,6 +3,16 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.3] — 2026-10-14
+
+### Added
+
+- **Show archived projects** — toggle at the bottom of the Projects homepage listing archived projects with **Unarchive** (and Open).
+
+### Fixed
+
+- **Manual archive folder moves** — active vs archived lists follow the configured Projects / Archived folders; Sync & Rebuild Note Metadata (and homepage refresh) normalises YAML `archived` to match location after OS / file-explorer moves.
+
 ## [1.4.2] — 2026-10-14
 
 ### Added

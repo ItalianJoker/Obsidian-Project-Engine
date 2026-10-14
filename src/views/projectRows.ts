@@ -193,6 +193,24 @@ export function loadActiveProjectRows(
 	);
 }
 
+/**
+ * Archived projects for the portfolio “Show archived projects” panel.
+ *
+ * Uses path-first {@link isProjectArchived} (archive folder wins; Projects
+ * folder clears a stale YAML flag after manual moves).
+ */
+export function loadArchivedProjectRows(
+	app: App,
+	settings: ProjectsEngineSettings,
+): ProjectRow[] {
+	return loadProjectRows(app).filter((row) =>
+		isProjectArchived(
+			{ archived: row.archived, filePath: row.file.path },
+			settings,
+		),
+	);
+}
+
 function asStringArray(value: unknown): string[] {
 	if (!Array.isArray(value)) {
 		return [];

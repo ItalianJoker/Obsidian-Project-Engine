@@ -35,7 +35,34 @@ export function projectsFolderPath(settings: ProjectsEngineSettings): string {
 }
 
 /**
- * True when a project should be treated as archived (YAML flag or path under archive root).
+ * Path-derived archive state for a project note.
+ *
+ * - under {@link archivedProjectsFolderPath} → `true`
+ * - under {@link projectsFolderPath} (and not the archive root) → `false`
+ * - elsewhere → `null` (leave YAML as-is / fall back to flag)
+ *
+ * Path wins over a stale `archived` flag after OS / file-explorer moves.
+ */
+export function expectedArchivedFromPath(
+	filePath: string,
+	settings: ProjectsEngineSettings,
+): boolean | null {
+	const archiveRoot = archivedProjectsFolderPath(settings);
+	const projectsRoot = projectsFolderPath(settings);
+	if (pathUnderFolder(filePath, archiveRoot)) {
+		return true;
+	}
+	if (pathUnderFolder(filePath, projectsRoot)) {
+		return false;
+	}
+	return null;
+}
+
+/**
+ * True when a project should be treated as archived.
+ *
+ * Prefer vault location (archive vs Projects folder) so manually moved folders
+ * show in the correct list immediately; fall back to YAML only outside both roots.
  */
 export function isProjectArchived(
 	args: {
@@ -44,10 +71,43 @@ export function isProjectArchived(
 	},
 	settings: ProjectsEngineSettings,
 ): boolean {
-	if (args.archived === true) {
-		return true;
+	const fromPath = expectedArchivedFromPath(args.filePath, settings);
+	if (fromPath !== null) {
+		return fromPath;
 	}
-	return pathUnderFolder(args.filePath, archivedProjectsFolderPath(settings));
+	return args.archived === true;
+}
+
+/**
+ * Patch project notes whose YAML `archived` disagrees with their folder location.
+ *
+ * @returns Number of notes updated.
+ */
+export async function reconcileProjectArchivedFlags(args: {
+	app: App;
+	settings: ProjectsEngineSettings;
+}): Promise<number> {
+	const { app, settings } = args;
+	let updated = 0;
+	for (const file of app.vault.getMarkdownFiles()) {
+		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
+		if (fm?.pe_type !== "project") {
+			continue;
+		}
+		const expected = expectedArchivedFromPath(file.path, settings);
+		if (expected === null) {
+			continue;
+		}
+		const current = fm.archived === true;
+		if (current === expected) {
+			continue;
+		}
+		await patchProjectFrontmatter(app.vault, file, (data) => {
+			data.archived = expected;
+		});
+		updated += 1;
+	}
+	return updated;
 }
 
 /**

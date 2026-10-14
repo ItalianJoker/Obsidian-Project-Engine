@@ -1,5 +1,19 @@
 # Release notes — Projects Engine
 
+## 1.4.3 — Archived projects on homepage
+
+**EN:** Projects homepage can show archived projects and Unarchive them; lists reconcile after manual folder moves between Projects and Archived. Does not overwrite v1.4.2.
+
+### Added
+
+- **Show archived projects** — bottom toggle on the portfolio homepage; list with Unarchive (reuses 1.4.2 path).
+
+### Fixed
+
+- **Path-based archive state** — folder under Archived → archived; under Projects → active (clears stale `archived: true`); metadata sync + refresh heal YAML mismatches.
+
+---
+
 ## 1.4.2 — Unarchive + quick Archive
 
 **EN:** Unarchive archived projects from Project Dashboard; compact Archive next to Open on the Projects homepage table. Does not overwrite v1.4.1.

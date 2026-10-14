@@ -218,4 +218,56 @@ project_id: PRJ-1
 			"Metadata synchronization complete: 12 files checked (3 updated)",
 		);
 	});
+
+	it("clears archived when a project note lives under Projects", () => {
+		const raw = `---
+pe_type: project
+id: X
+name: X
+archived: true
+---
+
+# X
+`;
+		const result = normaliseNoteMetadataContent(
+			raw,
+			"Projects/X/X.md",
+			DEFAULT_SETTINGS,
+			{
+				folderPath: "Projects/X",
+				noteBasename: "X",
+				projectId: "X",
+				projectWikiLink: "[[X]]",
+			},
+		);
+		expect(result.changed).toBe(true);
+		const { data } = splitFrontmatter(result.next);
+		expect(data.archived).toBe(false);
+	});
+
+	it("sets archived when a project note lives under the archive folder", () => {
+		const raw = `---
+pe_type: project
+id: X
+name: X
+archived: false
+---
+
+# X
+`;
+		const result = normaliseNoteMetadataContent(
+			raw,
+			"Projects_Archived/X/X.md",
+			DEFAULT_SETTINGS,
+			{
+				folderPath: "Projects_Archived/X",
+				noteBasename: "X",
+				projectId: "X",
+				projectWikiLink: "[[X]]",
+			},
+		);
+		expect(result.changed).toBe(true);
+		const { data } = splitFrontmatter(result.next);
+		expect(data.archived).toBe(true);
+	});
 });

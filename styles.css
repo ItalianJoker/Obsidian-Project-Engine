@@ -1692,6 +1692,36 @@
 	color: var(--text-muted);
 }
 
+.pe-dashboard-archived {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.pe-archived-toggle {
+	margin: 0;
+}
+
+.pe-archived-panel {
+	margin-top: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.pe-archived-panel .pe-section-title {
+	margin: 0;
+	font-size: 0.85rem;
+	font-weight: 650;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+.pe-archived-empty {
+	margin: 0;
+}
+
 .pe-project-list-container {
 	/* list chrome only — never use this class on .pe-content itself */
 	padding: 0;

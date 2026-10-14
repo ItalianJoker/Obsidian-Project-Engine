@@ -7,6 +7,7 @@
  * Safe and idempotent: merges missing pe_type / tags / project links without
  * deleting user keys. Project-tree notes (any nested depth under a project
  * folder) are owned via path resolution — including files moved in via the OS.
+ * Project notes also sync YAML `archived` to match Projects vs Archived folder.
  */
 
 import type { App, Vault } from "obsidian";
@@ -18,6 +19,7 @@ import {
 	splitFrontmatter,
 } from "./frontmatter";
 import { normalizeVaultFolder, pathUnderFolder } from "./folderPaths";
+import { expectedArchivedFromPath } from "./projectArchive";
 import { PROJECT_DOCUMENT_PE_TYPE } from "./projectDocumentNote";
 import { processNote } from "./vaultIo";
 
@@ -364,6 +366,15 @@ export function normaliseNoteMetadataContent(
 		if (typeof data.id !== "string") {
 			data.id = ownership?.projectId || base;
 			mutated = true;
+		}
+		// Align YAML `archived` with folder location after OS / explorer moves.
+		const expectedArchived = expectedArchivedFromPath(filePath, settings);
+		if (expectedArchived !== null) {
+			const currentArchived = data.archived === true;
+			if (currentArchived !== expectedArchived) {
+				data.archived = expectedArchived;
+				mutated = true;
+			}
 		}
 	}
 
