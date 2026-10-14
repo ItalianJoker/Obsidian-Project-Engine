@@ -15,6 +15,8 @@ export const RELEASE_NOTES_MARKDOWN = `
 - **Subtask hierarchy** — indentation, tree guide, and smaller type for nested tasks across all task views (including Global Dashboard).
 - **Archive project** — Settings **Archived projects folder** (default \`Projects_Archived\`); Dashboard action moves the project folder and hides it from active lists.
 - **Sync & Rebuild Note Metadata** — Settings button; notice \`Metadata synchronization complete: X files checked\`.
+- **Hide completed** — table filter chip on Global Dashboard, project Dashboard, and Workspace Table.
+- **Scheduled reminders** — Settings minutes-before (default 15); Notice for upcoming \`scheduled\` date-times (deduped; skips Done).
 
 ### Changed
 

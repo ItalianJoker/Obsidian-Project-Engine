@@ -1153,6 +1153,16 @@ export interface ProjectsEngineSettings {
 	autoSchedule: boolean;
 	/** When auto-schedule is on, pull dependents earlier on early finish. */
 	pullForwardOnEarlyFinish: boolean;
+	/**
+	 * Minutes before a task’s `scheduled` date-time to show a Reminder Notice.
+	 * Non-negative integer (default 15). Date-only scheduled values are skipped.
+	 */
+	reminderMinutesBefore: number;
+	/**
+	 * Dedupe keys (`taskId::scheduled`) for reminders already shown.
+	 * Pruned against live scheduled values; capped for size.
+	 */
+	reminderFiredKeys: string[];
 	/** Persist task editor changes when the leaf/modal closes. */
 	saveTaskOnClose: boolean;
 	/** Open release notes after plugin updates. */
@@ -1212,6 +1222,8 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	},
 	autoSchedule: true,
 	pullForwardOnEarlyFinish: false,
+	reminderMinutesBefore: 15,
+	reminderFiredKeys: [],
 	saveTaskOnClose: true,
 	showReleaseNotes: true,
 	customFieldSchemas: [],

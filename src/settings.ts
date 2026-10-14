@@ -711,6 +711,32 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
+
+		new Setting(containerEl)
+			.setName("Reminder: minutes before scheduled time")
+			.setDesc(
+				"Show an Obsidian Notice this many minutes before a task’s Scheduled date-time. Uses the locked Done status to skip completed tasks. Date-only schedules (no time) are skipped. Non-negative integer; default 15.",
+			)
+			.addText((text) => {
+				text.inputEl.type = "number";
+				text.inputEl.min = "0";
+				text.inputEl.step = "1";
+				text.inputEl.addClass("pe-touch-target");
+				text
+					.setPlaceholder("15")
+					.setValue(String(this.plugin.settings.reminderMinutesBefore ?? 15))
+					.onChange(async (value) => {
+						const parsed = Number.parseInt(value, 10);
+						if (!Number.isFinite(parsed) || parsed < 0) {
+							return;
+						}
+						this.plugin.settings.reminderMinutesBefore = Math.min(
+							Math.floor(parsed),
+							10_080,
+						);
+						await this.plugin.saveSettings();
+					});
+			});
 	}
 
 	/**

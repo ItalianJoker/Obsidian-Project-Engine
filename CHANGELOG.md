@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Subtask visual hierarchy** — clearer indentation, tree-guide border, and smaller type/badges for nested tasks across Table, Board, Eisenhower, Gantt, and Global Dashboard.
 - **Archived projects folder** — Settings path (default `Projects_Archived`); **Archive project** action on Project Dashboard moves the project folder (collision-safe) and hides it from active lists.
 - **Sync & Rebuild Note Metadata** — Settings button scans configured plugin folders, normalises missing `pe_type` / `tags`, rebuilds the index; notice `Metadata synchronization complete: X files checked`.
+- **Hide completed** — filter chip on Global Dashboard (table), project Dashboard task table, and Workspace Table; hides locked Done status.
+- **Scheduled reminders** — Settings **Reminder: minutes before scheduled time** (default 15); Obsidian Notice when a task’s Scheduled date-time is within the lead window (once per occurrence; skips Done / date-only / archived projects).
 
 ### Changed
 
