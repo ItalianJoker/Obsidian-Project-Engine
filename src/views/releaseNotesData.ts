@@ -7,6 +7,13 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.2
+
+### Added
+
+- **Unarchive project** — Project Dashboard action restores an archived project to the Projects folder.
+- **Quick Archive** — archive control next to **Open** on the Projects homepage table.
+
 ## 1.4.1
 
 ### Added

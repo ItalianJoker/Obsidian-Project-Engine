@@ -1,5 +1,16 @@
 # Release notes — Projects Engine
 
+## 1.4.2 — Unarchive + quick Archive
+
+**EN:** Unarchive archived projects from Project Dashboard; compact Archive next to Open on the Projects homepage table. Does not overwrite v1.4.1.
+
+### Added
+
+- **Unarchive project** — confirm → move folder back to Projects, clear `archived`, refresh lists.
+- **Quick Archive** — archive icon beside **Open** on the portfolio table (same behaviour as Dashboard Archive).
+
+---
+
 ## 1.4.1 — Metadata sync for nested project notes
 
 **EN:** Fix Sync & Rebuild Note Metadata so notes in project subfolders (including OS-moved files) receive pe_type, project links, and tags. Does not overwrite v1.4.0.

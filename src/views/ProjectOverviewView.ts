@@ -39,7 +39,10 @@ import {
 import { patchProjectFrontmatter, setProjectStatus } from "../services/projectIo";
 import {
 	archiveProjectFolder,
+	isProjectArchived,
 	notifyProjectArchived,
+	notifyProjectUnarchived,
+	unarchiveProjectFolder,
 } from "../services/projectArchive";
 import {
 	deleteProjectFolder,
@@ -667,7 +670,16 @@ export class ProjectOverviewView extends ItemView {
 				openExternalUrl(project.projectUrl);
 			});
 		}
-		if (!project.archived) {
+		if (
+			isProjectArchived(
+				{ archived: project.archived, filePath: project.file.path },
+				this.plugin.settings,
+			)
+		) {
+			this.cta(row, "Unarchive project…", false, () => {
+				this.confirmUnarchive(project);
+			});
+		} else {
 			this.cta(row, "Archive project…", false, () => {
 				this.confirmArchive(project);
 			});
@@ -702,6 +714,36 @@ export class ProjectOverviewView extends ItemView {
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
 					new Notice(`Could not archive project: ${message}`);
+				}
+			},
+		}).open();
+	}
+
+	/**
+	 * Confirm then move the project folder back into the active Projects folder.
+	 */
+	private confirmUnarchive(project: ProjectRow): void {
+		const projectsRoot = this.plugin.settings.projectsFolder || "Projects";
+		const folder = containingProjectFolder(project.file.path) || project.file.path;
+		new ConfirmModal(this.app, {
+			title: "Unarchive project?",
+			message: `This will move the project folder back into “${projectsRoot}” and show it in active project lists:\n\n${folder}`,
+			confirmLabel: "Unarchive project",
+			onConfirm: async () => {
+				try {
+					const result = await unarchiveProjectFolder({
+						app: this.app,
+						projectFile: project.file,
+						settings: this.plugin.settings,
+					});
+					notifyProjectUnarchived(result.projectPath, result.moved);
+					this.filePath = result.projectPath;
+					this.plugin.indexer.rebuild();
+					this.plugin.refreshOpenViews();
+					await this.plugin.router.openOverview(result.projectPath, this.leaf);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					new Notice(`Could not unarchive project: ${message}`);
 				}
 			},
 		}).open();

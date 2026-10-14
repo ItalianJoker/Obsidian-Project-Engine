@@ -469,6 +469,32 @@
 	margin: 0;
 }
 
+.pe-project-row-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.pe-project-list .pe-project-archive-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	margin: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s, 4px);
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.pe-project-list .pe-project-archive-btn:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
 .pe-table tr.is-selected,
 .pe-accordion.is-selected {
 	outline: 2px solid var(--interactive-accent);
