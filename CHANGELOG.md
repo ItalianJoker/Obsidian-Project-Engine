@@ -3,6 +3,20 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.3] — 2026-10-14
+
+### Added
+
+- **Remove ITSM Item** on the Project Dashboard — delete control on each association (same chrome as Add ITSM Item); confirm dialog; persists via `vault.process`.
+- **Default PM** setting — pick a Team Member; new projects auto-add that member with role **PM** (unset = no auto-add).
+
+### Fixed
+
+- **Global Dashboard project label** is clickable text (not a pill badge); still opens the Project Dashboard.
+- **Global Dashboard margins** match single-project Task Workspace chrome (content flush under shared `.pe-chrome` padding).
+- **Edit project Overview** breadcrumb padding aligns with other edit sections.
+- **Edit / Create project** flag toggles (Non PM / Technical intervention) refresh budget fields in place — scroll position is preserved.
+
 ## [1.3.2] — 2026-10-14
 
 ### Fixed

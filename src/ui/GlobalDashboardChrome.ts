@@ -5,7 +5,8 @@
  * @usedBy GlobalDashboardView
  *
  * Structure matches project Task chrome: identity row + view switchers + add task,
- * then Search / All / Filter. Modes: Table | Board | Eisenhower (no Gantt / home).
+ * then Search / All / Filter (same `.pe-chrome` padding as Workspace). Modes:
+ * Table | Board | Eisenhower (no Gantt / home).
  */
 
 import { setIcon } from "obsidian";

@@ -109,6 +109,8 @@ export class ProjectEditor {
 	private errorEl: HTMLElement | null = null;
 	private readonly suggests: EntitySuggest[] = [];
 	private rootEl: HTMLElement | null = null;
+	/** Mount for budget / T&M field — refreshed in place when flags toggle (no scroll jump). */
+	private budgetMountEl: HTMLElement | null = null;
 	private readonly app: App;
 	private readonly plugin: ProjectsEnginePlugin;
 	private readonly project: ProjectRow;
@@ -295,8 +297,8 @@ export class ProjectEditor {
 	}
 
 	/**
-	 * Non PM / Technical intervention checkboxes. Changing Technical intervention
-	 * re-renders so the days field appears or hides.
+	 * Non PM / Technical intervention checkboxes.
+	 * Flag changes refresh only the budget mount (preserves scroll position).
 	 */
 	private addProjectFlagToggles(): void {
 		const wrap = this.rootEl!.createDiv({ cls: "pe-field pe-flag-toggles" });
@@ -308,7 +310,7 @@ export class ProjectEditor {
 		nonPm.createSpan({ text: "Non PM" });
 		nonPmBox.addEventListener("change", () => {
 			this.form.isNonPM = nonPmBox.checked;
-			this.render();
+			this.refreshBudgetDaysField();
 		});
 
 		const tech = wrap.createEl("label", { cls: "pe-check-label pe-touch-target" });
@@ -317,18 +319,37 @@ export class ProjectEditor {
 		tech.createSpan({ text: "Technical intervention" });
 		techBox.addEventListener("change", () => {
 			this.form.isTechnicalIntervention = techBox.checked;
-			this.render();
+			this.refreshBudgetDaysField();
 		});
 	}
 
-	/** Budget / Assigned days — hidden when Technical intervention is on. */
+	/** Create the budget mount and paint Budget / Assigned / T&M content. */
 	private addBudgetDaysField(): void {
+		this.budgetMountEl = this.rootEl!.createDiv({ cls: "pe-budget-field-mount" });
+		this.paintBudgetDaysField();
+	}
+
+	/** Re-paint budget fields in place — does not re-render the whole form (no scroll jump). */
+	private refreshBudgetDaysField(): void {
+		if (!this.budgetMountEl) {
+			return;
+		}
+		this.paintBudgetDaysField();
+	}
+
+	/** Budget / Assigned days — hidden when Technical intervention is on. */
+	private paintBudgetDaysField(): void {
+		const mount = this.budgetMountEl;
+		if (!mount) {
+			return;
+		}
+		mount.empty();
 		const flags = {
 			isNonPM: this.form.isNonPM,
 			isTechnicalIntervention: this.form.isTechnicalIntervention,
 		};
 		if (!showBudgetDaysInput(flags)) {
-			const wrap = this.rootEl!.createDiv({ cls: "pe-field" });
+			const wrap = mount.createDiv({ cls: "pe-field" });
 			wrap.createEl("label", { text: "Effort", cls: "pe-label" });
 			wrap.createEl("p", {
 				cls: "pe-help",
@@ -336,16 +357,23 @@ export class ProjectEditor {
 			});
 			return;
 		}
-		this.addText(
-			budgetDaysFieldLabel(flags, true),
-			this.form.assignedDays,
-			(value) => {
-				this.form.assignedDays = value;
-			},
-			"number",
-			`Management days. Equals ${this.plugin.settings.hoursPerManday} hours each.`,
-			"0",
-		);
+		const wrap = mount.createDiv({ cls: "pe-field" });
+		wrap.createEl("label", {
+			text: budgetDaysFieldLabel(flags, true),
+			cls: "pe-label",
+		});
+		wrap.createEl("p", {
+			text: `Management days. Equals ${this.plugin.settings.hoursPerManday} hours each.`,
+			cls: "pe-help",
+		});
+		const input = wrap.createEl("input", {
+			cls: "pe-input pe-touch-target",
+			attr: { type: "number", min: "0", spellcheck: "false" },
+		});
+		input.value = this.form.assignedDays;
+		input.addEventListener("input", () => {
+			this.form.assignedDays = input.value;
+		});
 	}
 
 	/** CRUD list for ITSM Ticket / Change / Problem associations. */

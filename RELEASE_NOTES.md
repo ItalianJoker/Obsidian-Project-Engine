@@ -1,5 +1,23 @@
 # Release notes — Projects Engine
 
+## 1.3.3 — Remove ITSM + Global Dashboard polish + Default PM
+
+**EN:** Remove ITSM Item on Project Dashboard; Global Dashboard project names as clickable text; margins aligned with single-project Task chrome; Edit Overview padding; no scroll jump on flag toggles; Default PM setting. Does not overwrite v1.3.2.
+
+### Added
+
+- **Remove ITSM Item** — trash control on each Dashboard association (same button chrome as Add ITSM Item); confirm before delete; saves via `vault.process`.
+- **Default PM** — Settings section to pick a Team Member; **Create project** auto-adds them with role **PM** when set.
+
+### Fixes & polish
+
+- **Global Dashboard project label** — plain clickable text (no pill/badge); still opens that Project Dashboard.
+- **Global Dashboard margins** — left/top padding and search/filters alignment match the single-project Task view chrome.
+- **Edit project Overview** breadcrumb padding matches other sections.
+- **Flag toggles** (Non PM / Technical intervention) update budget fields without resetting scroll.
+
+---
+
 ## 1.3.2 — Work orders Linked Entities padding (release build)
 
 **EN:** Rebuild of current `main` so the published plugin assets include the Work orders card padding fix (#37) that landed after the v1.3.1 asset cut. Does not overwrite v1.3.1.

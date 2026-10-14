@@ -1,4 +1,4 @@
-# Projects Engine — Cursor rules (v1.3.2)
+# Projects Engine — Cursor rules (v1.3.3)
 
 English-only UI labels, notices, placeholders, and code comments/JSDoc.
 Obsidian plugin id: `projects-engine`. Mobile-compatible (`isDesktopOnly: false`).
@@ -10,7 +10,7 @@ No Node builtins in the browser bundle. Persist content only via `vault.process`
 | --- | --- |
 | `src/main.ts` | Plugin entry: settings load/migrate, view registration, commands, ribbon, `refreshOpenViews` |
 | `src/models/types.ts` | Domain types (`Project`, `Task`, `ItsmItem`, `ProjectsEngineSettings`, helpers) |
-| `src/settings.ts` | Settings tab (folders, templates, statuses, Eisenhower, performance) |
+| `src/settings.ts` | Settings tab (folders, Default PM, templates, statuses, Eisenhower, performance) |
 | `src/engine/Indexer.ts` | Debounced entity index from vault frontmatter |
 | `src/engine/Scheduler.ts` | DAG schedule + `CommandStack` undo/redo |
 | `src/engine/debounce.ts` | Trailing-edge debounce for indexer / UI |
@@ -55,7 +55,7 @@ YAML `pe_type: task`. Loaded by `loadAllTasks`. Effort in hours; project budget 
 
 ### Settings (`ProjectsEngineSettings`)
 
-`data.json` via `loadSettings`/`saveSettings`. Notable: `templatesFolder` (default `"Templates"`, `normalizePath`), `taskListTemplatesFolder`, scaffold folders, statuses, Eisenhower labels. Always merge onto `DEFAULT_SETTINGS` with safe migrations.
+`data.json` via `loadSettings`/`saveSettings`. Notable: `templatesFolder` (default `"Templates"`, `normalizePath`), `defaultPm` (Team Member basename; Create project seeds role `PM` when set), `taskListTemplatesFolder`, scaffold folders, statuses, Eisenhower labels. Always merge onto `DEFAULT_SETTINGS` with safe migrations.
 
 ### Flow
 
@@ -65,8 +65,8 @@ Vault note → MetadataCache / `loadProjectRows` / `loadAllTasks` → views → 
 
 - **ItemViews:** Dashboard, Global Dashboard, Overview, Workspace, Project Edit, Task, Release Notes — register in `main.ts`; navigate via `ViewRouter`.
 - **Modals:** `projects-engine-modal` + `pe-modal-body`; footers `pe-actions pe-form-footer` (`justify-content: flex-end; gap: 8px; margin-top: 16px`). No float/fixed/absolute on form action buttons.
-- **Project Dashboard (Overview):** team role badges (`.pe-role-badge`); ITSM section with copyable ID badge → `Notice("Copied ID to clipboard")`; **Add ITSM Item** button (New note chrome) → `AddItsmItemModal` → `patchProjectFrontmatter`.
-- **Global Dashboard:** same Task chrome as project Workspace (search / All / Filter + Table | Board | Eisenhower via `GlobalDashboardChrome` + shared SubViews). Project name badge → `openOverview`. New Task → `ProjectPickerModal` (`<select>` dropdown) then `openTaskEditor`. Overdue → `.pe-task-row--overdue`.
+- **Project Dashboard (Overview):** team role badges (`.pe-role-badge`); ITSM section with copyable ID badge → `Notice("Copied ID to clipboard")`; **Add ITSM Item** / **Remove** (New note chrome) → confirm → `patchProjectFrontmatter`.
+- **Global Dashboard:** same Task chrome as project Workspace (search / All / Filter + Table | Board | Eisenhower via `GlobalDashboardChrome` + shared SubViews; content flush under chrome). Project name clickable text → `openOverview`. New Task → `ProjectPickerModal` (`<select>` dropdown) then `openTaskEditor`. Overdue → `.pe-task-row--overdue`.
 - **New note:** `CreateProjectDocumentModal` Template dropdown (`None` + `.md` from Templates folder).
 - Lifecycle: `registerEvent` / `registerDomEvent` / `registerInterval`; `contentEl.empty()` in `onClose()`.
 

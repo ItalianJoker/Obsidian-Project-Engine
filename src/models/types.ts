@@ -1075,6 +1075,12 @@ export interface ProjectsEngineSettings {
 	 */
 	hoursPerManday: number;
 	/**
+	 * Default Project Manager (Team Member basename or wikilink target).
+	 * When set, **Create project** seeds the team with this member and role `"PM"`.
+	 * Empty string = unset (no auto-add). Migrates safely when missing from `data.json`.
+	 */
+	defaultPm: string;
+	/**
 	 * Debounce for the in-memory entity indexer and graph-adjacent recalculation.
 	 * Keeps the UI thread responsive on mobile.
 	 */
@@ -1161,6 +1167,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	scaffoldRegistersFolder: "Registers",
 	showPrince2RegisterWidgets: true,
 	hoursPerManday: 8,
+	defaultPm: "",
 	indexerDebounceMs: 250,
 	projectSurface: "overview",
 	taskEditorSurface: "modal",

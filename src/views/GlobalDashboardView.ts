@@ -7,8 +7,9 @@
  *
  * Reuses project Task section chrome (search, All/Filter, view switchers) and the
  * same SubViews as Workspace — Table / Board / Eisenhower — without duplicating
- * filter or card/table rendering. Project-name badges stay on tasks; overdue rows
- * keep `.pe-task-row--overdue` / due-pill highlighting from the shared subviews.
+ * filter or card/table rendering. Project names render as clickable text links;
+ * overdue rows keep `.pe-task-row--overdue` / due-pill highlighting from the
+ * shared subviews. Margins match Workspace chrome (content flush under chrome).
  */
 
 import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
