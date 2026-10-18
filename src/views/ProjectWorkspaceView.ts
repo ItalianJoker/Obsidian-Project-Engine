@@ -12,6 +12,7 @@ import { ItemView, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
 import {
 	type Task,
+	type TaskId,
 	type TaskPriority,
 } from "../models/types";
 import { toWikiLink } from "../models/types";
@@ -85,6 +86,8 @@ export class ProjectWorkspaceView extends ItemView {
 	private showFilterPanel = false;
 	private zoomId: GanttZoomId = "week";
 	private subview: SubView | null = null;
+	/** Survives TableSubView remounts across vault refresh. */
+	private readonly tableCollapsedIds = new Set<TaskId>();
 	private chromeEl!: HTMLElement;
 	private filterEl!: HTMLElement;
 	private bodyEl!: HTMLElement;
@@ -414,6 +417,7 @@ export class ProjectWorkspaceView extends ItemView {
 				tasks: this.tasks,
 				filters: { ...this.filters },
 				container: this.bodyEl,
+				collapsedIds: this.tableCollapsedIds,
 			});
 		} else if (this.mode === "gantt") {
 			this.subview = new GanttSubView({

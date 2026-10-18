@@ -170,6 +170,69 @@ export function collectReminderCandidates(app: App): ReminderTaskCandidate[] {
 }
 
 /**
+ * Single-pass MetadataCache scan: project archive index + scheduled task candidates.
+ */
+export function scanReminderVault(
+	app: App,
+	settings: ProjectsEngineSettings,
+): {
+	candidates: ReminderTaskCandidate[];
+	activeProjectNames: Map<string, string>;
+	archivedProjectIds: Set<string>;
+} {
+	const candidates: ReminderTaskCandidate[] = [];
+	const activeProjectNames = new Map<string, string>();
+	const archivedProjectIds = new Set<string>();
+
+	for (const file of app.vault.getMarkdownFiles()) {
+		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
+		if (!fm || typeof fm.pe_type !== "string") {
+			continue;
+		}
+		if (fm.pe_type === "project") {
+			const id =
+				typeof fm.id === "string" && fm.id.trim() ? fm.id.trim() : file.basename;
+			const name =
+				typeof fm.name === "string" && fm.name.trim()
+					? fm.name.trim()
+					: file.basename;
+			const archived = isProjectArchived(
+				{ archived: fm.archived === true, filePath: file.path },
+				settings,
+			);
+			if (archived) {
+				archivedProjectIds.add(id);
+			} else {
+				activeProjectNames.set(id, name);
+			}
+			continue;
+		}
+		if (fm.pe_type !== "task") {
+			continue;
+		}
+		const scheduled = typeof fm.scheduled === "string" ? fm.scheduled.trim() : "";
+		if (!scheduled) {
+			continue;
+		}
+		const id =
+			typeof fm.id === "string" && fm.id.trim()
+				? fm.id.trim()
+				: file.basename;
+		const title =
+			typeof fm.title === "string" && fm.title.trim()
+				? fm.title.trim()
+				: file.basename;
+		const status = typeof fm.status === "string" ? fm.status : "";
+		const projectId =
+			typeof fm.project_id === "string" ? fm.project_id.trim() : "";
+		const projectLink = typeof fm.project === "string" ? fm.project : "";
+		candidates.push({ id, title, status, scheduled, projectId, projectLink });
+	}
+
+	return { candidates, activeProjectNames, archivedProjectIds };
+}
+
+/**
  * Prune fired keys that no longer match any live scheduled occurrence,
  * and cap the list length.
  */
@@ -237,6 +300,7 @@ export function planTaskReminders(args: {
 
 /**
  * Index project notes from MetadataCache for reminder project filters.
+ * @deprecated Prefer {@link scanReminderVault} (single pass with candidates).
  */
 export function collectProjectReminderIndex(
 	app: App,
@@ -245,29 +309,7 @@ export function collectProjectReminderIndex(
 	activeProjectNames: Map<string, string>;
 	archivedProjectIds: Set<string>;
 } {
-	const activeProjectNames = new Map<string, string>();
-	const archivedProjectIds = new Set<string>();
-	for (const file of app.vault.getMarkdownFiles()) {
-		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
-		if (!fm || fm.pe_type !== "project") {
-			continue;
-		}
-		const id =
-			typeof fm.id === "string" && fm.id.trim() ? fm.id.trim() : file.basename;
-		const name =
-			typeof fm.name === "string" && fm.name.trim()
-				? fm.name.trim()
-				: file.basename;
-		const archived = isProjectArchived(
-			{ archived: fm.archived === true, filePath: file.path },
-			settings,
-		);
-		if (archived) {
-			archivedProjectIds.add(id);
-		} else {
-			activeProjectNames.set(id, name);
-		}
-	}
+	const { activeProjectNames, archivedProjectIds } = scanReminderVault(app, settings);
 	return { activeProjectNames, archivedProjectIds };
 }
 
@@ -287,12 +329,10 @@ export async function runTaskReminderTick(args: {
 		args.settings.reminderMinutesBefore,
 	);
 	const fired = new Set(args.settings.reminderFiredKeys ?? []);
-	const { activeProjectNames, archivedProjectIds } = collectProjectReminderIndex(
+	const { candidates, activeProjectNames, archivedProjectIds } = scanReminderVault(
 		args.app,
 		args.settings,
 	);
-
-	const candidates = collectReminderCandidates(args.app);
 	const { notices, newKeys } = planTaskReminders({
 		candidates,
 		minutesBefore,

@@ -24,6 +24,7 @@ import {
 import { containingProjectFolder } from "../services/projectPaths";
 import { EmptyState } from "../ui/EmptyState";
 import { ConfirmModal } from "../ui/ConfirmModal";
+import { userFacingErrorMessage } from "../services/userFacingErrors";
 import { openViewEntityModal } from "./ViewEntityModal";
 import { openProjectEditor } from "./ProjectEditView";
 import {
@@ -109,6 +110,9 @@ export class DashboardView extends ItemView {
 		this.contentEl.empty();
 	}
 
+	/** True after rename/move — triggers archive-flag reconcile on next reload. */
+	private pendingArchiveReconcile = true;
+
 	/**
 	 * Debounced reload so vault churn does not thrash the UI thread on mobile.
 	 */
@@ -125,7 +129,12 @@ export class DashboardView extends ItemView {
 		this.registerEvent(this.app.vault.on("create", schedule));
 		this.registerEvent(this.app.vault.on("modify", schedule));
 		this.registerEvent(this.app.vault.on("delete", schedule));
-		this.registerEvent(this.app.vault.on("rename", schedule));
+		this.registerEvent(
+			this.app.vault.on("rename", () => {
+				this.pendingArchiveReconcile = true;
+				schedule();
+			}),
+		);
 		this.registerEvent(this.app.metadataCache.on("resolved", schedule));
 	}
 
@@ -134,11 +143,14 @@ export class DashboardView extends ItemView {
 		this.projects = loadActiveProjectRows(this.app, this.plugin.settings);
 		this.archivedProjects = loadArchivedProjectRows(this.app, this.plugin.settings);
 		this.render();
-		// Heal stale YAML `archived` after OS / explorer folder moves (debounced via vault events).
-		void reconcileProjectArchivedFlags({
-			app: this.app,
-			settings: this.plugin.settings,
-		});
+		// Heal stale YAML `archived` after OS / explorer folder moves (rename only + first open).
+		if (this.pendingArchiveReconcile) {
+			this.pendingArchiveReconcile = false;
+			void reconcileProjectArchivedFlags({
+				app: this.app,
+				settings: this.plugin.settings,
+			});
+		}
 	}
 
 	private visibleRows(): ProjectRow[] {
@@ -536,6 +548,7 @@ export class DashboardView extends ItemView {
 			title: "Archive project?",
 			message: `This will move the project folder into “${archiveRoot}” and hide it from active project lists:\n\n${folder}\n\nYou can still open the notes from the vault file explorer.`,
 			confirmLabel: "Archive project",
+			busyLabel: "Archiving…",
 			onConfirm: async () => {
 				try {
 					const result = await archiveProjectFolder({
@@ -547,8 +560,8 @@ export class DashboardView extends ItemView {
 					this.plugin.indexer.rebuild();
 					this.plugin.refreshOpenViews();
 				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					new Notice(`Could not archive project: ${message}`);
+					console.error(error);
+					new Notice(userFacingErrorMessage(error, "Could not archive project"));
 				}
 			},
 		}).open();
@@ -564,6 +577,7 @@ export class DashboardView extends ItemView {
 			title: "Unarchive project?",
 			message: `This will move the project folder back into “${projectsRoot}” and show it in active project lists:\n\n${folder}`,
 			confirmLabel: "Unarchive project",
+			busyLabel: "Unarchiving…",
 			onConfirm: async () => {
 				try {
 					const result = await unarchiveProjectFolder({
@@ -576,8 +590,8 @@ export class DashboardView extends ItemView {
 					this.plugin.indexer.rebuild();
 					this.plugin.refreshOpenViews();
 				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					new Notice(`Could not unarchive project: ${message}`);
+					console.error(error);
+					new Notice(userFacingErrorMessage(error, "Could not unarchive project"));
 				}
 			},
 		}).open();

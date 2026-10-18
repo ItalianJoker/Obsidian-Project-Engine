@@ -1,4 +1,4 @@
-# Projects Engine — Cursor rules (v1.3.3)
+# Projects Engine — Cursor rules (v1.4.4)
 
 English-only UI labels, notices, placeholders, and code comments/JSDoc.
 Obsidian plugin id: `projects-engine`. Mobile-compatible (`isDesktopOnly: false`).
@@ -8,30 +8,38 @@ No Node builtins in the browser bundle. Persist content only via `vault.process`
 
 | Path | Responsibility |
 | --- | --- |
-| `src/main.ts` | Plugin entry: settings load/migrate, view registration, commands, ribbon, `refreshOpenViews` |
+| `src/main.ts` | Plugin entry: settings load/migrate, view registration, commands, ribbon, `refreshOpenViews`, reminder tick |
 | `src/models/types.ts` | Domain types (`Project`, `Task`, `ItsmItem`, `ProjectsEngineSettings`, helpers) |
-| `src/settings.ts` | Settings tab (folders, Default PM, templates, statuses, Eisenhower, performance) |
+| `src/settings.ts` | Settings tab (folders, archive, Default PM, templates, sync, statuses, Eisenhower, scheduling honesty, performance) |
 | `src/engine/Indexer.ts` | Debounced entity index from vault frontmatter |
-| `src/engine/Scheduler.ts` | DAG schedule + `CommandStack` undo/redo |
+| `src/engine/Scheduler.ts` | DAG schedule + `CommandStack` undo/redo (manual Auto-schedule; `cascade` helper for tests / future UI) |
 | `src/engine/debounce.ts` | Trailing-edge debounce for indexer / UI |
-| `src/services/projectRows` → `src/views/projectRows.ts` | `ProjectRow` load + legacy migration |
+| `src/views/projectRows.ts` | `ProjectRow` load + legacy migration (active / archived splits) |
 | `src/services/projectFlags.ts` | Non PM / Technical intervention / ITSM parse + budget labels |
 | `src/services/projectIo.ts` | `patchProjectFrontmatter` via `vault.process` |
+| `src/services/projectArchive.ts` | Archive / unarchive folder moves + path-based `archived` reconcile |
+| `src/services/metadataSync.ts` | Sync & Rebuild Note Metadata |
 | `src/services/taskIo.ts` | Task parse/load/save (`loadAllTasks`, `saveTaskNote`) |
+| `src/services/taskReminders.ts` | Scheduled reminder Notices (single-pass vault scan) |
+| `src/services/taskNotesControls.ts` | In-place task notes preview controls |
+| `src/services/quickSubtask.ts` | Compact Add subtask from table rows |
+| `src/services/entityDelete.ts` | Delete Entity catalogue notes |
 | `src/services/noteTemplates.ts` | Templates folder + `{{project}}` / `{{title}}` / `{{date}}` |
 | `src/services/projectDocumentNote.ts` | New project note create (Graph-linked) |
+| `src/services/userFacingErrors.ts` | Map known Error.message → English Notices |
 | `src/services/vaultIo.ts` | Atomic writes / path helpers |
 | `src/services/frontmatter.ts` | YAML split/build + Graph `## Links` |
 | `src/views/ViewRouter.ts` | Navigation between ItemViews |
-| `src/views/DashboardView.ts` | Projects portfolio list |
+| `src/views/DashboardView.ts` | Projects portfolio list + Manage Entities + archived toggle |
 | `src/views/GlobalDashboardView.ts` | Cross-project tasks (“Global Dashboard”) |
-| `src/views/ProjectOverviewView.ts` | Project Dashboard (governance, metrics, tasks, ITSM, docs) |
+| `src/views/ProjectOverviewView.ts` | Project Dashboard (governance, metrics, tasks, ITSM, docs, archive) |
 | `src/views/ProjectWorkspaceView.ts` | Table / Gantt / Board / Eisenhower host |
 | `src/views/ProjectEditor.ts` / `ProjectEditView.ts` / `ProjectEditModal.ts` | Edit project |
 | `src/views/ProjectCreationModal.ts` | Create project wizard |
+| `src/views/ViewEntityModal.ts` | Manage Entities catalogue (+ New / Delete) |
 | `src/views/subviews/TableSubView.ts` | Shared task table + exported `filterTasks` |
-| `src/views/TaskEditor.ts` | Mountable task editor (modal/tab) |
-| `src/ui/*` | Shared modals/chrome (`CreateProjectDocumentModal`, `ProjectPickerModal`, …) |
+| `src/views/TaskEditor.ts` | Mountable task editor (modal/tab); Auto-schedule when enabled |
+| `src/ui/*` | Shared modals/chrome (`ConfirmModal`, `withBusy`, `CreateProjectDocumentModal`, …) |
 | `styles.css` | All PE UI (`pe-*` classes) |
 | `tests/` | Vitest pure-module suite (`tests/mocks/obsidian.ts`) |
 
@@ -45,6 +53,7 @@ YAML `pe_type: project`. Load via `loadProjectRows` → `projectRowFromFrontmatt
 - `isNonPM` ← YAML `is_non_pm` (default `false`) → label **Budget (Days)** → **Assigned (Days)**
 - `isTechnicalIntervention` ← YAML `is_technical_intervention` (default `false`) → hide days input; show **Time & Materials (No Budget)**; `safeBudgetProgressPercent` returns 0 (no ÷0)
 - `itsmItems: ItsmItem[]` ← YAML `itsm_items` (default `[]`) — `{ id, type: Ticket|Change|Problem, title, description }`
+- `archived` ← YAML + folder location under Projects / Archived (path wins on reconcile)
 - `assigned_days` / `actual_days`, wikilinks for customer/type/tech/stakeholders
 
 Persist with `patchProjectFrontmatter` / create wizard `writeNoteAtomic`. Days inputs use `min="0"`.
@@ -52,10 +61,11 @@ Persist with `patchProjectFrontmatter` / create wizard `writeNoteAtomic`. Days i
 ### Task (`Task`)
 
 YAML `pe_type: task`. Loaded by `loadAllTasks`. Effort in hours; project budget in days (`hoursPerManday`).
+Eisenhower: `important` boolean; **Urgent** derived from Priority `high`|`urgent` (no independent YAML `urgent`).
 
 ### Settings (`ProjectsEngineSettings`)
 
-`data.json` via `loadSettings`/`saveSettings`. Notable: `templatesFolder` (default `"Templates"`, `normalizePath`), `defaultPm` (Team Member basename; Create project seeds role `PM` when set), `defaultNonPmRole` (role for that auto-add when Non PM is checked at create only), `taskListTemplatesFolder`, scaffold folders, statuses, Eisenhower labels. Always merge onto `DEFAULT_SETTINGS` with safe migrations.
+`data.json` via `loadSettings`/`saveSettings`. Notable: `templatesFolder`, `archivedProjectsFolder`, `defaultPm`, `defaultNonPmRole`, `autoSchedule` (gates Auto-schedule **button**), `pullForwardOnEarlyFinish` (ASAP when Auto-schedule runs), `reminderMinutesBefore`, `taskListTemplatesFolder`, scaffold folders, statuses, Eisenhower labels. Always merge onto `DEFAULT_SETTINGS` with safe migrations.
 
 ### Flow
 
@@ -64,10 +74,11 @@ Vault note → MetadataCache / `loadProjectRows` / `loadAllTasks` → views → 
 ## 3. UI conventions
 
 - **ItemViews:** Dashboard, Global Dashboard, Overview, Workspace, Project Edit, Task, Release Notes — register in `main.ts`; navigate via `ViewRouter`.
-- **Modals:** `projects-engine-modal` + `pe-modal-body`; footers `pe-actions pe-form-footer` (`justify-content: flex-end; gap: 8px; margin-top: 16px`). No float/fixed/absolute on form action buttons.
-- **Project Dashboard (Overview):** team role badges (`.pe-role-badge`); ITSM section with copyable ID badge → `Notice("Copied ID to clipboard")`; **Add ITSM Item** / **Remove** (New note chrome) → confirm → `patchProjectFrontmatter`.
-- **Global Dashboard:** same Task chrome as project Workspace (search / All / Filter + Table | Board | Eisenhower via `GlobalDashboardChrome` + shared SubViews; content flush under chrome). Project name clickable text → `openOverview`. New Task → `ProjectPickerModal` (`<select>` dropdown) then `openTaskEditor`. Overdue → `.pe-task-row--overdue`.
-- **New note:** `CreateProjectDocumentModal` Template dropdown (`None` + `.md` from Templates folder).
+- **Modals:** `projects-engine-modal` + `pe-modal-body`; footers `pe-actions pe-form-footer` (`justify-content: flex-end; gap: 8px; margin-top: 16px`). No float/fixed/absolute on form action buttons. ConfirmModal is single-flight (disable Confirm while busy).
+- **Homepage:** **Manage Entities** (not separate View/Create entity rows); archived projects toggle.
+- **Project Dashboard (Overview):** team role badges (`.pe-role-badge`); ITSM section; Archive / Unarchive; **Add ITSM Item** / **Remove**.
+- **Global Dashboard:** same Task chrome as project Workspace; Hide completed; Add subtask on table rows.
+- **Editors:** dirty Cancel confirm; Create/Save use `withBusy` / `isSubmitting`.
 - Lifecycle: `registerEvent` / `registerDomEvent` / `registerInterval`; `contentEl.empty()` in `onClose()`.
 
 ## 4. CSS (`styles.css`)

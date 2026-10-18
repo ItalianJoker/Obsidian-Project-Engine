@@ -15,6 +15,7 @@ import { ExtraButtonComponent, setIcon } from "obsidian";
 import type { ProjectChromeMode } from "../views/ProjectWorkspaceView";
 import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from "../models/types";
 import type { ProjectRow } from "../views/projectRows";
+import { captureSearchCaret, restoreSearchCaret } from "./searchCaret";
 import { mountHideCompletedChip } from "./taskFilterChips";
 import { ViewSwitcher } from "./ViewSwitcher";
 
@@ -106,6 +107,7 @@ export function renderProjectChrome(props: ProjectChromeProps): void {
 		showSearchRow = true,
 	} = props;
 
+	const caret = captureSearchCaret(container);
 	container.empty();
 	container.addClass("pe-chrome");
 
@@ -167,6 +169,7 @@ export function renderProjectChrome(props: ProjectChromeProps): void {
 		});
 		search.value = searchText;
 		search.addEventListener("input", () => onSearchChange(search.value));
+		restoreSearchCaret(search, caret);
 
 		const chips = searchRow.createDiv({ cls: "pe-chrome-filter-chips" });
 		const allBtn = chips.createEl("button", {

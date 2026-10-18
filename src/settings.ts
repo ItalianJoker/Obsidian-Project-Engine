@@ -683,14 +683,19 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		}
 	}
 
-	/** Scheduling — auto-schedule toggles (dotpm Scheduling). */
+	/**
+	 * Scheduling — gates the Task Editor **Auto-schedule project** button and
+	 * its ASAP pull-forward option. There is no continuous on-save DAG cascade.
+	 */
 	private renderScheduling(): void {
 		const { containerEl } = this;
 		containerEl.createEl("h3", { text: "Scheduling" });
 
 		new Setting(containerEl)
-			.setName("Auto-schedule")
-			.setDesc("Adjust dependent task dates when a task changes (DAG cascade).")
+			.setName("Enable Auto-schedule button")
+			.setDesc(
+				"Show Auto-schedule project on the task editor. Runs a manual DAG reschedule for that project (duration preserved). Dates are not cascaded automatically on every edit.",
+			)
 			.addToggle((toggle) => {
 				toggle.setValue(this.plugin.settings.autoSchedule).onChange(async (value) => {
 					this.plugin.settings.autoSchedule = value;
@@ -701,7 +706,9 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Pull dependents forward")
-			.setDesc("Move dependent tasks earlier when a task finishes before its due date.")
+			.setDesc(
+				"When Auto-schedule runs, pull dependents as early as predecessors allow. When off, Auto-schedule only pushes dates forward on conflict.",
+			)
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.pullForwardOnEarlyFinish)
@@ -761,6 +768,12 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		this.addFolderSetting("Project types", "projectTypesFolder", "Projects/Entities/Project Types");
 		this.addFolderSetting("Technologies", "technologiesFolder", "Projects/Entities/Technologies");
 		this.addFolderSetting("Stakeholders", "stakeholdersFolder", "Projects/Entities/Stakeholders");
+		this.addFolderSetting(
+			"Legacy Team Members folder",
+			"teamMembersFolder",
+			"Projects/Entities/Team Members",
+			"Deprecated path kept for Indexer / metadata sync / Default PM scans. New people notes use Stakeholders; leave as-is unless migrating old Team Member notes.",
+		);
 		this.addFolderSetting(
 			"Templates folder",
 			"templatesFolder",

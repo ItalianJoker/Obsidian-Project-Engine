@@ -63,6 +63,8 @@ import {
 } from "../services/dateFormat";
 import { resolveProjectTasksFolder } from "../services/projectScaffold";
 import { ConfirmModal } from "../ui/ConfirmModal";
+import { withBusy } from "../ui/withBusy";
+import { userFacingErrorMessage } from "../services/userFacingErrors";
 import { findProjectRow, loadProjectRows } from "./projectRows";
 import { EntitySuggest } from "./suggest";
 import { mountDateTimeField } from "./dateTimeInputs";
@@ -93,6 +95,9 @@ export class TaskEditor {
 	private mandayEl: HTMLElement | null = null;
 	private mode: "create" | "edit";
 	private rootEl: HTMLElement | null = null;
+	/** JSON snapshot of {@link draft} after bootstrap — dirty Cancel confirm. */
+	private baselineJson = "";
+	private isSubmitting = false;
 	private readonly app: App;
 	private readonly plugin: ProjectsEnginePlugin;
 	private readonly projectId: string;
@@ -163,8 +168,27 @@ export class TaskEditor {
 		this.rootEl = null;
 	}
 
+	private isDirty(): boolean {
+		if (!this.baselineJson) {
+			return false;
+		}
+		return JSON.stringify(this.draft) !== this.baselineJson;
+	}
+
 	private closeHost(): void {
-		this.host.close();
+		if (!this.isDirty()) {
+			this.host.close();
+			return;
+		}
+		new ConfirmModal(this.app, {
+			title: "Discard changes?",
+			message: "You have unsaved task edits. Discard them and leave?",
+			confirmLabel: "Discard",
+			dangerous: true,
+			onConfirm: () => {
+				this.host.close();
+			},
+		}).open();
 	}
 
 	private closeAfterSave(): void {
@@ -188,6 +212,7 @@ export class TaskEditor {
 			const preferred = taskNotePath(tasksFolder, id, "New task");
 			this.draft.filePath = uniqueTaskPath(this.app.vault, preferred);
 		}
+		this.baselineJson = JSON.stringify(this.draft);
 		this.render();
 	}
 
@@ -755,14 +780,16 @@ export class TaskEditor {
 
 	private addScheduleActions(parent: HTMLElement = this.rootEl!): void {
 		const wrap = parent.createDiv({ cls: "pe-inline-row pe-schedule-actions" });
-		const auto = wrap.createEl("button", {
-			text: "Auto-schedule project",
-			cls: "pe-secondary pe-touch-target",
-			attr: { type: "button" },
-		});
-		auto.addEventListener("click", () => {
-			void this.runAutoSchedule();
-		});
+		if (this.plugin.settings.autoSchedule) {
+			const auto = wrap.createEl("button", {
+				text: "Auto-schedule project",
+				cls: "pe-secondary pe-touch-target",
+				attr: { type: "button" },
+			});
+			auto.addEventListener("click", () => {
+				void withBusy(auto, "Scheduling…", () => this.runAutoSchedule());
+			});
+		}
 		const undo = wrap.createEl("button", {
 			text: "Undo",
 			cls: "pe-secondary pe-touch-target",
@@ -807,7 +834,7 @@ export class TaskEditor {
 				new Date().toISOString().slice(0, 10);
 			const result = this.plugin.scheduler.autoSchedule(schedulable, {
 				projectStart,
-				asSoonAsPossible: true,
+				asSoonAsPossible: this.plugin.settings.pullForwardOnEarlyFinish,
 			});
 			const patches = this.plugin.scheduler.diff(schedulable, result);
 			const fileByTaskId = new Map<TaskId, TFile>();
@@ -855,7 +882,7 @@ export class TaskEditor {
 			attr: { type: "button" },
 		});
 		save.addEventListener("click", () => {
-			void this.submit();
+			void withBusy(save, "Saving…", () => this.submit());
 		});
 	}
 
@@ -897,6 +924,9 @@ export class TaskEditor {
 	}
 
 	private async submit(): Promise<void> {
+		if (this.isSubmitting) {
+			return;
+		}
 		const errors: string[] = [];
 		if (!this.draft.title.trim()) {
 			errors.push("Title is required");
@@ -910,8 +940,10 @@ export class TaskEditor {
 			return;
 		}
 
+		this.isSubmitting = true;
 		try {
 			await this.persistDraft();
+			this.baselineJson = JSON.stringify(this.draft);
 			new Notice(`Saved task ${this.draft.id}`);
 			this.plugin.refreshOpenViews();
 			// Stay in the plugin UI only — do not open the Markdown note in the
@@ -923,9 +955,12 @@ export class TaskEditor {
 				this.showErrors([error.message]);
 				return;
 			}
-			const message = error instanceof Error ? error.message : String(error);
-			new Notice(`Could not save task: ${message}`);
+			console.error(error);
+			const message = userFacingErrorMessage(error, "Could not save task");
+			new Notice(message);
 			this.showErrors([message]);
+		} finally {
+			this.isSubmitting = false;
 		}
 	}
 

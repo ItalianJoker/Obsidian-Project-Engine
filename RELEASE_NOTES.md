@@ -1,5 +1,24 @@
 # Release notes — Projects Engine
 
+## 1.4.4 — Audit honesty + UX quick wins
+
+**EN:** Docs and Settings match real scheduling/Eisenhower behaviour; Confirm/Create/Save single-flight + busy; dirty Cancel; table collapse and search caret preserved; friendlier archive Notices. Does not overwrite v1.4.3.
+
+### Changed
+
+- **Scheduling** — Enable Auto-schedule button + Pull dependents forward (manual Task Editor DAG; no automatic on-save cascade).
+- **Docs** — README / `.cursorrules` at 1.4.4; Manage Entities; Eisenhower Priority-derived Urgent.
+
+### Fixed
+
+- ConfirmModal / Create / Save double-submit guards and busy labels; dirty discard confirm; collapse + search caret across refresh; archive collision Notices.
+
+### Performance
+
+- Conditional archive reconcile; single-pass reminder scan.
+
+---
+
 ## 1.4.3 — Archived projects on homepage
 
 **EN:** Projects homepage can show archived projects and Unarchive them; lists reconcile after manual folder moves between Projects and Archived. Does not overwrite v1.4.2.

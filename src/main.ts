@@ -432,7 +432,9 @@ export default class ProjectsEnginePlugin extends Plugin {
 		this.settings.kanbanShowDescriptionPreview =
 			this.settings.kanbanShowDescriptionPreview === true;
 		this.settings.autoSchedule = this.settings.autoSchedule !== false;
-		this.settings.pullForwardOnEarlyFinish = this.settings.pullForwardOnEarlyFinish === true;
+		// Default on (matches prior Task Editor ASAP). Explicit false still disables pull-forward.
+		this.settings.pullForwardOnEarlyFinish =
+			this.settings.pullForwardOnEarlyFinish !== false;
 		this.settings.reminderMinutesBefore = normaliseReminderMinutesBefore(
 			this.settings.reminderMinutesBefore,
 			15,

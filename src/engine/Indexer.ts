@@ -15,7 +15,6 @@ import type {
 	ProjectsEngineSettings,
 	ProjectType,
 	Stakeholder,
-	TeamMember,
 	Technology,
 	WikiLink,
 } from "../models/types";
@@ -37,7 +36,6 @@ export interface IndexedEntity {
  */
 export class EntityIndexer {
 	private customers: Customer[] = [];
-	private teamMembers: TeamMember[] = [];
 	private projectTypes: ProjectType[] = [];
 	private technologies: Technology[] = [];
 	private stakeholders: Stakeholder[] = [];
@@ -64,7 +62,6 @@ export class EntityIndexer {
 	/** Immediate rebuild (used after creating a note in the current modal). */
 	public rebuild(): void {
 		this.customers = [];
-		this.teamMembers = [];
 		this.projectTypes = [];
 		this.technologies = [];
 		this.stakeholders = [];
@@ -152,10 +149,6 @@ export class EntityIndexer {
 
 	public getCustomers(): readonly Customer[] {
 		return this.customers;
-	}
-
-	public getTeamMembers(): readonly TeamMember[] {
-		return this.teamMembers;
 	}
 
 	public getProjectTypes(): readonly ProjectType[] {
