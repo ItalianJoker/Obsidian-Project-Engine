@@ -23,7 +23,12 @@
 
 import { ItemView, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
-import { activeTaskStatuses, projectStatusLabel, toWikiLink } from "../models/types";
+import {
+	activeTaskStatuses,
+	projectStatusLabel,
+	toWikiLink,
+	type TaskId,
+} from "../models/types";
 import {
 	createPrince2Stage,
 	readProjectStages,
@@ -44,6 +49,7 @@ import {
 	notifyProjectUnarchived,
 	unarchiveProjectFolder,
 } from "../services/projectArchive";
+import { userFacingErrorMessage } from "../services/userFacingErrors";
 import {
 	deleteProjectFolder,
 	notifyProjectDeleted,
@@ -80,6 +86,7 @@ import { CreateProjectDocumentModal } from "../ui/CreateProjectDocumentModal";
 import { EmptyState } from "../ui/EmptyState";
 import { renderProjectChrome } from "../ui/ProjectChrome";
 import { renderProjectDocumentsTree } from "../ui/ProjectDocumentsTree";
+import { captureSearchCaret, restoreSearchCaret } from "../ui/searchCaret";
 import { mountHideCompletedChip } from "../ui/taskFilterChips";
 import { TextPromptModal } from "../ui/TextPromptModal";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
@@ -153,6 +160,8 @@ export class ProjectOverviewView extends ItemView {
 	 * refreshes so expand/collapse is not reset on every Sync event.
 	 */
 	private docsCollapsedPaths = new Set<string>();
+	/** Survives TableSubView remounts across vault refresh. */
+	private readonly tableCollapsedIds = new Set<TaskId>();
 	private initialized = false;
 	private reloadTimer: number | null = null;
 
@@ -488,6 +497,7 @@ export class ProjectOverviewView extends ItemView {
 			tasks: this.tasks,
 			filters: { ...this.filters },
 			container: this.tableEl,
+			collapsedIds: this.tableCollapsedIds,
 		});
 		this.table.render();
 	}
@@ -584,6 +594,7 @@ export class ProjectOverviewView extends ItemView {
 	 */
 	private renderTaskSearch(filterActive: boolean): void {
 		const row = this.taskSearchEl;
+		const caret = captureSearchCaret(row);
 		row.empty();
 		row.addClass("pe-chrome-search-row");
 
@@ -600,6 +611,7 @@ export class ProjectOverviewView extends ItemView {
 			this.filters.text = search.value;
 			this.renderTable();
 		});
+		restoreSearchCaret(search, caret);
 
 		const chips = row.createDiv({ cls: "pe-chrome-filter-chips" });
 		const allBtn = chips.createEl("button", {
@@ -700,6 +712,7 @@ export class ProjectOverviewView extends ItemView {
 			title: "Archive project?",
 			message: `This will move the project folder into “${archiveRoot}” and hide it from active project lists:\n\n${folder}\n\nYou can still open the notes from the vault file explorer.`,
 			confirmLabel: "Archive project",
+			busyLabel: "Archiving…",
 			onConfirm: async () => {
 				try {
 					const result = await archiveProjectFolder({
@@ -712,8 +725,8 @@ export class ProjectOverviewView extends ItemView {
 					this.plugin.refreshOpenViews();
 					await this.plugin.router.openDashboard();
 				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					new Notice(`Could not archive project: ${message}`);
+					console.error(error);
+					new Notice(userFacingErrorMessage(error, "Could not archive project"));
 				}
 			},
 		}).open();
@@ -729,6 +742,7 @@ export class ProjectOverviewView extends ItemView {
 			title: "Unarchive project?",
 			message: `This will move the project folder back into “${projectsRoot}” and show it in active project lists:\n\n${folder}`,
 			confirmLabel: "Unarchive project",
+			busyLabel: "Unarchiving…",
 			onConfirm: async () => {
 				try {
 					const result = await unarchiveProjectFolder({
@@ -742,8 +756,8 @@ export class ProjectOverviewView extends ItemView {
 					this.plugin.refreshOpenViews();
 					await this.plugin.router.openOverview(result.projectPath, this.leaf);
 				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					new Notice(`Could not unarchive project: ${message}`);
+					console.error(error);
+					new Notice(userFacingErrorMessage(error, "Could not unarchive project"));
 				}
 			},
 		}).open();

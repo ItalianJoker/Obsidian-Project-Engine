@@ -17,6 +17,7 @@ import type ProjectsEnginePlugin from "../main";
 import {
 	toWikiLink,
 	type Task,
+	type TaskId,
 	type TaskPriority,
 } from "../models/types";
 import { loadAllTasks } from "../services/taskIo";
@@ -67,6 +68,8 @@ export class GlobalDashboardView extends ItemView {
 	private filterEl!: HTMLElement;
 	private bodyEl!: HTMLElement;
 	private subview: SubView | null = null;
+	/** Survives TableSubView remounts across vault refresh. */
+	private readonly tableCollapsedIds = new Set<TaskId>();
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -290,6 +293,7 @@ export class GlobalDashboardView extends ItemView {
 				container: this.bodyEl,
 				showProjectBadge: true,
 				onNewTask,
+				collapsedIds: this.tableCollapsedIds,
 			});
 		} else if (this.mode === "eisenhower") {
 			this.subview = new EisenhowerSubView({

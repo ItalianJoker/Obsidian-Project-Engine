@@ -7,6 +7,21 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.4
+
+### Changed
+
+- **Scheduling honesty** — Enable Auto-schedule button + Pull dependents forward (manual Task Editor DAG; no automatic on-save cascade).
+- **Docs** — README / \`.cursorrules\` at 1.4.4; Manage Entities; Eisenhower Urgent from Priority.
+
+### Fixes
+
+- Confirm / Create / Save single-flight + busy labels; dirty Cancel discard confirm; table collapse + search caret across refresh; friendlier archive Notices.
+
+### Performance
+
+- Archive reconcile on rename (not every reload); reminder tick single-pass scan.
+
 ## 1.4.3
 
 ### Added

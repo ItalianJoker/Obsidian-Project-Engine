@@ -11,6 +11,8 @@ export interface ConfirmModalOptions {
 	title: string;
 	message: string;
 	confirmLabel?: string;
+	/** Label shown on Confirm while `onConfirm` is in flight. */
+	busyLabel?: string;
 	cancelLabel?: string;
 	dangerous?: boolean;
 	onConfirm: () => void | Promise<void>;
@@ -19,7 +21,7 @@ export interface ConfirmModalOptions {
 }
 
 /**
- * Simple confirm / cancel modal.
+ * Simple confirm / cancel modal with single-flight Confirm.
  */
 export class ConfirmModal extends Modal {
 	private settled = false;
@@ -51,10 +53,20 @@ export class ConfirmModal extends Modal {
 			attr: { type: "button" },
 		});
 		confirm.addEventListener("click", () => {
+			if (this.settled) {
+				return;
+			}
+			this.settled = true;
+			confirm.disabled = true;
+			cancel.disabled = true;
+			confirm.setText(options.busyLabel ?? "Working…");
+			confirm.setAttr("aria-busy", "true");
 			void (async () => {
-				this.settled = true;
-				await options.onConfirm();
-				this.close();
+				try {
+					await options.onConfirm();
+				} finally {
+					this.close();
+				}
 			})();
 		});
 	}
@@ -69,6 +81,9 @@ export class ConfirmModal extends Modal {
 
 	/** Cancel button path — closes and triggers {@link ConfirmModalOptions.onCancel}. */
 	private dismiss(): void {
+		if (this.settled) {
+			return;
+		}
 		this.close();
 	}
 }

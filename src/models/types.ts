@@ -1149,9 +1149,15 @@ export interface ProjectsEngineSettings {
 	 * is the Important × Urgent legend under it.
 	 */
 	eisenhowerLabels: EisenhowerQuadrantLabels;
-	/** Cascade dependent dates when a task’s schedule changes. */
+	/**
+	 * When true, show **Auto-schedule project** on the task editor (manual DAG
+	 * reschedule). Does not cascade dates automatically on every task edit.
+	 */
 	autoSchedule: boolean;
-	/** When auto-schedule is on, pull dependents earlier on early finish. */
+	/**
+	 * When Auto-schedule runs, pull dependents as early as predecessors allow
+	 * (`asSoonAsPossible`). When false, only push forward on conflict.
+	 */
 	pullForwardOnEarlyFinish: boolean;
 	/**
 	 * Minutes before a task’s `scheduled` date-time to show a Reminder Notice.
@@ -1167,7 +1173,7 @@ export interface ProjectsEngineSettings {
 	saveTaskOnClose: boolean;
 	/** Open release notes after plugin updates. */
 	showReleaseNotes: boolean;
-	/** Dynamic field schemas for the five configurable entity kinds. */
+	/** Dynamic field schemas for the four configurable entity kinds. */
 	customFieldSchemas: CustomFieldSchema[];
 }
 
@@ -1221,7 +1227,8 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 		ninu: { ...DEFAULT_EISENHOWER_LABELS.ninu },
 	},
 	autoSchedule: true,
-	pullForwardOnEarlyFinish: false,
+	/** Default on so Auto-schedule matches prior ASAP behaviour. */
+	pullForwardOnEarlyFinish: true,
 	reminderMinutesBefore: 15,
 	reminderFiredKeys: [],
 	saveTaskOnClose: true,

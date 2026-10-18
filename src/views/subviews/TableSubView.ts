@@ -88,6 +88,11 @@ export interface TableSubViewProps {
 	showProjectBadge?: boolean;
 	/** Override “+ New task” (Global Dashboard opens a project picker). */
 	onNewTask?: () => void;
+	/**
+	 * Optional shared collapse set (host leaf). When set, tree expand/collapse
+	 * survives SubView remounts across vault refresh.
+	 */
+	collapsedIds?: Set<TaskId>;
 }
 
 /**
@@ -96,10 +101,15 @@ export interface TableSubViewProps {
  * Dashboard and Table surfaces; title opens detail, pencil opens full edit.
  */
 export class TableSubView implements SubView {
-	private collapsedIds = new Set<TaskId>();
+	private readonly internalCollapsed = new Set<TaskId>();
 	private readonly suggests: EntitySuggest[] = [];
 
 	constructor(private readonly props: TableSubViewProps) {}
+
+	/** Active collapse set (hoisted by host or instance-local). */
+	private get collapsedIds(): Set<TaskId> {
+		return this.props.collapsedIds ?? this.internalCollapsed;
+	}
 
 	public render(): void {
 		this.clearSuggests();

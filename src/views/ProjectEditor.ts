@@ -53,6 +53,8 @@ import { isValidHttpUrl, isValidTeamsChannelUrl } from "../services/urls";
 import { joinVaultPath, sanitiseNoteBasename } from "../services/vaultIo";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { mountIconPicker } from "../ui/IconPicker";
+import { withBusy } from "../ui/withBusy";
+import { userFacingErrorMessage } from "../services/userFacingErrors";
 import { loadActiveProjectRows, type ProjectRow } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
 import { openTaskListTemplateModal } from "./TaskListTemplateModal";
@@ -106,6 +108,8 @@ export interface ProjectEditorHost {
  */
 export class ProjectEditor {
 	private form!: EditForm;
+	/** JSON snapshot of {@link form} after load — used for dirty Cancel confirm. */
+	private baselineJson = "";
 	private errorEl: HTMLElement | null = null;
 	private readonly suggests: EntitySuggest[] = [];
 	private rootEl: HTMLElement | null = null;
@@ -116,6 +120,7 @@ export class ProjectEditor {
 	private readonly project: ProjectRow;
 	private readonly host: ProjectEditorHost;
 	private readonly onSaved?: () => void;
+	private isSubmitting = false;
 
 	constructor(
 		app: App,
@@ -139,6 +144,7 @@ export class ProjectEditor {
 		this.rootEl = container;
 		this.plugin.indexer.rebuild();
 		this.form = this.formFromRow(this.project);
+		this.baselineJson = JSON.stringify(this.form);
 		if (this.host.surface === "tab") {
 			container.addClass("pe-edit");
 		} else {
@@ -156,8 +162,24 @@ export class ProjectEditor {
 		this.rootEl = null;
 	}
 
+	private isDirty(): boolean {
+		return JSON.stringify(this.form) !== this.baselineJson;
+	}
+
 	private closeHost(): void {
-		this.host.close();
+		if (!this.isDirty()) {
+			this.host.close();
+			return;
+		}
+		new ConfirmModal(this.app, {
+			title: "Discard changes?",
+			message: "You have unsaved project edits. Discard them and leave?",
+			confirmLabel: "Discard",
+			dangerous: true,
+			onConfirm: () => {
+				this.host.close();
+			},
+		}).open();
 	}
 
 	private closeAfterSave(): void {
@@ -278,7 +300,7 @@ export class ProjectEditor {
 			attr: { type: "button" },
 		});
 		save.addEventListener("click", () => {
-			void this.save();
+			void withBusy(save, "Saving…", () => this.save());
 		});
 		const applyTpl = actions.createEl("button", {
 			text: "Apply template…",
@@ -992,12 +1014,16 @@ export class ProjectEditor {
 	}
 
 	private async save(): Promise<void> {
+		if (this.isSubmitting) {
+			return;
+		}
 		const errors = this.validate();
 		this.showErrors(errors);
 		if (errors.length > 0) {
 			new Notice(errors[0] ?? "Fix the form");
 			return;
 		}
+		this.isSubmitting = true;
 		try {
 			await this.ensureEntities();
 			const customer = toWikiLink(this.form.customer.trim());
@@ -1073,12 +1099,16 @@ export class ProjectEditor {
 			}
 
 			this.plugin.indexer.rebuild();
+			this.baselineJson = JSON.stringify(this.form);
 			new Notice(`Saved ${this.project.id}`);
 			this.closeAfterSave();
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			new Notice(`Could not save: ${message}`);
+			console.error(error);
+			const message = userFacingErrorMessage(error, "Could not save project");
+			new Notice(message);
 			this.showErrors([message]);
+		} finally {
+			this.isSubmitting = false;
 		}
 	}
 

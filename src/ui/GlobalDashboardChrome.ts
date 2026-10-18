@@ -10,6 +10,7 @@
  */
 
 import { setIcon } from "obsidian";
+import { captureSearchCaret, restoreSearchCaret } from "./searchCaret";
 import { mountHideCompletedChip } from "./taskFilterChips";
 import { ViewSwitcher } from "./ViewSwitcher";
 
@@ -66,6 +67,7 @@ export function renderGlobalDashboardChrome(props: GlobalDashboardChromeProps): 
 		onHideCompletedToggle,
 	} = props;
 
+	const caret = captureSearchCaret(container);
 	container.empty();
 	container.addClass("pe-chrome");
 	container.addClass("pe-global-chrome");
@@ -115,6 +117,7 @@ export function renderGlobalDashboardChrome(props: GlobalDashboardChromeProps): 
 	});
 	search.value = searchText;
 	search.addEventListener("input", () => onSearchChange(search.value));
+	restoreSearchCaret(search, caret);
 
 	const chips = searchRow.createDiv({ cls: "pe-chrome-filter-chips" });
 	const allBtn = chips.createEl("button", {

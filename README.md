@@ -2,7 +2,7 @@
 
 Obsidian.md plugin for Project Portfolio, Governance, and Delivery Management in Markdown.
 
-Version **1.3.4** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
+Version **1.4.4** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
 
 Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT); domain features and branding remain Projects Engine. See `NOTICE`.
 
@@ -16,12 +16,14 @@ Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.co
 
 **Projects Engine** gestisce portafoglio, governance e delivery **dentro il vault**, senza database esterni. Ogni cliente, persona, stakeholder, tipo di progetto, tecnologia e task è una nota Markdown (**Entity-as-a-Note**). I collegamenti sono wikilink nativi `[[Nota]]`: Graph View raggruppa i lavori per cliente, stack tecnologico, team e stakeholder.
 
-La navigazione segue un funnel coerente: **Projects (lista) → Overview (home governance) → Edit (leaf) → Workspace (Table / Gantt / Board / Eisenhower)**, più **Task Detail** (card shell con chip interattivi), catalogo **View Entity** e **Release notes**, nello stesso spirito di [obsidian-pm](https://github.com/dotpm/obsidian-pm), senza copiarne branding o Local API.
+La navigazione segue un funnel coerente: **Projects (lista) → Overview (home governance) → Edit (leaf) → Workspace (Table / Gantt / Board / Eisenhower)**, più **Task Detail** (card shell con chip interattivi), catalogo **Manage Entities** e **Release notes**, nello stesso spirito di [obsidian-pm](https://github.com/dotpm/obsidian-pm), senza copiarne branding o Local API.
 
 Il plugin include:
 
 - wizard di creazione progetto (desktop e mobile) con Teams URL
-- catalogo visuale interattivo **View entity** (schede Customer, Stakeholder, Type, Tech con ricerca live, chip di associazione e azioni rapide)
+- catalogo **Manage Entities** (Customer, Stakeholder, Type, Tech: ricerca, **+ New**, **Delete Entity**)
+- **Archivio progetti** (cartella configurabile, Archive / Unarchive, elenco archiviati in homepage)
+- **Sync & Rebuild Note Metadata**, **note task** con anteprima, **Add subtask**, **Hide completed**, reminder su Scheduled
 - creazione automatica e bidirezionale delle entità referenziate (senza apertura forzata di file nell'editor)
 - unificazione Team Member e Assignee su **Stakeholder** (con campo `email` / `mail`)
 - campi personalizzati configurabili sulle quattro entità catalogo
@@ -29,7 +31,7 @@ Il plugin include:
 - governance **Semplificato** e **PRINCE2**
 - Dashboard progetti, **Global Dashboard** task cross-progetto, Overview, Edit progetto (leaf), Workspace unificato (Table / Kanban / Gantt / Eisenhower), editor Task (modale o tab), Release notes
 - modalità budget **Non PM** / **Technical intervention**, associazioni **ITSM**, ruoli team con badge, template note (`{{project}}` / `{{title}}` / `{{date}}`)
-- scheduling DAG con cycle detection e cascade delle date
+- scheduling DAG con cycle detection; **Auto-schedule project** manuale dall’editor task (non cascade automatico a ogni modifica)
 - UI fluida e curata: spaziatura tabelle ottimizzata (~24px), titoli task in stile hyperlink pulito, allineamento verticale millimetrico testo-icona e vista Gantt senza punti elenco spuri
 
 ### Architettura delle entità e Graph View
@@ -108,12 +110,12 @@ I progetti senza template restano invariati.
 - Dipendenze intra- e cross-project: `blocked_by` / `blocking`
 - Cycle detection prima del salvataggio; Notice se si chiude un ciclo
 - Time log `[{ date, duration, member, note }]` con `duration` in **ore**; estimate in **ore** (`estimate_hours`) con mirror legacy `estimate_mandays`
-- Auto-schedule e cascade: se un blocker slitta, i dipendenti vengono ripianificati conservando la durata
+- **Auto-schedule project** (Task Editor, se abilitato in Settings): ripianifica manualmente le date del progetto via DAG (durata conservata). Opzione **Pull dependents forward** = ASAP; altrimenti solo push su conflitto. Nessun cascade automatico a ogni salvataggio data.
 - Undo/Redo (Command Pattern) su date, dipendenze e status board; persistenza via `vault.process`
 
 ### Viste: Projects → Overview → Edit → Workspace (+ Task / Release notes)
 
-**Projects (Dashboard)** — elenco progetti con filtri combinabili **Governance** + **Customer**, ricerca in tempo reale, chip status, budget giorni·ore su una riga, menu contestuale (Overview / Workspace / **Edit project** / Table / Board / Gantt / Eisenhower). Include le sezioni **View entity** (catalogo interattivo a schede con ricerca e filtri) e **Create entity** per gestire Customer, Stakeholder, Project Type e Technology. Sotto i 720px: layout card/accordion touch-friendly.
+**Projects (Dashboard)** — elenco progetti con filtri combinabili **Governance** + **Customer**, ricerca in tempo reale, chip status, budget giorni·ore su una riga, menu contestuale (Overview / Workspace / **Edit project** / Table / Board / Gantt / Eisenhower), **Archive** rapido e toggle **Show archived projects**. Sezione unica **Manage Entities** (catalogo + **+ New** + **Delete Entity**) per Customer, Stakeholder, Project Type e Technology. Sotto i 720px: layout card/accordion touch-friendly.
 
 **Overview (Dashboard del progetto)** — home del progetto (stile dotpm), legata al tab **Dashboard** nello switcher (a sinistra di Table). Sezioni nell’ordine **Governance → Status → Task summary → search + task list → Documents → Linked Entities → Actions**. Albero documenti (esclusa `Tasks/`): pulsanti stilizzati coerenti (**New note** e **New task**); **New note** crea una nota Markdown già collegata al progetto per Graph View (`project` in YAML + sezione **Links**); menu contestuale sulle note (Open, new leaf, reveal, rename, delete, copy path/URL).
 
@@ -122,15 +124,15 @@ I progetti senza template restano invariati.
 **Workspace** — leaf task-only con switcher condiviso **Dashboard | Table | Gantt | Board | Eisenhower** (Dashboard torna all’Overview):
 - **Table** — gerarchia, status, priority, assignee, due/scheduled (formato Settings), stime e ore residue. Spaziatura ottimizzata (`10px 12px` di padding, spazio uniforme ~24px tra colonne dati e controlli); titolo task in stile **hyperlink pulito** ad apertura immediata del dettaglio (senza overlay grigio a pulsante); icona di modifica proporzionata (`17x17px`).
 - **Board (Kanban)** — colonne configurabili da Settings (default Backlog / In Progress / Review / Done); drag-and-drop HTML5 + pointer-capture; toggle sotto-task e anteprima descrizione; titolo allineato verticalmente al centro dell'icona matita; fallback status su mobile.
-- **Eisenhower** — matrice 2×2 Important × Urgent; campi YAML `important` / `urgent`; drag-and-drop tra quadranti e titoli centrati verticalmente con l'icona.
+- **Eisenhower** — matrice 2×2 Important × Urgent; YAML `important` (booleano); **Urgent** derivato da Priority (`high` \| `urgent`); drag tra quadranti (può aggiornare Priority). Chiavi legacy `urgent` ignorate.
 - **Gantt** — timeline orizzontale fluida senza punti elenco spuri; barre di durata e milestone; padding bilanciato a 16px; testo dei task centrato sull'asse orizzontale dell'icona; zoom Day/Week/Month e curve SVG per le dipendenze.
 - **Task Detail (`TaskDetailModal`)** — modale unificata standardizzata con il design a card delle entità: mostra badge di stato/priorità, azioni rapide per edit e apertura file in Obsidian, e chip interattivi cliccabili per navigare direttamente a Progetto, Stakeholder/Assignee, Task padre, Sotto-task, Bloccanti (*Blocked by*), Bloccati (*Blocking*) e membri del time log.
 
-**Task Editor** — editor completo in **tab** (default) o modale; date/ora seguono Settings; Important/Urgent editabili. Eliminazione task dall’editor (e dalla tabella) con conferma; i sotto-task annidati vengono eliminati insieme al padre.
+**Task Editor** — editor completo in **modale** (default) o tab; date/ora seguono Settings; Important editabile (Urgent via Priority). Eliminazione task dall’editor (e dalla tabella) con conferma; i sotto-task annidati vengono eliminati insieme al padre.
 
 **Release notes** — foglio dedicato con cronologia dei rilasci consultabile tramite comando dedicato.
 
-In Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Task board columns** (Board), **Hours per day**, **Date format** / **Time format**. UI in inglese.
+In Settings (estratto): **Open projects in**, **Default tasks view**, **Open tasks in**, cartelle Projects / Archived / Entities, Default PM / Default role for Non PM, template, Sync metadata, Board columns, Eisenhower labels, Enable Auto-schedule button / Pull dependents forward, Reminder minutes, Hours per day, Date / Time format, debounce. UI in inglese.
 
 ### Deep link Obsidian (URI del Dashboard / Overview)
 
@@ -211,7 +213,7 @@ Campi task rilevanti: `blocked_by`, `blocking`, `start_date`, `end_date`, `durat
 
 Requisiti: Obsidian **1.5.0+** (desktop e mobile). Node.js 18+ solo per build da sorgente.
 
-Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.2.5`
+Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.4.4`
 
 #### 1. Installazione utente (copia dei file)
 
@@ -298,7 +300,7 @@ Nessuna dipendenza runtime npm: il plugin usa solo l’API Obsidian e API web na
 
 **Projects Engine** manages portfolio, governance, and delivery **inside the vault** — no external database. Every customer, person, stakeholder, project type, technology, and task is a Markdown note (**Entity-as-a-Note**). Relationships are native `[[wikilinks]]`, so Graph View clusters work by customer, technology stack, team, and stakeholder.
 
-Navigation follows a coherent funnel: **Projects (list) → Overview (governance home) → Edit (leaf) → Workspace (Table / Gantt / Board / Eisenhower)**, plus **Task Detail** (card shell with interactive chips), **View Entity** catalogue viewer, and **Release notes**, inspired by [obsidian-pm](https://github.com/dotpm/obsidian-pm), without copying its branding or Local API. See `NOTICE`.
+Navigation follows a coherent funnel: **Projects (list) → Overview (governance home) → Edit (leaf) → Workspace (Table / Gantt / Board / Eisenhower)**, plus **Task Detail** (card shell with interactive chips), **Manage Entities** catalogue, and **Release notes**, inspired by [obsidian-pm](https://github.com/dotpm/obsidian-pm), without copying its branding or Local API. See `NOTICE`.
 
 The plugin ships with:
 
@@ -308,14 +310,16 @@ The plugin ships with:
 - **Team member roles** persisted and shown as badges next to names on the Project Dashboard
 - **Global Tasks Dashboard** aggregating all tasks (shared filters; project badge → open project; New Task with project selector)
 - **New note templates** from Settings → Templates folder (`{{project}}`, `{{title}}`, `{{date}}`)
-- interactive **View entity** catalogue viewer (Customer, Stakeholder, Project Type, Technology cards with live search, project association chips, and quick actions)
+- **Manage Entities** catalogue (Customer, Stakeholder, Project Type, Technology — search, **+ New**, **Delete Entity**)
+- **Archived projects** folder, Archive / Unarchive, homepage archived list
+- **Sync & Rebuild Note Metadata**, task **notes** + preview, **Add subtask**, **Hide completed**, Scheduled **reminders**
 - automatic bidirectional creation of referenced entities (without forcing Markdown files open in editor)
 - unified Team Member & Assignee on **Stakeholder** (with `email` / `mail` support)
 - configurable custom fields on the four catalogue entities
 - task editor & standardized task detail modal with interactive dependency navigation (subtasks, parent, blockers, blocking, time logs)
 - **Semplificato** and **PRINCE2** governance
 - Projects dashboard, Global Dashboard, Overview, Project Edit (leaf), unified Workspace (Table / Kanban / Gantt / Eisenhower), Task editor (modal or tab), Release notes
-- DAG scheduling with cycle detection and date cascade
+- DAG scheduling with cycle detection; manual **Auto-schedule project** from the task editor (not continuous on-save cascade)
 - polished UI: optimized table spacing (~24px), clean hyperlink task titles without button overlays, precise vertical title-icon centering, and Gantt timeline without stray bullet dots
 
 ### Entity architecture and Graph View
@@ -394,12 +398,12 @@ Projects without a template are unchanged.
 - Intra- and cross-project dependencies: `blocked_by` / `blocking`
 - Cycle detection before save; Notice if a loop would close
 - Time logs `[{ date, duration, member, note }]` with `duration` in **hours**; estimates in **hours** (`estimate_hours`) with legacy `estimate_mandays` mirror
-- Auto-schedule and cascade: when a blocker slips, dependents are replaned with duration preserved
+- **Auto-schedule project** (Task Editor, when enabled in Settings): manual DAG reschedule for the project (duration preserved). **Pull dependents forward** = ASAP; otherwise push-forward on conflict only. Dates are not cascaded automatically on every edit.
 - Undo/Redo (Command Pattern) for dates, dependencies, and board status; persisted via `vault.process`
 
 ### Views: Projects → Overview → Edit → Workspace (+ Task / Release notes)
 
-**Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, status chips, budget as days · hours on one line, context menu (Overview / Workspace / **Edit project** / Table / Board / Gantt / Eisenhower). Includes **View entity** (interactive card catalogue viewer with search and filters) and **Create entity** sections for Customer, Stakeholder, Project Type, and Technology. Below 720px: touch-friendly card/accordion layout.
+**Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, status chips, budget as days · hours on one line, context menu (Overview / Workspace / **Edit project** / Table / Board / Gantt / Eisenhower), quick **Archive**, and **Show archived projects**. Single **Manage Entities** section (catalogue + **+ New** + **Delete Entity**) for Customer, Stakeholder, Project Type, and Technology. Below 720px: touch-friendly card/accordion layout.
 
 **Overview (project Dashboard)** — project home (dotpm-like), bound to the **Dashboard** tab in the chrome switcher (left of Table). Sections in order **Governance → Status → Task summary → search + task list → Documents → Linked Entities → Actions**. Documents tree (excludes `Tasks/`): consistent styled **New note** and **New task** buttons; **New note** creates a Markdown note already Graph-linked to the project (YAML `project` wikilink + body **Links** section); right-click context menu on notes (Open, new leaf, reveal, rename, delete, copy path/URL).
 
@@ -408,15 +412,15 @@ Projects without a template are unchanged.
 **Workspace** — task-only leaf with shared switcher **Dashboard | Table | Gantt | Board | Eisenhower** (Dashboard returns to Overview):
 - **Table** — hierarchy, status, priority, assignee, due/scheduled (Settings format), estimate/remaining hours. Optimized padding (`10px 12px`, uniform ~24px spacing between data columns and controls); clean **hyperlink task titles** without button pill overlays; proportional edit icon (`17x17px`).
 - **Board (Kanban)** — columns from Settings (default Backlog / In Progress / Review / Done); HTML5 + pointer-capture DnD; titles vertically centered with edit icon; Show subtasks / description preview toggles; mobile status fallback.
-- **Eisenhower** — 2×2 Important × Urgent matrix; YAML `important` / `urgent`; drag between quadrants and titles vertically centered with edit icon.
+- **Eisenhower** — 2×2 Important × Urgent matrix; YAML `important` boolean; **Urgent** derived from Priority (`high` \| `urgent`); drag between quadrants may adjust Priority. Legacy `urgent` keys ignored.
 - **Gantt** — clean horizontal timeline without stray bullet dots; duration bars and milestones; balanced 16px view padding; task titles centered with edit icon; Day/Week/Month zoom and SVG dependency curves.
 - **Task Detail (`TaskDetailModal`)** — unified modal standardized with the entity card design: displays status/priority badges, quick Edit and Open note actions, and interactive clickable chips for Project, Assignee/Stakeholder, Parent task, Subtasks, Blockers (*Blocked by*), Blocking, and time log members.
 
-**Task Editor** — editor in a **tab** (default) or modal; date/time fields follow Settings; Important/Urgent editable. Delete task from the editor (and table row) with confirmation; nested subtasks are deleted with the parent.
+**Task Editor** — editor in a **modal** (default) or tab; date/time fields follow Settings; Important editable (Urgent via Priority). Delete task from the editor (and table row) with confirmation; nested subtasks are deleted with the parent.
 
 **Release notes** — dedicated leaf displaying the release history via dedicated command.
 
-Settings: **Open projects in** (Overview | Workspace), **Default workspace view**, **Open task editor in**, **Project statuses**, **Task board columns** (Board), **Hours per day**, **Date format** / **Time format**. English UI throughout.
+Settings (excerpt): **Open projects in**, **Default tasks view**, **Open tasks in**, Projects / Archived / entity folders, Default PM / Default role for Non PM, templates, Sync metadata, Board columns, Eisenhower labels, Enable Auto-schedule button / Pull dependents forward, Reminder minutes, Hours per day, Date / Time format, indexer debounce. English UI throughout.
 
 ### Obsidian URL deep link (Dashboard / Overview)
 
@@ -499,7 +503,7 @@ Scheduler-relevant task fields: `blocked_by`, `blocking`, `start_date`, `end_dat
 
 Requirements: Obsidian **1.5.0+** (desktop and mobile). Node.js 18+ only for from-source builds.
 
-Id: `projects-engine` · Name: **Projects Engine** · Version: `1.2.5`
+Id: `projects-engine` · Name: **Projects Engine** · Version: `1.4.4`
 
 #### 1. End-user install (copy the plugin files)
 

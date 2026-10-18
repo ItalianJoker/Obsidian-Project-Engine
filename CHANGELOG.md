@@ -3,6 +3,27 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.4] — 2026-10-18
+
+### Changed
+
+- **Scheduling honesty** — Settings **Enable Auto-schedule button** gates the Task Editor control; **Pull dependents forward** feeds `asSoonAsPossible`. Docs no longer claim continuous on-save DAG cascade.
+- **Eisenhower docs** — README / project-context align with Priority-derived Urgent (`important` boolean only).
+- **README / `.cursorrules`** — version **1.4.4**, Manage Entities homepage, 1.4.x feature inventory, architecture map.
+
+### Fixed
+
+- **ConfirmModal** — single-flight Confirm (disable + busy label) to prevent double archive/delete.
+- **Create / Save** — `isSubmitting` + busy labels on Create project, Save project, Save task.
+- **Dirty Cancel** — discard confirm on Project Editor / Task Editor when leaving with unsaved edits.
+- **Table collapse + search caret** — preserved across SubView / chrome remounts on vault refresh.
+- **Archive Notices** — user-facing English copy for destination collisions (technical detail in console).
+
+### Performance
+
+- Archive-flag reconcile runs on rename (and first open), not every Dashboard reload.
+- Reminder tick uses a single MetadataCache pass for projects + scheduled tasks.
+
 ## [1.4.3] — 2026-10-14
 
 ### Added

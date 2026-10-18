@@ -37,6 +37,8 @@ import { joinVaultPath, noteExists, sanitiseNoteBasename, writeNoteAtomic } from
 import { projectNotePath } from "../services/projectPaths";
 import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from "../models/types";
 import { mountIconPicker } from "../ui/IconPicker";
+import { withBusy } from "../ui/withBusy";
+import { userFacingErrorMessage } from "../services/userFacingErrors";
 import { loadActiveProjectRows } from "./projectRows";
 import { EntitySuggest, type EntitySuggestion } from "./suggest";
 import { openTaskListTemplateModal } from "./TaskListTemplateModal";
@@ -92,6 +94,7 @@ export class ProjectCreationModal extends Modal {
 	private refreshTeamList: (() => void) | null = null;
 	/** Counter to persist after a successful create (accounts for collision skips). */
 	private nextCounter = 1;
+	private isSubmitting = false;
 
 	constructor(
 		app: App,
@@ -881,7 +884,7 @@ export class ProjectCreationModal extends Modal {
 			attr: { type: "button" },
 		});
 		submit.addEventListener("click", () => {
-			void this.submit();
+			void withBusy(submit, "Creating…", () => this.submit());
 		});
 	}
 
@@ -900,6 +903,9 @@ export class ProjectCreationModal extends Modal {
 	 * Validate the form, persist the project note, and bump the ID counter.
 	 */
 	private async submit(): Promise<void> {
+		if (this.isSubmitting) {
+			return;
+		}
 		const errors = this.validate();
 		this.showErrors(errors);
 		if (errors.length > 0) {
@@ -907,6 +913,7 @@ export class ProjectCreationModal extends Modal {
 			return;
 		}
 
+		this.isSubmitting = true;
 		try {
 			await this.ensureEntityNotes();
 			this.plugin.indexer.rebuild();
@@ -929,9 +936,12 @@ export class ProjectCreationModal extends Modal {
 			this.close();
 			await this.plugin.router.openProjectLink(file.path);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			new Notice(`Could not create project: ${message}`);
+			console.error(error);
+			const message = userFacingErrorMessage(error, "Could not create project");
+			new Notice(message.startsWith("Could not") ? message : `Could not create project: ${message}`);
 			this.showErrors([message]);
+		} finally {
+			this.isSubmitting = false;
 		}
 	}
 
