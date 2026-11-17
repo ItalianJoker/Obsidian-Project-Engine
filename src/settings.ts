@@ -264,6 +264,73 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 						this.plugin.refreshOpenViews();
 					});
 			});
+
+		this.renderProjectHeaderFields(containerEl);
+	}
+
+	/**
+	 * Project view header field toggles (Dashboard / Workspace / Edit leaf titles).
+	 * Project Name is always required.
+	 */
+	private renderProjectHeaderFields(containerEl: HTMLElement): void {
+		containerEl.createEl("h3", { text: "Project view headers" });
+		containerEl.createEl("p", {
+			cls: "setting-item-description",
+			text: "Choose which fields appear in project Dashboard, Workspace, and Edit titles. Segments join with “ - ”. Empty values are skipped. Project Name is always included.",
+		});
+
+		const fields = this.plugin.settings.projectHeaderFields;
+
+		new Setting(containerEl)
+			.setName("Customer")
+			.setDesc("Show the customer label before the project id.")
+			.addToggle((toggle) => {
+				toggle.setValue(fields.customer !== false).onChange(async (value) => {
+					this.plugin.settings.projectHeaderFields.customer = value;
+					await this.plugin.saveSettings();
+					this.plugin.refreshOpenViews();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Project ID")
+			.setDesc("Show the project id (example: PRJ-2026-001).")
+			.addToggle((toggle) => {
+				toggle.setValue(fields.id !== false).onChange(async (value) => {
+					this.plugin.settings.projectHeaderFields.id = value;
+					await this.plugin.saveSettings();
+					this.plugin.refreshOpenViews();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Project Name")
+			.setDesc("Always included in project headers (cannot be turned off).")
+			.addToggle((toggle) => {
+				toggle.setValue(true).setDisabled(true);
+			});
+
+		new Setting(containerEl)
+			.setName("Project Type")
+			.setDesc("Optionally append the project type after the name.")
+			.addToggle((toggle) => {
+				toggle.setValue(fields.projectType === true).onChange(async (value) => {
+					this.plugin.settings.projectHeaderFields.projectType = value;
+					await this.plugin.saveSettings();
+					this.plugin.refreshOpenViews();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Technology")
+			.setDesc("Optionally append technology labels (comma-separated when several).")
+			.addToggle((toggle) => {
+				toggle.setValue(fields.technology === true).onChange(async (value) => {
+					this.plugin.settings.projectHeaderFields.technology = value;
+					await this.plugin.saveSettings();
+					this.plugin.refreshOpenViews();
+				});
+			});
 	}
 
 	/** Date & time — PE default DD/MM/YYYY + 24h. */

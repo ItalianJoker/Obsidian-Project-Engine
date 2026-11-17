@@ -3,6 +3,13 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.5] — 2026-11-17
+
+### Added
+
+- **Configurable project view headers** — Settings → Project view headers toggles which fields appear in Dashboard / Workspace / Edit titles. Default: Customer - Project ID - Project Name. Project Name is always required; optional Customer, Project ID, Project Type, Technology.
+- Shared helper `formatProjectHeaderTitle` (+ Vitest) for chrome and leaf tab titles.
+
 ## [1.4.4] — 2026-10-18
 
 ### Changed

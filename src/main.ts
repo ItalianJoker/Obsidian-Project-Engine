@@ -13,7 +13,12 @@
 import { Notice, Plugin, TFile } from "obsidian";
 import { CommandStack, Scheduler } from "./engine/Scheduler";
 import { EntityIndexer } from "./engine/Indexer";
-import { DEFAULT_SETTINGS, type CustomFieldEntityKind, type ProjectsEngineSettings } from "./models/types";
+import {
+	DEFAULT_SETTINGS,
+	type CustomFieldEntityKind,
+	type ProjectsEngineSettings,
+} from "./models/types";
+import { normalizeProjectHeaderFields } from "./services/projectHeaderTitle";
 import { ensureDoneTaskStatus, mergeEisenhowerLabels } from "./models/types";
 import { normalizeVaultFolder } from "./services/folderPaths";
 import { splitFrontmatter } from "./services/frontmatter";
@@ -340,6 +345,7 @@ export default class ProjectsEnginePlugin extends Plugin {
 			projectStatuses: DEFAULT_SETTINGS.projectStatuses.map((item) => ({ ...item })),
 			taskStatuses: DEFAULT_SETTINGS.taskStatuses.map((item) => ({ ...item })),
 			eisenhowerLabels: mergeEisenhowerLabels(saved?.eisenhowerLabels),
+			projectHeaderFields: normalizeProjectHeaderFields(saved?.projectHeaderFields),
 			customFieldSchemas: [],
 		};
 		if (saved?.customFieldSchemas && Array.isArray(saved.customFieldSchemas)) {
@@ -503,6 +509,9 @@ export default class ProjectsEnginePlugin extends Plugin {
 
 	public async saveSettings(): Promise<void> {
 		this.settings.taskStatuses = ensureDoneTaskStatus(this.settings.taskStatuses);
+		this.settings.projectHeaderFields = normalizeProjectHeaderFields(
+			this.settings.projectHeaderFields,
+		);
 		await this.saveData(this.settings);
 	}
 

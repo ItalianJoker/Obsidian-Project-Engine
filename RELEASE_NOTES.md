@@ -1,5 +1,16 @@
 # Release notes — Projects Engine
 
+## 1.4.5 — Configurable project view headers
+
+**EN:** Project Dashboard / Workspace / Edit headers default to Customer - Project ID - Project Name; Settings toggles control which fields appear (Name always on). Does not overwrite v1.4.4.
+
+### Added
+
+- **Project view headers** — Settings section with toggles for Customer, Project ID, Project Name (locked on), Project Type, Technology.
+- Shared `formatProjectHeaderTitle` used by project chrome and leaf display text.
+
+---
+
 ## 1.4.4 — Audit honesty + UX quick wins
 
 **EN:** Docs and Settings match real scheduling/Eisenhower behaviour; Confirm/Create/Save single-flight + busy; dirty Cancel; table collapse and search caret preserved; friendlier archive Notices. Does not overwrite v1.4.3.

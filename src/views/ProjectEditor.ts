@@ -30,6 +30,7 @@ import {
 } from "../models/types";
 import { governanceDisplayLabel } from "../services/governance";
 import { appendEntityLink, ensureEntityNote } from "../services/linkSync";
+import { formatProjectHeaderTitle } from "../services/projectHeaderTitle";
 import { patchProjectFrontmatter } from "../services/projectIo";
 import {
 	budgetDaysFieldLabel,
@@ -137,7 +138,10 @@ export class ProjectEditor {
 	}
 
 	public get title(): string {
-		return this.project.name || "Project";
+		return formatProjectHeaderTitle(
+			this.project,
+			this.plugin.settings.projectHeaderFields,
+		);
 	}
 
 	public mount(container: HTMLElement): void {

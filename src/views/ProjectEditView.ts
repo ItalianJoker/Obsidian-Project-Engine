@@ -8,6 +8,7 @@
 
 import { ItemView, type ViewStateResult, WorkspaceLeaf } from "obsidian";
 import type ProjectsEnginePlugin from "../main";
+import { formatProjectHeaderTitle } from "../services/projectHeaderTitle";
 import { EmptyState } from "../ui/EmptyState";
 import { ProjectEditor } from "./ProjectEditor";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
@@ -44,7 +45,14 @@ export class ProjectEditView extends ItemView {
 	}
 
 	override getDisplayText(): string {
-		return truncateTitle(this.project?.name ?? "Project", 10);
+		if (!this.project) return truncateTitle("Project", 28);
+		return truncateTitle(
+			formatProjectHeaderTitle(
+				this.project,
+				this.plugin.settings.projectHeaderFields,
+			),
+			28,
+		);
 	}
 
 	override getIcon(): string {

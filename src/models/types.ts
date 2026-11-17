@@ -1173,9 +1173,43 @@ export interface ProjectsEngineSettings {
 	saveTaskOnClose: boolean;
 	/** Open release notes after plugin updates. */
 	showReleaseNotes: boolean;
+	/**
+	 * Which project fields appear in Dashboard / Workspace / Edit leaf headers.
+	 * {@link ProjectHeaderFields.name} is always treated as required (`true`).
+	 * Default: Customer · Project ID · Project Name.
+	 */
+	projectHeaderFields: ProjectHeaderFields;
 	/** Dynamic field schemas for the four configurable entity kinds. */
 	customFieldSchemas: CustomFieldSchema[];
 }
+
+/**
+ * Toggles for {@link ProjectsEngineSettings.projectHeaderFields}.
+ *
+ * Segment order when formatting: Customer → Project ID → Project Name →
+ * Project Type → Technology. Empty values are omitted. Name is always on.
+ */
+export interface ProjectHeaderFields {
+	/** Customer wikilink display label. Default `true`. */
+	customer: boolean;
+	/** Project id (`PRJ-…`). Default `true`. */
+	id: boolean;
+	/** Project name — always required; migration/save force `true`. */
+	name: boolean;
+	/** Project type wikilink. Default `false`. */
+	projectType: boolean;
+	/** Technology wikilink(s), comma-joined. Default `false`. */
+	technology: boolean;
+}
+
+/** Default header toggles: Customer - ID - Name. */
+export const DEFAULT_PROJECT_HEADER_FIELDS: ProjectHeaderFields = {
+	customer: true,
+	id: true,
+	name: true,
+	projectType: false,
+	technology: false,
+};
 
 /**
  * Default settings applied on first load and as Object.assign baseline.
@@ -1233,6 +1267,7 @@ export const DEFAULT_SETTINGS: ProjectsEngineSettings = {
 	reminderFiredKeys: [],
 	saveTaskOnClose: true,
 	showReleaseNotes: true,
+	projectHeaderFields: { ...DEFAULT_PROJECT_HEADER_FIELDS },
 	customFieldSchemas: [],
 };
 
