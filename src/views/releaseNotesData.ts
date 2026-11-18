@@ -7,6 +7,12 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.5
+
+### Added
+
+- **Configurable project view headers** — Settings toggles for Customer / Project ID / Name (always on) / Type / Technology. Default header: Customer - ID - Name on Dashboard, Workspace, and Edit.
+
 ## 1.4.4
 
 ### Changed

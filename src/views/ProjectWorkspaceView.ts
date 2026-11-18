@@ -18,6 +18,7 @@ import {
 import { toWikiLink } from "../models/types";
 import { loadAllTasks } from "../services/taskIo";
 import { copyProjectObsidianUri } from "../services/obsidianUri";
+import { formatProjectHeaderTitle } from "../services/projectHeaderTitle";
 import { EmptyState } from "../ui/EmptyState";
 import { renderProjectChrome } from "../ui/ProjectChrome";
 import { findProjectRow, loadProjectRows, type ProjectRow } from "./projectRows";
@@ -109,7 +110,11 @@ export class ProjectWorkspaceView extends ItemView {
 	}
 
 	override getDisplayText(): string {
-		return this.project?.name ?? "Workspace";
+		if (!this.project) return "Workspace";
+		return formatProjectHeaderTitle(
+			this.project,
+			this.plugin.settings.projectHeaderFields,
+		);
 	}
 
 	override getIcon(): string {
@@ -257,6 +262,10 @@ export class ProjectWorkspaceView extends ItemView {
 		renderProjectChrome({
 			container: this.chromeEl,
 			project,
+			headerTitle: formatProjectHeaderTitle(
+				project,
+				this.plugin.settings.projectHeaderFields,
+			),
 			mode: this.mode,
 			searchText: this.filters.text,
 			filterAll: !filterActive,

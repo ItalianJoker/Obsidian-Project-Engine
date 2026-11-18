@@ -27,6 +27,11 @@ export interface ProjectChromeProps {
 	container: HTMLElement;
 	project: ProjectRow;
 	/**
+	 * Formatted header title (Customer - ID - Name, per Settings).
+	 * When omitted, falls back to {@link ProjectRow.name}.
+	 */
+	headerTitle?: string;
+	/**
 	 * Active chrome mode for the view switcher highlight.
 	 * Use `"dashboard"` on Overview; task modes on Workspace.
 	 */
@@ -90,6 +95,7 @@ export function renderProjectChrome(props: ProjectChromeProps): void {
 	const {
 		container,
 		project,
+		headerTitle,
 		mode,
 		searchText,
 		filterAll,
@@ -124,7 +130,8 @@ export function renderProjectChrome(props: ProjectChromeProps): void {
 		glyph.setText("◇");
 	}
 
-	identity.createEl("h1", { text: project.name, cls: "pe-chrome-title" });
+	const titleText = (headerTitle ?? project.name).trim() || project.name || "Project";
+	identity.createEl("h1", { text: titleText, cls: "pe-chrome-title" });
 	identity.createSpan({ text: "This project", cls: "pe-chrome-badge" });
 
 	const actions = top.createDiv({ cls: "pe-chrome-actions" });

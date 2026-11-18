@@ -1,4 +1,4 @@
-# Projects Engine — Cursor rules (v1.4.4)
+# Projects Engine — Cursor rules (v1.4.5)
 
 English-only UI labels, notices, placeholders, and code comments/JSDoc.
 Obsidian plugin id: `projects-engine`. Mobile-compatible (`isDesktopOnly: false`).
@@ -16,6 +16,7 @@ No Node builtins in the browser bundle. Persist content only via `vault.process`
 | `src/engine/debounce.ts` | Trailing-edge debounce for indexer / UI |
 | `src/views/projectRows.ts` | `ProjectRow` load + legacy migration (active / archived splits) |
 | `src/services/projectFlags.ts` | Non PM / Technical intervention / ITSM parse + budget labels |
+| `src/services/projectHeaderTitle.ts` | `formatProjectHeaderTitle` / Settings `projectHeaderFields` (name always on) |
 | `src/services/projectIo.ts` | `patchProjectFrontmatter` via `vault.process` |
 | `src/services/projectArchive.ts` | Archive / unarchive folder moves + path-based `archived` reconcile |
 | `src/services/metadataSync.ts` | Sync & Rebuild Note Metadata |

@@ -79,6 +79,7 @@ import {
 	formatHoursAndGiornate,
 } from "../services/timeLogs";
 import { copyProjectObsidianUri } from "../services/obsidianUri";
+import { formatProjectHeaderTitle } from "../services/projectHeaderTitle";
 import { isValidTeamsChannelUrl, openExternalUrl } from "../services/urls";
 import { AddItsmItemModal } from "../ui/AddItsmItemModal";
 import { ConfirmModal } from "../ui/ConfirmModal";
@@ -178,7 +179,11 @@ export class ProjectOverviewView extends ItemView {
 	}
 
 	override getDisplayText(): string {
-		return this.project?.name ?? "Project";
+		if (!this.project) return "Project";
+		return formatProjectHeaderTitle(
+			this.project,
+			this.plugin.settings.projectHeaderFields,
+		);
 	}
 
 	override getIcon(): string {
@@ -338,6 +343,10 @@ export class ProjectOverviewView extends ItemView {
 		renderProjectChrome({
 			container: this.chromeEl,
 			project,
+			headerTitle: formatProjectHeaderTitle(
+				project,
+				this.plugin.settings.projectHeaderFields,
+			),
 			mode: "dashboard",
 			searchText: this.filters.text,
 			filterAll: !filterActive,
