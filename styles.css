@@ -1413,12 +1413,20 @@
 	padding-left: 1.1em;
 }
 
+/* Portfolio rows: Open button opens the project; row click does not. */
 .pe-project-row {
-	cursor: pointer;
+	cursor: default;
 }
 
 .pe-project-row:hover {
 	background: var(--background-modifier-hover);
+}
+
+.pe-project-status-select {
+	min-width: 7.5rem;
+	max-width: 12rem;
+	padding: 4px 8px;
+	font-size: 0.85em;
 }
 
 .pe-subview {

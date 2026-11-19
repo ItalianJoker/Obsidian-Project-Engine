@@ -3,6 +3,16 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.6] — 2026-11-19
+
+### Changed
+
+- **Projects homepage** — clicking a project row no longer opens the project; only the **Open** button does.
+
+### Added
+
+- **Inline Status** — portfolio table Status column is an editable dropdown (Settings project statuses); persists via `setProjectStatus` / `vault.process` without navigating away.
+
 ## [1.4.5] — 2026-11-17
 
 ### Added

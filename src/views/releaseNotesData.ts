@@ -7,6 +7,16 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.6
+
+### Changed
+
+- **Projects homepage** — row click no longer opens a project; only the **Open** button does.
+
+### Added
+
+- **Inline Status** — editable Status dropdown on the portfolio table (Settings project statuses).
+
 ## 1.4.5
 
 ### Added
