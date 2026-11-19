@@ -1,5 +1,19 @@
 # Release notes — Projects Engine
 
+## 1.4.6 — Homepage row click + inline Status
+
+**EN:** Projects portfolio: row click no longer opens a project (Open button only); Status is editable inline via dropdown. Does not overwrite v1.4.5.
+
+### Changed
+
+- **Row click** — portfolio table rows no longer navigate; use **Open** (or context menu).
+
+### Added
+
+- **Inline Status** — `<select>` on the homepage Status column using Settings project statuses; saves with `setProjectStatus`.
+
+---
+
 ## 1.4.5 — Configurable project view headers
 
 **EN:** Project Dashboard / Workspace / Edit headers default to Customer - Project ID - Project Name; Settings toggles control which fields appear (Name always on). Does not overwrite v1.4.4.

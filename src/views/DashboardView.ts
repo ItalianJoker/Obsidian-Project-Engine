@@ -22,6 +22,7 @@ import {
 	unarchiveProjectFolder,
 } from "../services/projectArchive";
 import { containingProjectFolder } from "../services/projectPaths";
+import { setProjectStatus } from "../services/projectIo";
 import { EmptyState } from "../ui/EmptyState";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { userFacingErrorMessage } from "../services/userFacingErrors";
@@ -329,9 +330,7 @@ export class DashboardView extends ItemView {
 		for (const row of rows) {
 			const tr = document.createElement("tr");
 			tr.className = "pe-project-row pe-touch-target";
-			tr.addEventListener("click", () => {
-				void this.plugin.router.openProjectLink(row.file.path);
-			});
+			// Row click does not open the project — only the Open button does.
 			tr.addEventListener("contextmenu", (event) => {
 				event.preventDefault();
 				this.openRowMenu(row, event);
@@ -339,15 +338,7 @@ export class DashboardView extends ItemView {
 			this.td(tr, "ID", row.id);
 			this.td(tr, "Name", row.name);
 			this.td(tr, "Governance", governanceDisplayLabel(row.governance));
-			const statusTd = tr.createEl("td", { attr: { "data-label": "Status" } });
-			const chip = statusTd.createSpan({
-				text: projectStatusLabel(this.plugin.settings.projectStatuses, row.status),
-				cls: "pe-status-chip",
-			});
-			const meta = this.plugin.settings.projectStatuses.find((item) => item.id === row.status);
-			if (meta?.color) {
-				chip.style.setProperty("--pe-status-color", meta.color);
-			}
+			this.mountInlineStatusSelect(tr, row);
 			this.td(tr, "Customer", stripWiki(row.customer));
 			const flags = {
 				isNonPM: row.isNonPM,
@@ -595,6 +586,65 @@ export class DashboardView extends ItemView {
 				}
 			},
 		}).open();
+	}
+
+	/**
+	 * Inline Status `<select>` on the portfolio table — same options as Settings /
+	 * Project Dashboard; persists via {@link setProjectStatus} without opening the project.
+	 */
+	private mountInlineStatusSelect(tr: HTMLElement, row: ProjectRow): void {
+		const statusTd = tr.createEl("td", {
+			cls: "pe-project-inline-status",
+			attr: { "data-label": "Status" },
+		});
+		const statusSelect = statusTd.createEl("select", {
+			cls: "pe-input pe-touch-target pe-project-status-select",
+			attr: { "aria-label": `Status for ${row.name || row.id}` },
+		});
+		const statuses = this.plugin.settings.projectStatuses;
+		const options = statuses.filter(
+			(item) => !item.archived || item.id === row.status,
+		);
+		for (const option of options) {
+			statusSelect.createEl("option", {
+				text: option.label,
+				attr: { value: option.id },
+			});
+		}
+		if (!options.some((item) => item.id === row.status)) {
+			statusSelect.createEl("option", {
+				text: projectStatusLabel(statuses, row.status),
+				attr: { value: row.status },
+			});
+		}
+		const previousStatus = row.status;
+		statusSelect.value = previousStatus;
+		statusSelect.addEventListener("click", (event) => {
+			event.stopPropagation();
+		});
+		statusSelect.addEventListener("mousedown", (event) => {
+			event.stopPropagation();
+		});
+		statusSelect.addEventListener("change", () => {
+			const next = statusSelect.value;
+			if (next === previousStatus) {
+				return;
+			}
+			void (async () => {
+				try {
+					await setProjectStatus(this.app.vault, row.file, next);
+					row.status = next;
+					new Notice(`Status → ${projectStatusLabel(statuses, next)}`);
+					// Vault modify listener reloads the list; also refresh open views
+					// so Overview / Workspace stay in sync without navigating away.
+					this.plugin.refreshOpenViews();
+				} catch (error) {
+					statusSelect.value = previousStatus;
+					console.error(error);
+					new Notice(userFacingErrorMessage(error, "Could not update status"));
+				}
+			})();
+		});
 	}
 
 	/**
