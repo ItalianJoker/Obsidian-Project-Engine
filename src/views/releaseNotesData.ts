@@ -7,6 +7,12 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.7
+
+### Fixed
+
+- **Homepage Status colour** — inline Status dropdown again shows Settings status colour (chip + \`--pe-status-color\`).
+
 ## 1.4.6
 
 ### Changed

@@ -591,13 +591,15 @@ export class DashboardView extends ItemView {
 	/**
 	 * Inline Status `<select>` on the portfolio table — same options as Settings /
 	 * Project Dashboard; persists via {@link setProjectStatus} without opening the project.
+	 * Wrapped in `.pe-status-chip` so the Settings colour shows (dot + tinted border/bg).
 	 */
 	private mountInlineStatusSelect(tr: HTMLElement, row: ProjectRow): void {
 		const statusTd = tr.createEl("td", {
 			cls: "pe-project-inline-status",
 			attr: { "data-label": "Status" },
 		});
-		const statusSelect = statusTd.createEl("select", {
+		const chip = statusTd.createSpan({ cls: "pe-status-chip pe-project-status-chip" });
+		const statusSelect = chip.createEl("select", {
 			cls: "pe-input pe-touch-target pe-project-status-select",
 			attr: { "aria-label": `Status for ${row.name || row.id}` },
 		});
@@ -617,8 +619,17 @@ export class DashboardView extends ItemView {
 				attr: { value: row.status },
 			});
 		}
-		const previousStatus = row.status;
+		let previousStatus = row.status;
 		statusSelect.value = previousStatus;
+		const applyStatusColor = (statusId: string): void => {
+			const meta = statuses.find((item) => item.id === statusId);
+			if (meta?.color) {
+				chip.style.setProperty("--pe-status-color", meta.color);
+			} else {
+				chip.style.removeProperty("--pe-status-color");
+			}
+		};
+		applyStatusColor(previousStatus);
 		statusSelect.addEventListener("click", (event) => {
 			event.stopPropagation();
 		});
@@ -630,16 +641,20 @@ export class DashboardView extends ItemView {
 			if (next === previousStatus) {
 				return;
 			}
+			const revertTo = previousStatus;
+			applyStatusColor(next);
 			void (async () => {
 				try {
 					await setProjectStatus(this.app.vault, row.file, next);
 					row.status = next;
+					previousStatus = next;
 					new Notice(`Status → ${projectStatusLabel(statuses, next)}`);
 					// Vault modify listener reloads the list; also refresh open views
 					// so Overview / Workspace stay in sync without navigating away.
 					this.plugin.refreshOpenViews();
 				} catch (error) {
-					statusSelect.value = previousStatus;
+					statusSelect.value = revertTo;
+					applyStatusColor(revertTo);
 					console.error(error);
 					new Notice(userFacingErrorMessage(error, "Could not update status"));
 				}
