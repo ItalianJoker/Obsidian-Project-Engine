@@ -3,6 +3,12 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.7] — 2026-11-20
+
+### Fixed
+
+- **Homepage Status colour** — inline Status dropdown on the Projects portfolio again shows the Settings status colour (chip wrap + `--pe-status-color`), matching prior badge styling while remaining editable.
+
 ## [1.4.6] — 2026-11-19
 
 ### Changed

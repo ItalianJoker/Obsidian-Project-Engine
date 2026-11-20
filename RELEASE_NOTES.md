@@ -1,5 +1,15 @@
 # Release notes — Projects Engine
 
+## 1.4.7 — Homepage Status colour restored
+
+**EN:** Projects portfolio inline Status dropdown again shows the Settings status colour (same chip palette as before). Does not overwrite v1.4.6.
+
+### Fixed
+
+- **Status colour** — homepage Status control uses `.pe-status-chip` + `--pe-status-color` around the editable `<select>`.
+
+---
+
 ## 1.4.6 — Homepage row click + inline Status
 
 **EN:** Projects portfolio: row click no longer opens a project (Open button only); Status is editable inline via dropdown. Does not overwrite v1.4.5.

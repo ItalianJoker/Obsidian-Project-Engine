@@ -1422,11 +1422,26 @@
 	background: var(--background-modifier-hover);
 }
 
+/* Homepage Status: chip wrap restores Settings colour; select stays editable. */
+.pe-project-status-chip {
+	max-width: 100%;
+	padding-right: 4px;
+}
+
 .pe-project-status-select {
-	min-width: 7.5rem;
-	max-width: 12rem;
-	padding: 4px 8px;
-	font-size: 0.85em;
+	min-width: 6.5rem;
+	max-width: 11rem;
+	padding: 0 4px 0 0;
+	margin: 0;
+	font-size: inherit;
+	font-weight: inherit;
+	line-height: 1.2;
+	color: inherit;
+	background: transparent !important;
+	border: none !important;
+	box-shadow: none !important;
+	appearance: auto;
+	cursor: pointer;
 }
 
 .pe-subview {
