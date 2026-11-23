@@ -2,7 +2,7 @@
 
 Obsidian.md plugin for Project Portfolio, Governance, and Delivery Management in Markdown.
 
-Version **1.4.7** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
+Version **1.4.8** · Plugin id `projects-engine` · Mobile-compatible (`isDesktopOnly: false`)
 
 Navigation and view chrome are inspired by [dotpm/obsidian-pm](https://github.com/dotpm/obsidian-pm) (MIT); domain features and branding remain Projects Engine. See `NOTICE`.
 
@@ -213,7 +213,7 @@ Campi task rilevanti: `blocked_by`, `blocking`, `start_date`, `end_date`, `durat
 
 Requisiti: Obsidian **1.5.0+** (desktop e mobile). Node.js 18+ solo per build da sorgente.
 
-Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.4.7`
+Id: `projects-engine` · Nome: **Projects Engine** · Versione: `1.4.8`
 
 #### 1. Installazione utente (copia dei file)
 
@@ -403,7 +403,7 @@ Projects without a template are unchanged.
 
 ### Views: Projects → Overview → Edit → Workspace (+ Task / Release notes)
 
-**Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, inline Status dropdown, budget as days · hours on one line, context menu (Overview / Workspace / **Edit project** / Table / Board / Gantt / Eisenhower), **Open** / quick **Archive** (row click does not open the project), and **Show archived projects**. Single **Manage Entities** section (catalogue + **+ New** + **Delete Entity**) for Customer, Stakeholder, Project Type, and Technology. Below 720px: touch-friendly card/accordion layout.
+**Projects (Dashboard)** — searchable list with combinable **Governance** + **Customer** filters, inline Status dropdown, budget as days · hours on one line, context menu (Overview / Workspace / **Edit project** / Table / Board / Gantt / Eisenhower), underlined **project name** / **Open** / quick **Archive** (row click does not open the project), and **Show archived projects**. Single **Manage Entities** section (catalogue + **+ New** + **Delete Entity**) for Customer, Stakeholder, Project Type, and Technology. Below 720px: touch-friendly card/accordion layout.
 
 **Overview (project Dashboard)** — project home (dotpm-like), bound to the **Dashboard** tab in the chrome switcher (left of Table). Sections in order **Governance → Status → Task summary → search + task list → Documents → Linked Entities → Actions**. Documents tree (excludes `Tasks/`): consistent styled **New note** and **New task** buttons; **New note** creates a Markdown note already Graph-linked to the project (YAML `project` wikilink + body **Links** section); right-click context menu on notes (Open, new leaf, reveal, rename, delete, copy path/URL).
 
@@ -503,7 +503,7 @@ Scheduler-relevant task fields: `blocked_by`, `blocking`, `start_date`, `end_dat
 
 Requirements: Obsidian **1.5.0+** (desktop and mobile). Node.js 18+ only for from-source builds.
 
-Id: `projects-engine` · Name: **Projects Engine** · Version: `1.4.7`
+Id: `projects-engine` · Name: **Projects Engine** · Version: `1.4.8`
 
 #### 1. End-user install (copy the plugin files)
 

@@ -1,5 +1,19 @@
 # Release notes — Projects Engine
 
+## 1.4.8 — Homepage name link + Status contrast
+
+**EN:** Projects homepage: underlined project name opens the project (same as Open); Status dropdown text/surfaces follow Obsidian theme variables for light/dark readability while the chip keeps status colour. Does not overwrite v1.4.7.
+
+### Added
+
+- **Project name link** — Name column is an underlined control that calls the same open path as **Open**; row click still does not navigate.
+
+### Fixed
+
+- **Status contrast** — `.pe-project-status-select` / chip use `--text-normal`, `--background-primary`, and `--interactive-accent` (theme-aware tint) so the editable Status control stays readable.
+
+---
+
 ## 1.4.7 — Homepage Status colour restored
 
 **EN:** Projects portfolio inline Status dropdown again shows the Settings status colour (same chip palette as before). Does not overwrite v1.4.6.

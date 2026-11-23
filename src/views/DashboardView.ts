@@ -330,13 +330,15 @@ export class DashboardView extends ItemView {
 		for (const row of rows) {
 			const tr = document.createElement("tr");
 			tr.className = "pe-project-row pe-touch-target";
-			// Row click does not open the project — only the Open button does.
+			// Row click does not open — Open button and project name do.
 			tr.addEventListener("contextmenu", (event) => {
 				event.preventDefault();
 				this.openRowMenu(row, event);
 			});
 			this.td(tr, "ID", row.id);
-			this.td(tr, "Name", row.name);
+			this.mountProjectNameLink(tr, row, () => {
+				void this.plugin.router.openProjectLink(row.file.path);
+			});
 			this.td(tr, "Governance", governanceDisplayLabel(row.governance));
 			this.mountInlineStatusSelect(tr, row);
 			this.td(tr, "Customer", stripWiki(row.customer));
@@ -501,7 +503,9 @@ export class DashboardView extends ItemView {
 			const tr = document.createElement("tr");
 			tr.className = "pe-project-row pe-archived-row pe-touch-target";
 			this.td(tr, "ID", row.id);
-			this.td(tr, "Name", row.name);
+			this.mountProjectNameLink(tr, row, () => {
+				void this.plugin.router.openOverview(row.file.path);
+			});
 			this.td(tr, "Customer", stripWiki(row.customer));
 			const actions = tr.createEl("td", { attr: { "data-label": "Actions" } });
 			const actionRow = actions.createDiv({ cls: "pe-project-row-actions" });
@@ -591,7 +595,7 @@ export class DashboardView extends ItemView {
 	/**
 	 * Inline Status `<select>` on the portfolio table — same options as Settings /
 	 * Project Dashboard; persists via {@link setProjectStatus} without opening the project.
-	 * Wrapped in `.pe-status-chip` so the Settings colour shows (dot + tinted border/bg).
+	 * Wrapped in `.pe-status-chip` for Settings status hue; select text uses theme vars.
 	 */
 	private mountInlineStatusSelect(tr: HTMLElement, row: ProjectRow): void {
 		const statusTd = tr.createEl("td", {
@@ -709,6 +713,30 @@ export class DashboardView extends ItemView {
 			});
 		});
 		menu.showAtMouseEvent(event);
+	}
+
+	/**
+	 * Name cell: underlined text control that opens the project (same as Open).
+	 * Layout/typography stay inherited; only underline + pointer are added.
+	 */
+	private mountProjectNameLink(
+		tr: HTMLElement,
+		row: ProjectRow,
+		onOpen: () => void,
+	): void {
+		const td = tr.createEl("td", { attr: { "data-label": "Name" } });
+		const link = td.createEl("button", {
+			text: row.name,
+			cls: "pe-dashboard-project-name",
+			attr: {
+				type: "button",
+				"aria-label": `Open project ${row.name}`,
+			},
+		});
+		link.addEventListener("click", (event) => {
+			event.stopPropagation();
+			onOpen();
+		});
 	}
 
 	private td(tr: HTMLElement, label: string, text: string): void {
