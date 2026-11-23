@@ -7,6 +7,16 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.8
+
+### Added
+
+- **Project name link** — underlined project name on the Projects homepage opens the project (same as **Open**); row click still does not.
+
+### Fixed
+
+- **Homepage Status contrast** — Status select uses theme CSS variables for readable light/dark text; chip keeps Settings status colour.
+
 ## 1.4.7
 
 ### Fixed

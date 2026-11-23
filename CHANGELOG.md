@@ -3,6 +3,16 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.8] — 2026-11-23
+
+### Added
+
+- **Project name opens project** — clicking the underlined project name on the Projects homepage opens the project (same as **Open**); row click still does not.
+
+### Fixed
+
+- **Homepage Status contrast** — inline Status select uses Obsidian theme CSS variables (`--text-normal`, `--background-primary`, `--interactive-accent`) so the control stays readable in light/dark while the chip keeps Settings status colour.
+
 ## [1.4.7] — 2026-11-20
 
 ### Fixed
