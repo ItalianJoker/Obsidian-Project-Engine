@@ -1,5 +1,16 @@
 # Release notes — Projects Engine
 
+## 1.4.9 — Homepage Status + name polish
+
+**EN:** Projects homepage: Status dropdown is shorter with corner rounding (not a pill); project name is underline-only with no gray chip background. Keeps v1.4.8 theme contrast. Does not overwrite v1.4.8.
+
+### Fixed
+
+- **Status control height / shape** — less vertical padding; `border-radius` matches Open (corner rounding), not a full pill.
+- **Project name chrome** — remove theme button fill/padding so the name reads as plain underlined text.
+
+---
+
 ## 1.4.8 — Homepage name link + Status contrast
 
 **EN:** Projects homepage: underlined project name opens the project (same as Open); Status dropdown text/surfaces follow Obsidian theme variables for light/dark readability while the chip keeps status colour. Does not overwrite v1.4.7.

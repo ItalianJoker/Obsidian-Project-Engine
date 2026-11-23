@@ -3,6 +3,13 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.9] — 2026-11-23
+
+### Fixed
+
+- **Homepage Status polish** — Status dropdown vertical padding reduced; corner `border-radius` (match Open), not a full pill; keeps v1.4.8 theme contrast colours.
+- **Project name chrome** — remove gray button/chip background behind the homepage project name (underline only).
+
 ## [1.4.8] — 2026-11-23
 
 ### Added
