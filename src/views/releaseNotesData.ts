@@ -7,6 +7,13 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.9
+
+### Fixed
+
+- **Homepage Status polish** — Status dropdown is shorter (less vertical padding) with corner rounding like **Open**, not a full pill; theme contrast from 1.4.8 kept.
+- **Project name chrome** — name is underline-only (no gray chip / button background).
+
 ## 1.4.8
 
 ### Added

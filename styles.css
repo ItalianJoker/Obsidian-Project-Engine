@@ -1423,16 +1423,19 @@
 }
 
 /**
- * Homepage project name — same open target as Open; underline only
- * (inherit colour / weight / size; no layout chrome).
+ * Homepage project name — same open target as Open; underline only.
+ * Reset Obsidian/theme `<button>` chrome (gray fill, padding) so it reads as
+ * plain underlined text, not a chip.
  */
+button.pe-dashboard-project-name,
 .pe-dashboard-project-name {
 	display: inline;
-	padding: 0;
+	padding: 0 !important;
 	margin: 0;
-	border: none;
-	box-shadow: none;
-	background: transparent;
+	border: none !important;
+	box-shadow: none !important;
+	background: transparent !important;
+	background-color: transparent !important;
 	cursor: pointer;
 	font: inherit;
 	font-weight: inherit;
@@ -1442,12 +1445,21 @@
 	text-decoration: underline;
 	min-height: unset !important;
 	min-width: unset !important;
+	height: auto !important;
+	width: auto !important;
+	opacity: 1;
 }
 
-.pe-dashboard-project-name:hover {
+button.pe-dashboard-project-name:hover,
+.pe-dashboard-project-name:hover,
+button.pe-dashboard-project-name:active,
+.pe-dashboard-project-name:active {
 	background: transparent !important;
+	background-color: transparent !important;
+	box-shadow: none !important;
 	color: inherit;
 	text-decoration: underline;
+	opacity: 1;
 }
 
 .pe-dashboard-project-name:focus-visible {
@@ -1459,10 +1471,14 @@
 /**
  * Homepage Status: chip keeps Settings status hue; control text/surfaces use
  * Obsidian theme vars so the editable select stays readable in light/dark.
+ * Corner radius (match Open / inputs), not a full pill; compact height.
  */
+.pe-status-chip.pe-project-status-chip,
 .pe-project-status-chip {
 	max-width: 100%;
-	padding-right: 4px;
+	padding: 0 6px;
+	min-height: unset;
+	border-radius: var(--radius-s, 4px);
 	color: var(--text-normal);
 	background: color-mix(
 		in srgb,
@@ -1480,7 +1496,9 @@
 	min-width: 6.5rem;
 	max-width: 11rem;
 	width: auto;
-	padding: 2px 4px 2px 0;
+	min-height: unset !important;
+	height: auto;
+	padding: 1px 4px 1px 0;
 	margin: 0;
 	font-size: inherit;
 	font-weight: inherit;
