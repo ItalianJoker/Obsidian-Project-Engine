@@ -1,5 +1,16 @@
 # Release notes — Projects Engine
 
+## 1.4.10 — Flat filter chips + Settings title alignment
+
+**EN:** Manage Entities / filter chips are flat (no uneven theme button shadows); Settings section titles use Obsidian `setHeading` so they share the left edge with descriptions and setting cards. Does not overwrite v1.4.9.
+
+### Fixed
+
+- **Filter / chip shadows** — `.pe-primary`, `.pe-secondary`, `.pe-filter-chip`, and `.pe-segment` reset Obsidian `--input-shadow` so Customer / Stakeholder / Type / Tech (and matching chips elsewhere) are equally flat; padding and size unchanged.
+- **Settings title alignment** — replace raw `h2`/`h3`/`h4` with `Setting.setHeading()`; CSS keeps headings transparent with section dividers so titles align with description text and setting card backgrounds.
+
+---
+
 ## 1.4.9 — Homepage Status + name polish
 
 **EN:** Projects homepage: Status dropdown is shorter with corner rounding (not a pill); project name is underline-only with no gray chip background. Keeps v1.4.8 theme contrast. Does not overwrite v1.4.8.
