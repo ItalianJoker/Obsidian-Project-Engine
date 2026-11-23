@@ -7,6 +7,13 @@
 
 /** Markdown shown in the Release notes leaf (summary; full file remains in repo). */
 export const RELEASE_NOTES_MARKDOWN = `
+## 1.4.10
+
+### Fixed
+
+- **Filter / chip shadows** — Manage Entities and filter chips are uniformly flat (no uneven theme button shadows); size/padding unchanged.
+- **Settings title alignment** — section titles use Obsidian \`setHeading\` so they share the left edge with descriptions and setting cards.
+
 ## 1.4.9
 
 ### Fixed

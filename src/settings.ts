@@ -62,16 +62,28 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 		super(app, plugin);
 	}
 
+	/**
+	 * Native Obsidian section heading (`.setting-item-heading`).
+	 * Prefer over raw h2/h3/h4 so titles share the same left edge as setting
+	 * rows / card backgrounds (Obsidian plugin guidelines).
+	 */
+	private addSectionHeading(title: string, description?: string): Setting {
+		const setting = new Setting(this.containerEl).setName(title).setHeading();
+		if (description) {
+			setting.setDesc(description);
+		}
+		return setting;
+	}
+
 	override display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 		containerEl.addClass("projects-engine-settings");
 
-		containerEl.createEl("h2", { text: "Projects Engine" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description pe-settings-lead",
-			text: "Project portfolio, governance, and delivery. Defaults keep catalogues under the Projects root.",
-		});
+		this.addSectionHeading(
+			"Projects Engine",
+			"Project portfolio, governance, and delivery. Defaults keep catalogues under the Projects root.",
+		);
 
 		this.renderGeneral();
 		this.renderDefaultPm();
@@ -98,7 +110,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	 */
 	private renderDefaultPm(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Default PM" });
+		this.addSectionHeading("Default PM");
 
 		this.plugin.indexer.rebuild();
 		const members = this.listDefaultPmCandidates();
@@ -167,7 +179,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	/** General — open surfaces, defaults, release notes (dotpm General). */
 	private renderGeneral(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "General" });
+		this.addSectionHeading("General");
 
 		new Setting(containerEl)
 			.setName("Open projects in")
@@ -273,11 +285,10 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	 * Project Name is always required.
 	 */
 	private renderProjectHeaderFields(containerEl: HTMLElement): void {
-		containerEl.createEl("h3", { text: "Project view headers" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Choose which fields appear in project Dashboard, Workspace, and Edit titles. Segments join with “ - ”. Empty values are skipped. Project Name is always included.",
-		});
+		this.addSectionHeading(
+			"Project view headers",
+			"Choose which fields appear in project Dashboard, Workspace, and Edit titles. Segments join with “ - ”. Empty values are skipped. Project Name is always included.",
+		);
 
 		const fields = this.plugin.settings.projectHeaderFields;
 
@@ -336,7 +347,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	/** Date & time — PE default DD/MM/YYYY + 24h. */
 	private renderDateTime(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Date & time" });
+		this.addSectionHeading("Date & time");
 
 		new Setting(containerEl)
 			.setName("Date format")
@@ -377,7 +388,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	/** Table — subtree lines + borders (dotpm Table). */
 	private renderTable(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Table" });
+		this.addSectionHeading("Table");
 
 		new Setting(containerEl)
 			.setName("Show subtree connections")
@@ -421,7 +432,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	/** Gantt — granularity + week labels (dotpm Gantt). */
 	private renderGantt(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Gantt" });
+		this.addSectionHeading("Gantt");
 
 		new Setting(containerEl)
 			.setName("Default granularity")
@@ -472,7 +483,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	/** Board — subtasks + description preview + configurable columns. */
 	private renderBoard(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Board" });
+		this.addSectionHeading("Board");
 
 		new Setting(containerEl)
 			.setName("Show subtasks")
@@ -510,11 +521,10 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	 */
 	private renderTaskStatuses(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h4", { text: "Task board columns" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Statuses used by the Board, filters, and task editor. Drag to reorder. Archive hides a column from the Board without remapping existing notes. Defaults: Backlog → In Progress → Review → Done (Blocked / Cancelled archived). Done is required — you may rename its label (for example Completato) but cannot archive or remove it.",
-		});
+		this.addSectionHeading(
+			"Task board columns",
+			"Statuses used by the Board, filters, and task editor. Drag to reorder. Archive hides a column from the Board without remapping existing notes. Defaults: Backlog → In Progress → Review → Done (Blocked / Cancelled archived). Done is required — you may rename its label (for example Completato) but cannot archive or remove it.",
+		);
 
 		const list = containerEl.createDiv({ cls: "pe-status-list pe-task-status-list" });
 		this.renderTaskStatusRows(list);
@@ -695,11 +705,10 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	 */
 	private renderEisenhower(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Eisenhower" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Matrix placement: Important is a task checkbox; Urgent is derived from Priority (High or Urgent → Urgent; None / Low / Medium → Not urgent). Customise the four quadrant titles and legends below.",
-		});
+		this.addSectionHeading(
+			"Eisenhower",
+			"Matrix placement: Important is a task checkbox; Urgent is derived from Priority (High or Urgent → Urgent; None / Low / Medium → Not urgent). Customise the four quadrant titles and legends below.",
+		);
 
 		const labels = this.plugin.settings.eisenhowerLabels;
 		const rows: { id: keyof typeof labels; legend: string }[] = [
@@ -756,7 +765,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	 */
 	private renderScheduling(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Scheduling" });
+		this.addSectionHeading("Scheduling");
 
 		new Setting(containerEl)
 			.setName("Enable Auto-schedule button")
@@ -817,12 +826,10 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	 * Paths — Projects folder + archive + entity catalogues (default under Projects/Entities).
 	 */
 	private renderPaths(): void {
-		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Folders" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Projects folder holds active project trees ({ID} - {Name}). Archived projects move to the archive folder. Entity catalogues default under Projects/Entities/. Paths are normalised with Obsidian normalizePath().",
-		});
+		this.addSectionHeading(
+			"Folders",
+			"Projects folder holds active project trees ({ID} - {Name}). Archived projects move to the archive folder. Entity catalogues default under Projects/Entities/. Paths are normalised with Obsidian normalizePath().",
+		);
 
 		this.addFolderSetting("Projects folder", "projectsFolder", "Projects");
 		this.addFolderSetting(
@@ -860,7 +867,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	 */
 	private renderMetadataSync(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Note metadata" });
+		this.addSectionHeading("Note metadata");
 		new Setting(containerEl)
 			.setName("Sync & Rebuild Note Metadata")
 			.setDesc(
@@ -899,11 +906,10 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	 */
 	private renderTaskListTemplates(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Task list templates" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Step 1: create a template here (or via the Create task list template command). Step 2: on Create / Edit project, assign it with “Assign task list template”. Step 3: on create it applies automatically; on edit use Apply template… Notes use pe_type: task-list-template under the folder below.",
-		});
+		this.addSectionHeading(
+			"Task list templates",
+			"Step 1: create a template here (or via the Create task list template command). Step 2: on Create / Edit project, assign it with “Assign task list template”. Step 3: on create it applies automatically; on edit use Apply template… Notes use pe_type: task-list-template under the folder below.",
+		);
 
 		this.addFolderSetting(
 			"Task list templates folder",
@@ -926,12 +932,10 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 	/** Per-project scaffold subfolder names. */
 	private renderScaffold(): void {
-		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Project scaffold" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Created inside each new project folder. PRINCE2 also scaffolds lean Initiation and Registers Markdown templates (Business Case, registers, Work Package starter, Project Brief, PID, Stage Boundaries guide).",
-		});
+		this.addSectionHeading(
+			"Project scaffold",
+			"Created inside each new project folder. PRINCE2 also scaffolds lean Initiation and Registers Markdown templates (Business Case, registers, Work Package starter, Project Brief, PID, Stage Boundaries guide).",
+		);
 
 		this.addTextSetting("Tasks folder name", "scaffoldTasksFolder", "Tasks");
 		this.addTextSetting("Initiation folder name", "scaffoldInitiationFolder", "Initiation");
@@ -946,7 +950,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 	private renderIdentifiers(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Project identifiers" });
+		this.addSectionHeading("Project identifiers");
 
 		new Setting(containerEl)
 			.setName("ID pattern")
@@ -981,7 +985,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 	private renderTimeModel(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Time model" });
+		this.addSectionHeading("Time model");
 
 		new Setting(containerEl)
 			.setName("Hours per day")
@@ -1005,7 +1009,7 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 	private renderPerformance(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Performance" });
+		this.addSectionHeading("Performance");
 
 		new Setting(containerEl)
 			.setName("Indexer debounce (ms)")
@@ -1081,11 +1085,10 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 
 	private renderProjectStatuses(): void {
 		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Project statuses" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Lifecycle statuses on the portfolio and project overview. Drag to reorder. Archive hides an option from new picks without remapping existing notes.",
-		});
+		this.addSectionHeading(
+			"Project statuses",
+			"Lifecycle statuses on the portfolio and project overview. Drag to reorder. Archive hides an option from new picks without remapping existing notes.",
+		);
 
 		const list = containerEl.createDiv({ cls: "pe-status-list" });
 		this.renderStatusRows(list);
@@ -1219,18 +1222,16 @@ export class ProjectsEngineSettingTab extends PluginSettingTab {
 	}
 
 	private renderCustomFields(): void {
-		const { containerEl } = this;
-		containerEl.createEl("h3", { text: "Custom field schemas" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Dynamic fields for Customer, Team Member, Project Type, Project Technology, and Stakeholder notes.",
-		});
+		this.addSectionHeading(
+			"Custom field schemas",
+			"Dynamic fields for Customer, Team Member, Project Type, Project Technology, and Stakeholder notes.",
+		);
 
 		for (const schema of this.plugin.settings.customFieldSchemas) {
 			this.renderSchemaRow(schema);
 		}
 
-		containerEl.createEl("h4", { text: "Add field" });
+		this.addSectionHeading("Add field");
 		this.renderAddSchemaForm();
 	}
 

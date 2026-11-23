@@ -3,6 +3,13 @@
 All notable changes to Projects Engine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.10] — 2026-11-23
+
+### Fixed
+
+- **Filter / chip shadows** — strip theme `--input-shadow` from `.pe-primary` / `.pe-secondary` / `.pe-filter-chip` / `.pe-segment` so Manage Entities and task filter chips are uniformly flat (no size change).
+- **Settings title alignment** — section titles via `Setting.setHeading()` so “Projects Engine”, “General”, etc. share the left edge with descriptions and setting card backgrounds.
+
 ## [1.4.9] — 2026-11-23
 
 ### Fixed

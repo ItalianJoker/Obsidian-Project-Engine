@@ -114,6 +114,13 @@
 	border: 1px solid var(--background-modifier-border);
 	background: var(--background-primary);
 	cursor: pointer;
+	box-shadow: none !important;
+}
+
+.pe-segment:hover,
+.pe-segment:active,
+.pe-segment:focus-visible {
+	box-shadow: none !important;
 }
 
 .pe-segment.is-active {
@@ -290,12 +297,27 @@
 	}
 }
 
+/*
+ * Flat PE buttons — Obsidian/theme `<button>` defaults apply `--input-shadow`
+ * (and hover elevation). That made Manage Entities chips uneven (Customer /
+ * Stakeholder raised, Type / Tech flat). Keep size/padding; strip shadow only.
+ */
 .pe-primary,
 .pe-secondary {
 	border-radius: 8px;
 	padding: 0 16px;
 	cursor: pointer;
 	border: 1px solid var(--background-modifier-border);
+	box-shadow: none !important;
+}
+
+.pe-primary:hover,
+.pe-primary:active,
+.pe-primary:focus-visible,
+.pe-secondary:hover,
+.pe-secondary:active,
+.pe-secondary:focus-visible {
+	box-shadow: none !important;
 }
 
 .pe-primary {
@@ -770,6 +792,7 @@
 	background: var(--background-primary);
 	cursor: pointer;
 	padding: 0 12px;
+	box-shadow: none !important;
 }
 
 .pe-segment.is-active {
@@ -2770,6 +2793,13 @@ button.pe-dashboard-project-name:active,
 	background: transparent;
 	color: var(--text-muted);
 	cursor: pointer;
+	box-shadow: none !important;
+}
+
+.pe-filter-chip:hover,
+.pe-filter-chip:active,
+.pe-filter-chip:focus-visible {
+	box-shadow: none !important;
 }
 
 .pe-filter-chip.is-active {
@@ -2987,28 +3017,58 @@ button.pe-dashboard-project-name:active,
 	padding-bottom: 32px;
 }
 
-.projects-engine-settings h2 {
-	margin: 0 0 4px;
-}
-
 /**
- * Section titles: top border acts as the divider. Extra padding-top keeps the
- * title clear of the separator (Luca feedback: scaffold → identifiers was cramped).
+ * Section titles via Setting.setHeading() — same layout box as setting rows so
+ * “Projects Engine” / “General” / etc. share the left edge with description
+ * text and setting card backgrounds (raw h2/h3 inherited theme heading inset).
+ * Transparent / no shadow so headings are not themselves carded.
  */
-.projects-engine-settings h3 {
-	margin: 32px 0 12px;
+.projects-engine-settings .setting-item-heading {
+	background: transparent !important;
+	background-color: transparent !important;
+	box-shadow: none !important;
+	border-radius: 0 !important;
+	border-left: none !important;
+	border-right: none !important;
+	border-bottom: none !important;
+	/* Top border acts as the section divider (was on raw h3). */
+	border-top: 1px solid var(--background-modifier-border) !important;
+	margin-top: 32px;
 	padding-top: 20px;
-	border-top: 1px solid var(--background-modifier-border);
+	padding-bottom: 12px;
+	/* Sit title text on the setting-item / card outer left edge. */
+	padding-inline: 0 !important;
+	align-items: flex-start;
 }
 
-.projects-engine-settings h3:first-of-type {
-	margin-top: 16px;
+.projects-engine-settings .setting-item-heading:first-child {
+	margin-top: 0;
 	padding-top: 0;
-	border-top: none;
+	border-top: none !important;
 }
 
-.projects-engine-settings h4 {
-	margin: 20px 0 8px;
+.projects-engine-settings .setting-item-heading .setting-item-info {
+	margin-right: 0;
+}
+
+.projects-engine-settings .setting-item-heading .setting-item-name {
+	min-height: unset;
+	display: block;
+	line-height: 1.35;
+	font-weight: 600;
+}
+
+.projects-engine-settings .setting-item-heading .setting-item-description {
+	margin: 6px 0 0;
+	padding-bottom: 0;
+	color: var(--text-muted);
+	font-size: 0.9em;
+	line-height: 1.45;
+}
+
+.projects-engine-settings .setting-item-heading .setting-item-control {
+	display: none;
+	min-height: unset;
 }
 
 .pe-settings-lead {
@@ -3022,20 +3082,21 @@ button.pe-dashboard-project-name:active,
  * float mid-row (Custom field schemas, Select options, etc.).
  *
  * Scoped to `.projects-engine-settings` so core Obsidian settings are untouched.
+ * Headings are excluded from the 44px name band.
  */
-.projects-engine-settings .setting-item {
+.projects-engine-settings .setting-item:not(.setting-item-heading) {
 	align-items: flex-start;
 	padding-top: 14px;
 	padding-bottom: 16px;
 }
 
-.projects-engine-settings .setting-item-info {
+.projects-engine-settings .setting-item:not(.setting-item-heading) .setting-item-info {
 	/* Keep the label column from colliding with the control cluster. */
 	margin-right: 12px;
 	padding-bottom: 2px;
 }
 
-.projects-engine-settings .setting-item-name {
+.projects-engine-settings .setting-item:not(.setting-item-heading) .setting-item-name {
 	line-height: 1.35;
 	/* Match the first line of the name to the vertical center of 44px controls. */
 	min-height: 44px;
@@ -3043,7 +3104,7 @@ button.pe-dashboard-project-name:active,
 	align-items: center;
 }
 
-.projects-engine-settings .setting-item .setting-item-description {
+.projects-engine-settings .setting-item:not(.setting-item-heading) .setting-item-description {
 	color: var(--text-muted);
 	font-size: 0.9em;
 	line-height: 1.45;
@@ -3058,15 +3119,14 @@ button.pe-dashboard-project-name:active,
 	line-height: 1.45;
 }
 
-/* Section lead paragraphs that reuse the description class (outside a row). */
-.projects-engine-settings > .setting-item-description,
-.projects-engine-settings h3 + .setting-item-description,
-.projects-engine-settings h4 + .setting-item-description {
+/* Legacy section lead paragraphs (outside a Setting row), if any remain. */
+.projects-engine-settings > .setting-item-description {
 	margin: 0 0 14px;
 	padding-bottom: 0;
+	padding-inline: 0;
 }
 
-.projects-engine-settings .setting-item-control {
+.projects-engine-settings .setting-item:not(.setting-item-heading) .setting-item-control {
 	display: flex;
 	align-items: center;
 	/* Sit on the same band as the name (not the mid-point of name+description). */
